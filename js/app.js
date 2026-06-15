@@ -16,37 +16,6 @@ let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null;
 let vPlayers={},notifUnsub=null,msgBUnsub=null;
 let replyMsg=null,curEId=null,curED=null,typDebounce=null;
 
-// Message compression helpers: encode short keys for storage and decode on read
-function encMsg(m){
-  if(!m||typeof m!=='object')return m;
-  const out={};
-  if(m.senderUid)out.s=m.senderUid;
-  if(m.senderName)out.n=m.senderName;
-  if(m.type)out.ty=m.type;
-  if(m.text)out.t=m.text;
-  if(m.data)out.d=m.data;
-  if(m.createdAt)out.cAt=m.createdAt;
-  if(m.time)out.time=m.time;
-  if(typeof m.seen!=='undefined')out.se=m.seen;
-  if(m.status)out.st=m.status;
-  if(m.dur)out.du=m.dur;
-  if(typeof m.voicePlayed!=='undefined')out.vp=m.voicePlayed;
-  if(m.name)out.nm=m.name;
-  if(m.ext)out.ex=m.ext;
-  if(m.senderPhoto)out.sp=m.senderPhoto;
-  return out;
-}
-function decMsg(raw){
-  if(!raw||typeof raw!=='object')return raw;
-  // If it's already using long keys, return as-is
-  if(raw.s===undefined && raw.ty===undefined && raw.t===undefined && raw.d===undefined) return raw;
-  return {
-    senderUid:raw.s, senderName:raw.n, type:raw.ty, text:raw.t, data:raw.d,
-    time:raw.time, seen:raw.se, status:raw.st, dur:raw.du, voicePlayed:raw.vp,
-    name:raw.nm, ext:raw.ex, senderPhoto:raw.sp, createdAt:raw.cAt
-  };
-}
-
 async function loadFavs(){
   if(!CU)return;
   try{
@@ -392,32 +361,22 @@ function listenUsers(){
 
 // ── POSTS ──
 let cachedPosts=[],lastPostCount=0;
-let postsUnsub=null,homeLimit=10,postsPerPage=10;
 function listenPosts(){
-  // Unsubscribe previous feed listener (keeps realtime updates limited)
-  try{if(typeof postsUnsub==='function')postsUnsub();}catch(e){}
-  postsUnsub=db.collection('posts').orderBy('createdAt','desc').limit(homeLimit).onSnapshot(sn=>{
+  db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
     const newPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
     const isHomeVisible=el('Phome')&&el('Phome').style.display!=='none';
-    cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     if(isHomeVisible){
+      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
       renderHome(cachedPosts);
     }else{
-      // Not on home tab — only update badge count
+      // Not on home tab — just update badge count, don't re-render
       if(lastPostCount>0&&newPosts.length>lastPostCount){
         const newCount=newPosts.length-lastPostCount;
         const b=el('feedB');if(b){b.textContent=newCount;b.style.display='inline-block';}
       }
+      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     }
   },e=>console.log(e));
-}
-
-function loadMorePosts(){
-  // Increase the limit and re-subscribe to fetch more posts (keeps server load lower)
-  homeLimit+=postsPerPage;
-  // show a small local loading indicator
-  const f=el('feed');if(f)f.innerHTML+=`<p style="text-align:center;color:#888;">Loading more...</p>`;
-  listenPosts();
 }
 function toggleGN(val){el('gnW').style.display=val==='Group'?'block':'none';}
 async function addPost(){
@@ -489,10 +448,6 @@ function renderHome(posts){
       </div>
     </div>`;
   });
-  // Add "Load more" when there may be more posts in the database
-  if(cachedPosts.length>=homeLimit){
-    f.innerHTML += `<div style="text-align:center;margin-top:8px;"><button class="btn" id="loadMoreBtn" onclick="loadMorePosts()">Load more</button></div>`;
-  }
 }
 
 // ── FIND ──
@@ -613,16 +568,13 @@ function openChat(name,uid){
 
   // Messages listener — uses docChanges so only new/changed messages are processed
   chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('createdAt').limitToLast(50).onSnapshot(sn=>{
-    console.debug('chat messages snapshot',cid,'size',sn.size,'changes',sn.docChanges().length);
     const mb=el('msgB');
     sn.docChanges().forEach(change=>{
-      console.debug('chat docChange',change.type,change.doc.id,change.doc.data()?.ty||change.doc.data()?.type,change.doc.data());
       if(change.type==='removed'){
         const ex=mb.querySelector(`.bw[data-id="${change.doc.id}"]`);
         if(ex)ex.remove();return;
       }
-      const raw=change.doc.data();
-      const m={id:change.doc.id,...decMsg(raw)};
+      const m={id:change.doc.id,...change.doc.data()};
       const bbl=buildBbl(m,false);if(!bbl)return;
       const tmp=document.createElement('div');tmp.innerHTML=bbl;
       const node=tmp.firstElementChild;if(!node)return;
@@ -778,10 +730,10 @@ function sendSticker(sticker){
   const cid=curChat?getCID(CU.uid,curChat.uid):null;
   const msg={type:'text',text:sticker,senderUid:CU.uid,senderName:MP?.name||'',time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(cid){
-    db.collection('chats').doc(cid).collection('messages').add(encMsg(msg));
+    db.collection('chats').doc(cid).collection('messages').add(msg);
     const _sd1={participants:[CU.uid,curChat.uid],lastMsg:sticker,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};_sd1['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);db.collection('chats').doc(cid).set(_sd1,{merge:true});
   }else if(curGrp){
-    db.collection('groups').doc(curGrp.id).collection('messages').add(encMsg({...msg,senderPhoto:myPho||''}));
+    db.collection('groups').doc(curGrp.id).collection('messages').add({...msg,senderPhoto:myPho||''});
   }
   closeStickers();
 }
@@ -796,10 +748,10 @@ function sendSpecial(type){
   if(!text)return;
   const icons={poll:'📊',event:'📅',location:'📍',link:'🔗'};
   const cid=getCID(CU.uid,curChat.uid);
-  db.collection('chats').doc(cid).collection('messages').add(encMsg({
+  db.collection('chats').doc(cid).collection('messages').add({
     type:'text',text:`${icons[type]} ${text}`,senderUid:CU.uid,senderName:MP?.name||'',
     time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  }));
+  });
   const _sd2={participants:[CU.uid,curChat.uid],lastMsg:icons[type]+' '+text,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};_sd2['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);db.collection('chats').doc(cid).set(_sd2,{merge:true});
 }
 
@@ -816,7 +768,7 @@ async function sendMsg(){
   if(replyMsg)md.replyTo={text:replyMsg.text,senderName:replyMsg.sender};
   replyMsg=null;el('rplybar').style.display='none';
   try{
-    await db.collection('chats').doc(cid).collection('messages').add(encMsg(md));
+    await db.collection('chats').doc(cid).collection('messages').add(md);
     const upd={participants:[CU.uid,curChat.uid],lastMsg:text,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
     upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(upd,{merge:true});
@@ -858,7 +810,7 @@ async function sendGMsg(){
   const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
   const text=inp.value.trim();inp.value='';
   const gi=el('gSendIcon');if(gi)gi.innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
-  try{await db.collection('groups').doc(curGrp.id).collection('messages').add(encMsg({type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()}));}
+  try{await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});}
   catch(e){showToast('❌ '+e.message);}
 }
 
@@ -942,17 +894,7 @@ function buildBbl(m,isGrp){
   const nameTag=isGrp&&!self?`<div class="bname">${esc(m.senderName||'')}</div>`:'';
   const repBtn=!isGrp?`<button class="mabtn ${self?'op':''}" ${!self?'style="background:rgba(0,0,0,.08);color:var(--txt);"':''} onclick="startReply('${m.id}')">↩</button>`:'';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
-  // Show receipt for own messages of all types: sending -> Sending, sent -> send✓, seen/heard -> ✓✓
-  let receipt='';
-  if(self){
-    if(m.status==='sending')receipt=`<div class="receipt">Sending</div>`;
-    else if(m.status==='sent'){
-      // use 'send✓' as requested
-      receipt=`<div class="receipt">send✓</div>`;
-    }else if(m.seen){
-      receipt=`<div class="receipt">✓✓</div>`;
-    }
-  }
+  const receipt=self&&type==='text'?`<div class="receipt">${m.seen?'✓✓ Seen':'✓ Sent'}</div>`:'';
   const rc=m.reactions||{},ec={};
   Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
   const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
@@ -979,26 +921,22 @@ function buildBbl(m,isGrp){
     inner=`${nameTag}${rq}${textPart}${linkCards}${!isGrp?`<div class="mar">${repBtn}</div>`:''} ${rcHtml}${receipt}`;
   }
   else if(type==='image'){
-    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">⏳ Sending...</div></div>${rcHtml}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">⏳ Uploading photo...</div></div>${rcHtml}`;}
     else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','image')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','img.jpg')">⬇</button></div>${rcHtml}`;}
   }
   else if(type==='video'){
-    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">⏳ Sending...</div></div>${rcHtml}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">⏳ Uploading video...</div></div>${rcHtml}`;}
     else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','video.mp4')">⬇</button></div>${rcHtml}`;}
   }
   else if(type==='audio'){
-    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎵</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">⏳ Sending...</div></div>${rcHtml}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎵</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">⏳ Uploading audio...</div></div>${rcHtml}`;}
     else{inner=`${nameTag}${rq}<audio src="${m.data}" controls preload="none" style="width:200px;display:block;margin-top:3px;border-radius:6px;"></audio><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','audio.mp3')">⬇</button></div>${rcHtml}`;}
   }
   else if(type==='voice'){
-    // For voice messages, label as 'vocal message' and show duration + receipt ticks
-    const heardBadge=(m.voicePlayed&&self)?'<span class="vheard" style="font-size:10px;opacity:.7;margin-left:4px;">✓✓</span>':(m.voicePlayed?'<span class="vheard" style="font-size:10px;opacity:.7;margin-left:4px;">✓✓</span>':'');
-    const sentTick=(self&&m.status==='sent'&&!m.seen)?'<span style="font-size:12px;opacity:0.85;margin-left:6px;">✓</span>':'';
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}"><button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')">▶</button><div style="flex:1;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')"><div class="vfill" id="vfill_${m.id}"></div></div></div><span class="vdur" id="vdur_${m.id}">${m.dur||'0:00'}</span>${sentTick}${heardBadge}</div><div style="font-size:12px;opacity:0.8;margin-top:4px;">vocal message</div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','voice.webm')">⬇</button></div>${rcHtml}`;
+    const playedBadge=m.voicePlayed&&self?'<span style="font-size:10px;opacity:.7;margin-left:4px;">🎧 Heard</span>':'';
+    inner=`${nameTag}<div class="vbub" id="vp_${m.id}"><button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')">▶</button><div style="flex:1;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')"><div class="vfill" id="vfill_${m.id}"></div></div></div><span class="vdur" id="vdur_${m.id}">${m.dur||'0:00'}</span>${playedBadge}</div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','voice.webm')">⬇</button></div>${rcHtml}`;
   }
   else if(type==='doc'){const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';inner=`${nameTag}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;}
-  // Ensure receipt (sending/sent/seen) is appended to the bubble content
-  inner += receipt;
   return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${m.time||''}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
@@ -1077,12 +1015,12 @@ async function sendDriveLink(dest){
   try{
     if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      await db.collection('chats').doc(cid).collection('messages').add(encMsg({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}));
+      await db.collection('chats').doc(cid).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       const upd={participants:[CU.uid,curChat.uid],lastMsg:'__gdrive__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
       await db.collection('chats').doc(cid).set(upd,{merge:true});
     }else if(dest==='g'&&curGrp){
-      await db.collection('groups').doc(curGrp.id).collection('messages').add(encMsg({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:t,createdAt:firebase.firestore.FieldValue.serverTimestamp()}));
+      await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:t,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     }
     showToast('📁 File shared!');
   }catch(e){showToast('❌ '+e.message);}
@@ -1152,10 +1090,10 @@ async function handleF(e,dest){
   try{
     let msgRef;
     if(dest==='g'&&curGrp){
-      msgRef=await db.collection('groups').doc(curGrp.id).collection('messages').add(encMsg({...m,senderPhoto:myPho||''}));
+      msgRef=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
     }else if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      msgRef=await db.collection('chats').doc(cid).collection('messages').add(encMsg(m));
+      msgRef=await db.collection('chats').doc(cid).collection('messages').add(m);
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:_typeLabel,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
       await db.collection('chats').doc(cid).set(_upd,{merge:true});
@@ -1165,12 +1103,14 @@ async function handleF(e,dest){
     }
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
+      showToast('📤 Uploading in background...');
       const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
       fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${rtype}/upload`,{method:'POST',body:fd})
         .then(r=>r.json())
         .then(d=>{
-            if(d.secure_url){
+          if(d.secure_url){
             msgRef.update({data:d.secure_url,status:'sent'});
+            showToast('✅ Sent!');
           }else{
             msgRef.update({status:'failed'});
             showToast('❌ Upload failed');
@@ -1223,12 +1163,12 @@ async function sendPreviewImg(){
   const m={type:'image',data:'',senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     if(_previewDest==='g'&&curGrp){
-      const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add(encMsg({...m,senderPhoto:myPho||''}));
+      const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
       // ✅ BACKGROUND UPLOAD
       uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
     }else if(_previewDest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      const ref=await db.collection('chats').doc(cid).collection('messages').add(encMsg(m));
+      const ref=await db.collection('chats').doc(cid).collection('messages').add(m);
       // ✅ BACKGROUND UPLOAD
       uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
@@ -1258,8 +1198,6 @@ async function startVoice(){
     // Button → red send arrow
     el('sendB').classList.add('rec');el('sendB').style.background='#e74c3c';
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
-    // Show header recording indicator
-    try{const r=el('recIcon');if(r){r.style.display='inline-flex';r.style.visibility='visible';r.style.opacity='1';r.style.zIndex='9999';r.classList.add('recPulse');}}catch(e){}
     el('vbar').style.display='flex';
     drawWave('vWave',()=>isRec);
     vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
@@ -1278,7 +1216,6 @@ async function stopAndSendVoice(){
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
   el('sendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
-  try{const r=el('recIcon');if(r){r.style.display='none';r.style.visibility='hidden';r.classList.remove('recPulse');}}catch(e){}
   if(!chunks.length||!curChat){showToast('⚠️ Nothing recorded');return;}
   await new Promise(r=>setTimeout(r,300));
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
@@ -1287,31 +1224,14 @@ async function stopAndSendVoice(){
   const cid=getCID(CU.uid,curChat.uid);
   const t=now();
   // ✅ INSTANT: Show message immediately with sending status
-  const localUrl=URL.createObjectURL(blob);
-  const msgRef=await db.collection('chats').doc(cid).collection('messages').add(encMsg({
-    type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,
+  const msgRef=await db.collection('chats').doc(cid).collection('messages').add({
+    type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
     senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
     status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  }));
-  console.debug('voice message local added',cid,msgRef.id,localUrl);
-  // Append local bubble immediately so user sees sent voice even if snapshot delayed
-  try{
-    const mbEl=el('msgB');
-    const localMsg={id:msgRef.id,senderUid:CU.uid,senderName:MP?.name||'',type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,time:t,status:'sending',seen:false};
-    const bblHtml=buildBbl(localMsg,false);
-    if(bblHtml && mbEl){
-      const tmp=document.createElement('div');tmp.innerHTML=bblHtml;const node=tmp.firstElementChild; if(node){ mbEl.appendChild(node); mbEl.scrollTop=mbEl.scrollHeight; }
-    }else{
-      console.debug('buildBbl returned empty or msgB missing, inserting fallback bubble',bblHtml,!!mbEl);
-      if(mbEl){
-        const fallback=`<div class="bw s" data-id="${msgRef.id}" data-sender="${esc(MP?.name||'')}"><div class="bbl s"><div style="font-size:12px;margin-bottom:6px;">Voice message</div><audio src="${localUrl}" controls style="width:180px;display:block;margin-bottom:6px;"></audio><div class="btime">${t}</div></div></div>`;
-        const tmp2=document.createElement('div');tmp2.innerHTML=fallback;mbEl.appendChild(tmp2.firstElementChild);mbEl.scrollTop=mbEl.scrollHeight;
-      }
-    }
-  }catch(e){console.debug('append local voice failed',e);} 
+  });
   // ✅ BACKGROUND: Upload without blocking UI
   uploadCloud(file,'audio').then(url=>{
-    if(url){ msgRef.update({data:url,status:'sent'}).then(()=>{try{URL.revokeObjectURL(localUrl);}catch(e){}}); console.debug('voice uploaded',cid,msgRef.id,url);} 
+    if(url) msgRef.update({data:url,status:'sent'});
   });
   const _vUpd={participants:[CU.uid,curChat.uid],lastMsg:'__voice__',lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
   _vUpd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
@@ -1348,7 +1268,6 @@ async function startGVoice(){
     gmr.start(200);gIsRec=true;gvSec=0;
     el('gSendB').classList.add('rec');el('gSendB').style.background='#e74c3c';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
-    try{const r=el('recIcon');if(r){r.style.display='inline-flex';r.classList.add('recPulse');}}catch(e){}
     el('gvbar').style.display='flex';
     drawWave('gvWave',()=>gIsRec);
     gvInt=setInterval(()=>{gvSec++;const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
@@ -1366,38 +1285,21 @@ async function stopAndSendGVoice(){
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   el('gSendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
-  try{const r=el('recIcon');if(r){r.style.display='none';r.classList.remove('recPulse');}}catch(e){}
   if(!chunks.length||!curGrp){showToast('⚠️ Nothing recorded');return;}
   await new Promise(r=>setTimeout(r,300));
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
   const file=new File([blob],'voice.webm',{type:'audio/webm'});
   const mm=Math.floor(dur/60),ss=dur%60;
   const t=now();
-  // ✅ INSTANT: Show voice message immediately using a local blob URL
-  const localUrl=URL.createObjectURL(blob);
-  const gvRef=await db.collection('groups').doc(curGrp.id).collection('messages').add(encMsg({
-    type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,
+  // ✅ INSTANT: Show voice message immediately
+  const gvRef=await db.collection('groups').doc(curGrp.id).collection('messages').add({
+    type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
     senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
     time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  }));
-  console.debug('group voice message local added',curGrp.id,gvRef.id,localUrl);
-  // Append local bubble in group chat immediately
-  try{
-    const gb=el('grpB');
-    const localMsg={id:gvRef.id,senderUid:CU.uid,senderName:MP?.name||'Me',type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,time:t,status:'sending',seen:false};
-    const bblHtml=buildBbl(localMsg,true);
-    if(bblHtml && gb){const tmp=document.createElement('div');tmp.innerHTML=bblHtml;const node=tmp.firstElementChild;if(node){gb.appendChild(node);gb.scrollTop=gb.scrollHeight;}}
-    else{
-      console.debug('buildBbl returned empty or grpB missing, inserting fallback group bubble',bblHtml,!!gb);
-      if(gb){
-        const fallback=`<div class="bw s" data-id="${gvRef.id}" data-sender="${esc(MP?.name||'Me')}"><div class="bbl s"><div style="font-size:12px;margin-bottom:6px;">Voice message</div><audio src="${localUrl}" controls style="width:180px;display:block;margin-bottom:6px;"></audio><div class="btime">${t}</div></div></div>`;
-        const tmp2=document.createElement('div');tmp2.innerHTML=fallback;gb.appendChild(tmp2.firstElementChild);gb.scrollTop=gb.scrollHeight;
-      }
-    }
-  }catch(e){console.debug('append local group voice failed',e);} 
+  });
   // ✅ BACKGROUND: Upload without blocking UI
   uploadCloud(file,'audio').then(url=>{
-    if(url){ gvRef.update({data:url,status:'sent'}).then(()=>{try{URL.revokeObjectURL(localUrl);}catch(e){}}); console.debug('group voice uploaded',curGrp.id,gvRef.id,url);} 
+    if(url) gvRef.update({data:url,status:'sent'});
   });
   showToast('🎙️ Voice sending...');
 }
@@ -1407,7 +1309,6 @@ function cancelGVoice(){
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   el('gSendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
-  try{const r=el('recIcon');if(r){r.style.display='none';r.classList.remove('recPulse');}}catch(e){}
 }
 // Stubs for smartGSend compatibility
 function stopGVoice(){stopAndSendGVoice();}
@@ -1626,18 +1527,6 @@ function openPhoneSettings(){
   else if(/Android/.test(ua)){window.location.href='intent:#Intent;action=android.settings.SETTINGS;end';}
   else{showToast('⚙️ Open your device Settings app to change language, time, and other preferences.');}
 }
-
-// --- RUNTIME DEPLOY CHECK: logs DOM presence and timestamp to confirm deployed script version
-try{
-  const nowStr=new Date().toISOString();
-  console.debug('runtime-check: app.js loaded at',nowStr);
-  const r=el('recIcon'), mb=el('msgB'), gb=el('grpB');
-  console.debug('runtime-check: recIcon present?',!!r, r);
-  console.debug('runtime-check: msgB present?',!!mb, mb);
-  console.debug('runtime-check: grpB present?',!!gb, gb);
-  // show the timestamp in header small text to verify Netlify served latest
-  try{const tEl=el('topN'); if(tEl){tEl.textContent='Build: '+nowStr.slice(11,19); tEl.title='app.js loaded '+nowStr; tEl.style.opacity='0.9';}}catch(e){}
-}catch(e){console.debug('runtime-check failed',e);} 
 function toggleDark(){dark=!dark;document.body.classList.toggle('dark',dark);}
 function showToast(msg){const t=el('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',4000);}
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
