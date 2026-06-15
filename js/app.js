@@ -25,6 +25,7 @@ function encMsg(m){
   if(m.type)out.ty=m.type;
   if(m.text)out.t=m.text;
   if(m.data)out.d=m.data;
+  if(m.createdAt)out.cAt=m.createdAt;
   if(m.time)out.time=m.time;
   if(typeof m.seen!=='undefined')out.se=m.seen;
   if(m.status)out.st=m.status;
@@ -490,7 +491,7 @@ function renderHome(posts){
   });
   // Add "Load more" when there may be more posts in the database
   if(cachedPosts.length>=homeLimit){
-    f.innerHTML += `<div style="text-align:center;margin-top:8px;"><button class="btn gray" id="loadMoreBtn" onclick="loadMorePosts()">Load more</button></div>`;
+    f.innerHTML += `<div style="text-align:center;margin-top:8px;"><button class="btn" id="loadMoreBtn" onclick="loadMorePosts()">Load more</button></div>`;
   }
 }
 
@@ -1285,14 +1286,15 @@ async function stopAndSendVoice(){
   const cid=getCID(CU.uid,curChat.uid);
   const t=now();
   // ✅ INSTANT: Show message immediately with sending status
+  const localUrl=URL.createObjectURL(blob);
   const msgRef=await db.collection('chats').doc(cid).collection('messages').add(encMsg({
-    type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
+    type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,
     senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
     status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
   }));
   // ✅ BACKGROUND: Upload without blocking UI
   uploadCloud(file,'audio').then(url=>{
-    if(url) msgRef.update({data:url,status:'sent'});
+    if(url){ msgRef.update({data:url,status:'sent'}).then(()=>{try{URL.revokeObjectURL(localUrl);}catch(e){}}); }
   });
   const _vUpd={participants:[CU.uid,curChat.uid],lastMsg:'__voice__',lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
   _vUpd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
@@ -1354,15 +1356,16 @@ async function stopAndSendGVoice(){
   const file=new File([blob],'voice.webm',{type:'audio/webm'});
   const mm=Math.floor(dur/60),ss=dur%60;
   const t=now();
-  // ✅ INSTANT: Show voice message immediately
+  // ✅ INSTANT: Show voice message immediately using a local blob URL
+  const localUrl=URL.createObjectURL(blob);
   const gvRef=await db.collection('groups').doc(curGrp.id).collection('messages').add(encMsg({
-    type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
+    type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,
     senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
     time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
   }));
   // ✅ BACKGROUND: Upload without blocking UI
   uploadCloud(file,'audio').then(url=>{
-    if(url) gvRef.update({data:url,status:'sent'});
+    if(url){ gvRef.update({data:url,status:'sent'}).then(()=>{try{URL.revokeObjectURL(localUrl);}catch(e){}}); }
   });
   showToast('🎙️ Voice sending...');
 }
