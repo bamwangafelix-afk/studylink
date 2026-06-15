@@ -2,7 +2,11 @@ const SUBJECTS=["Math","Algebra","Calculus","Statistics","Physics","Chemistry","
 const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahrain","Bangladesh","Belarus","Belgium","Belize","Benin","Bolivia","Bosnia","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cambodia","Cameroon","Canada","Cape Verde","Chad","Chile","China","Colombia","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominican Republic","DR Congo","Ecuador","Egypt","El Salvador","Eritrea","Estonia","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Guatemala","Guinea","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saudi Arabia","Senegal","Serbia","Sierra Leone","Singapore","Slovakia","Slovenia","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Sweden","Switzerland","Syria","Taiwan","Tanzania","Thailand","Togo","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
 const STICKERS=["😀","😁","😂","🤣","😃","😄","😅","😆","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤬","😱","😰","🤔","🙄","😏","🥺","🥹","🫡","🤗","😇","🤓","😴","🤤","🙈","🙉","🙊","🐶","🐱","🐼","🦊","🦁","🐯","🐸","🐧","🐦","🦄","🐉","🦋","🌟","⭐","🔥","💯","🎉","🎊","🏆","💪","👏","🙌","🤜","🤛","✌️","🤞","💡","📚","✏️","🖊️","🎓","🏫","💻","📱","🤖","🚀","🛸","🌈","☀️","🌙","⚡","❄️","🌊","🍕","🍔","🍟","🍣","🍜","🧁","🍰","☕","🧋","🎮","🎵","🎸","🎤","🏀","⚽","🏆","🥇","❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💝","💖","💫","✨","🌸","🌺","🌻","🌹"];
 const FLAGS=["🇦🇫","🇦🇱","🇩🇿","🇦🇩","🇦🇴","🇦🇷","🇦🇲","🇦🇺","🇦🇹","🇦🇿","🇧🇭","🇧🇩","🇧🇾","🇧🇪","🇧🇿","🇧🇯","🇧🇴","🇧🇦","🇧🇼","🇧🇷","🇧🇳","🇧🇬","🇧🇫","🇧🇮","🇰🇭","🇨🇲","🇨🇦","🇨🇻","🇹🇩","🇨🇱","🇨🇳","🇨🇴","🇨🇬","🇨🇷","🇭🇷","🇨🇺","🇨🇾","🇨🇿","🇩🇰","🇩🇯","🇩🇴","🇨🇩","🇪🇨","🇪🇬","🇸🇻","🇪🇷","🇪🇪","🇪🇹","🇫🇯","🇫🇮","🇫🇷","🇬🇦","🇬🇲","🇬🇪","🇩🇪","🇬🇭","🇬🇷","🇬🇹","🇬🇳","🇭🇹","🇭🇳","🇭🇺","🇮🇸","🇮🇳","🇮🇩","🇮🇷","🇮🇶","🇮🇪","🇮🇱","🇮🇹","🇨🇮","🇯🇲","🇯🇵","🇯🇴","🇰🇿","🇰🇪","🇽🇰","🇰🇼","🇰🇬","🇱🇦","🇱🇻","🇱🇧","🇱🇸","🇱🇷","🇱🇾","🇱🇹","🇱🇺","🇲🇬","🇲🇼","🇲🇾","🇲🇻","🇲🇱","🇲🇹","🇲🇷","🇲🇺","🇲🇽","🇲🇩","🇲🇳","🇲🇪","🇲🇦","🇲🇿","🇲🇲","🇳🇦","🇳🇵","🇳🇱","🇳🇿","🇳🇮","🇳🇪","🇳🇬","🇰🇵","🇲🇰","🇳🇴","🇴🇲","🇵🇰","🇵🇸","🇵🇦","🇵🇾","🇵🇪","🇵🇭","🇵🇱","🇵🇹","🇶🇦","🇷🇴","🇷🇺","🇷🇼","🇸🇦","🇸🇳","🇷🇸","🇸🇱","🇸🇬","🇸🇰","🇸🇮","🇸🇴","🇿🇦","🇰🇷","🇸🇸","🇪🇸","🇱🇰","🇸🇩","🇸🇪","🇨🇭","🇸🇾","🇹🇼","🇹🇿","🇹🇭","🇹🇬","🇹🇳","🇹🇷","🇹🇲","🇺🇬","🇺🇦","🇦🇪","🇬🇧","🇺🇸","🇺🇾","🇺🇿","🇻🇪","🇻🇳","🇾🇪","🇿🇲","🇿🇼"];
-const CLOUD='dmhbui3wf',PRESET='Studylink';
+const MIC_SVG_INNER='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
+function setMicIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 48 48');ic.setAttribute('width','26');ic.setAttribute('height','26');ic.innerHTML=MIC_SVG_INNER;}
+function setSendIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 24 24');ic.setAttribute('width','24');ic.setAttribute('height','24');ic.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';}
+
+
 
 // ── GLOBAL CRASH PREVENTION ──
 window.addEventListener('unhandledrejection',e=>{
@@ -577,6 +581,8 @@ function openChat(name,uid){
   el('rplybar').style.display='none';
   el('csBar').style.display='none';
   closeMediaPanel();closeStickers();
+  // Setup swipe-up to record on mic button
+  setTimeout(()=>setupVoiceSwipe('sendB',startVoice,stopAndSendVoice,cancelVoice),100);
 
   const cid=getCID(CU.uid,uid);
 
@@ -678,7 +684,7 @@ function onMsgInput(){
   }else if(isRec){
     // keep rec state
   }else{
-    icon.innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+    (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
   }
   // typing indicator — short key 'ty' to save Firestore bandwidth
   const cid=getCID(CU.uid,curChat.uid);
@@ -692,7 +698,7 @@ function onGMsgInput(){
   if(hasText){
     icon.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
   }else{
-    icon.innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+    (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
   }
 }
 function smartSend(){
@@ -820,7 +826,7 @@ async function sendMsg(){
   const text=inp.value.trim();inp.value='';
   // Reset send button icon to mic
   const icon=el('sendIcon');
-  icon.innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+  (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
   const cid=getCID(CU.uid,curChat.uid);const t=now();
   clearTimeout(typDebounce);
   db.collection('chats').doc(cid).set({[`typing.${CU.uid}`]:false},{merge:true});
@@ -855,6 +861,7 @@ async function openGroup(postId,name){
     if(!(gs.data().members||[]).includes(CU.uid))await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
     curGrp={id:postId,name};
     el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
+    setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     gref.onSnapshot(gs2=>{const c=(gs2.data()?.members||[]).length;el('grpM').textContent=c+' member'+(c!==1?'s':'');});
     grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt').limitToLast(50).onSnapshot(sn=>{
@@ -877,7 +884,7 @@ function closeGroup(){el('groupW').style.display='none';if(grpUnsub){grpUnsub();
 async function sendGMsg(){
   const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
   const text=inp.value.trim();inp.value='';
-  const gi=el('gSendIcon');if(gi)gi.innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+  const gi=el('gSendIcon');if(gi)gi.innerHTML='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
   try{await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});}
   catch(e){showToast('❌ '+e.message);}
 }
@@ -1001,20 +1008,45 @@ function buildBbl(m,isGrp){
     else{inner=`${nameTag}${rq}<audio src="${m.data}" controls preload="none" style="width:200px;display:block;margin-top:3px;border-radius:6px;"></audio><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','audio.mp3')">⬇</button></div>${rcHtml}${self?'<div class="receipt">'+( m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
   }
   else if(type==='voice'){
-    // New microphone SVG icon (retro style from user's image)
-    const micSVG=`<svg viewBox="0 0 48 48" width="18" height="18" fill="currentColor" style="opacity:.8;flex-shrink:0;"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="10" width="4" height="2" fill="#fff" rx="1"/><rect x="22" y="14" width="4" height="2" fill="#fff" rx="1"/><rect x="22" y="18" width="4" height="2" fill="#fff" rx="1"/><rect x="22" y="22" width="4" height="2" fill="#fff" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="16" y1="46" x2="32" y2="46" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`;
-    // Voice receipts: ✓ = sent, ✓✓ = seen (heard by receiver)
+    // Large retro mic SVG icon
+    const micSVG=`<svg viewBox="0 0 48 48" width="26" height="26" fill="currentColor" style="opacity:.85;flex-shrink:0;"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>`;
+    // Waveform bars SVG — static version of the waveform image (shown when loaded)
+    const waveSVG=`<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
+      ${[2,4,8,6,10,14,18,12,20,24,28,22,26,30,24,20,28,22,18,24,16,12,18,10,14,8,6,10,4,6].map((h,i)=>{
+        const x=2+i*4,bh=Math.max(4,h),y=(32-bh)/2;
+        return`<rect x="${x}" y="${y}" width="2.5" height="${bh}" rx="1.2" fill="currentColor" opacity="${0.5+h/60}"/>`;
+      }).join('')}
+    </svg>`;
+    // Voice receipts: ✓ = sent, ✓✓ = seen/heard
     let voiceReceipt='';
     if(self){
-      if(m.voicePlayed){voiceReceipt='<span style="font-size:11px;color:#4fc3f7;margin-left:4px;font-weight:bold;">✓✓</span>';}
+      if(m.voicePlayed){voiceReceipt='<span style="font-size:11px;color:#4fc3f7;margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>';}
       else if(m.seen){voiceReceipt='<span style="font-size:11px;opacity:.8;margin-left:4px;">✓✓</span>';}
       else{voiceReceipt='<span style="font-size:11px;opacity:.6;margin-left:4px;">✓</span>';}
     }
-    const voiceLabel=`<span style="font-size:11px;opacity:.75;margin-left:4px;">Vocal message</span>`;
+    const durLabel=m.dur||'0:00';
     if(!m.data){
-      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:180px;">${micSVG}<div style="flex:1;"><div style="font-size:11px;opacity:.7;">Sending...</div></div><span class="vdur">${m.dur||'0:00'}</span></div>${rcHtml}`;
+      // Still sending — show mic + "Sending..." + timer
+      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;">${micSVG}</div>
+        <div style="flex:1;"><div class="vprog" style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:5px;"><div style="width:0%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;">Sending...</span><span class="vdur">${durLabel}</span></div></div>
+      </div>${rcHtml}`;
     }else{
-      inner=`${nameTag}<div class="vbub" id="vp_${m.id}"><button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')">▶</button>${micSVG}<div style="flex:1;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')"><div class="vfill" id="vfill_${m.id}"></div></div>${voiceLabel}</div><span class="vdur" id="vdur_${m.id}">${m.dur||'0:00'}</span>${voiceReceipt}</div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','voice.webm')">⬇</button></div>${rcHtml}`;
+      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;">
+        <button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')" style="width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:inherit;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;">▶</button>
+        ${micSVG}
+        <div style="flex:1;min-width:0;">
+          <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
+            ${waveSVG}
+            <div style="position:absolute;left:0;top:0;width:0%;height:100%;background:rgba(255,255,255,.15);border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+            <span style="font-size:10px;opacity:.7;">Vocal message</span>
+            <div style="display:flex;align-items:center;gap:4px;"><span class="vdur" id="vdur_${m.id}" style="font-size:11px;">${durLabel}</span>${voiceReceipt}</div>
+          </div>
+        </div>
+      </div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','voice.webm')">⬇</button></div>${rcHtml}`;
     }
   }
   else if(type==='doc'){const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';inner=`${nameTag}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;}
@@ -1271,8 +1303,8 @@ async function sendPreviewImg(){
 function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewFile=null;_previewDest=null;}
 
 // ── VOICE (Private) ──
-// Flow: tap mic → start recording (button → red send arrow)
-//       tap send → stop recording → auto upload & send immediately (no waiting bar)
+// Flow: hold-swipe-up mic → vibrate → start recording (bar appears)
+//       release / tap send → stop recording → auto upload & send
 function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(){
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
@@ -1282,11 +1314,13 @@ async function startVoice(){
     mr=new MediaRecorder(s,opts);vCh=[];
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;
+    // 1 vibration pulse on start (WhatsApp style)
+    navigator.vibrate&&navigator.vibrate([60]);
     // Button → red send arrow
     el('sendB').classList.add('rec');el('sendB').style.background='#e74c3c';
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('vbar').style.display='flex';
-    drawWave('vWave',()=>isRec);
+    drawBars('vWave',()=>isRec);
     vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
   }catch(err){showToast(err.name==='NotAllowedError'?'🎙️ Tap 🔒 → Allow Mic → Reload':'🎙️ '+err.message);}
 }
@@ -1301,7 +1335,7 @@ async function stopAndSendVoice(){
   try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}
   isRec=false;vCh=[];vSec=0;
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
-  el('sendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+  setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
   if(!chunks.length||!curChat){showToast('⚠️ Nothing recorded');return;}
   await new Promise(r=>setTimeout(r,300));
@@ -1335,7 +1369,7 @@ function cancelVoice(){
   if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
   isRec=false;vCh=[];vSec=0;clearInterval(vInt);
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
-  el('sendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+  setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
 }
 // Keep old processVoice/stopVoice/showVoiceReady stubs so smartSend still compiles
@@ -1353,10 +1387,11 @@ async function startGVoice(){
     gmr=new MediaRecorder(s,opts);gvCh=[];
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;
+    navigator.vibrate&&navigator.vibrate([60]);
     el('gSendB').classList.add('rec');el('gSendB').style.background='#e74c3c';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
-    drawWave('gvWave',()=>gIsRec);
+    drawBars('gvWave',()=>gIsRec);
     gvInt=setInterval(()=>{gvSec++;const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
   }catch(err){showToast(err.name==='NotAllowedError'?'🎙️ Allow Mic':'🎙️ '+err.message);}
 }
@@ -1370,7 +1405,7 @@ async function stopAndSendGVoice(){
   try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}
   gIsRec=false;gvCh=[];gvSec=0;
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
-  el('gSendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+  setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   if(!chunks.length||!curGrp){showToast('⚠️ Nothing recorded');return;}
   await new Promise(r=>setTimeout(r,300));
@@ -1394,8 +1429,51 @@ function cancelGVoice(){
   if(gmr&&gIsRec){try{gmr.ondataavailable=null;gmr.onstop=null;gmr.stop();}catch(e){}try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
   gIsRec=false;gvCh=[];gvSec=0;clearInterval(gvInt);
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
-  el('gSendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
+  setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
+}
+// ── SWIPE-UP TO RECORD (mic button touch events) ──
+// Called from HTML after chat opens
+function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
+  const btn=el(btnId);if(!btn)return;
+  let startY=0,startX=0,swiped=false,holding=false,holdTimer=null;
+  btn.addEventListener('touchstart',e=>{
+    // Only activate swipe-up when input is empty (mic mode)
+    const inp=el('mIn')||el('gMIn');
+    if(inp&&inp.value.trim())return;
+    e.preventDefault();
+    const t=e.touches[0];startY=t.clientY;startX=t.clientX;swiped=false;holding=false;
+    // Short press → normal click handled by onclick
+    // Long press (>200ms) → activate swipe-to-record mode
+    holdTimer=setTimeout(()=>{
+      holding=true;
+      navigator.vibrate&&navigator.vibrate([40]);
+      startFn();
+    },200);
+  },{passive:false});
+  btn.addEventListener('touchmove',e=>{
+    if(!holding)return;
+    e.preventDefault();
+    const t=e.touches[0];
+    const dy=startY-t.clientY; // positive = swipe up
+    if(dy>40&&!swiped){swiped=true;}
+    // Swipe left >80px while recording = cancel
+    const dx=startX-t.clientX;
+    if(dx>80&&holding){
+      clearTimeout(holdTimer);holding=false;swiped=false;
+      cancelFn();
+      navigator.vibrate&&navigator.vibrate([30,30]);
+    }
+  },{passive:false});
+  btn.addEventListener('touchend',e=>{
+    clearTimeout(holdTimer);
+    if(holding){
+      e.preventDefault();
+      // Release finger → send
+      stopFn();
+    }
+    holding=false;swiped=false;
+  },{passive:false});
 }
 // Stubs for smartGSend compatibility
 function stopGVoice(){stopAndSendGVoice();}
@@ -1423,10 +1501,43 @@ function toggleVP(id,src){
   vPlayers[id].play().catch(e=>showToast('⚠️ '+e.message));if(btn)btn.textContent='⏸';
 }
 function seekVP(e,id){const bar=el('vbar_'+id);if(!bar||!vPlayers[id]?.duration)return;vPlayers[id].currentTime=((e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth)*vPlayers[id].duration;}
-function drawWave(canvasId,isRecFn){
-  const cv=el(canvasId);if(!cv)return;const ctx=cv.getContext('2d');
-  (function draw(){if(!isRecFn())return;ctx.clearRect(0,0,cv.width,cv.height);ctx.strokeStyle='#e74c3c';ctx.lineWidth=2;ctx.beginPath();for(let x=0;x<cv.width;x+=4){const y=cv.height/2+Math.sin(x*.3+Date.now()*.008)*(2+Math.random()*5);x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.stroke();requestAnimationFrame(draw);})();
+// ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
+function drawBars(canvasId,isRecFn){
+  const cv=el(canvasId);if(!cv)return;
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const barCount=28,barW=Math.floor(W/barCount)-1,gap=1;
+  // Random heights per bar, animated
+  let heights=Array.from({length:barCount},()=>Math.random()*0.5+0.1);
+  let targets=heights.slice();
+  function tick(){
+    if(!isRecFn())return;
+    // Update targets periodically for smooth random wave
+    targets=targets.map((_,i)=>{
+      const base=0.15+Math.abs(Math.sin(Date.now()*0.003+i*0.7))*0.6;
+      const noise=(Math.random()-0.5)*0.25;
+      return Math.min(1,Math.max(0.08,base+noise));
+    });
+    // Smooth towards targets
+    heights=heights.map((h,i)=>h+(targets[i]-h)*0.25);
+    ctx.clearRect(0,0,W,H);
+    heights.forEach((h,i)=>{
+      const bh=Math.max(4,Math.floor(h*H));
+      const x=i*(barW+gap);
+      const y=(H-bh)/2;
+      // Rounded rect bars in red
+      ctx.fillStyle='#e74c3c';
+      const r=Math.min(barW/2,3);
+      ctx.beginPath();
+      ctx.roundRect?ctx.roundRect(x,y,barW,bh,r):ctx.rect(x,y,barW,bh);
+      ctx.fill();
+    });
+    requestAnimationFrame(tick);
+  }
+  tick();
 }
+// Keep old drawWave as alias
+function drawWave(canvasId,isRecFn){drawBars(canvasId,isRecFn);}
 
 // ── INBOX ──
 let inboxUnsub=null;
@@ -1542,7 +1653,7 @@ function renderInbox(q="",sn=null){
       if(_rawMsg==='__photo__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Photo`;
       else if(_rawMsg==='__video__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>Video`;
       else if(_rawMsg==='__audio__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>Audio`;
-      else if(_rawMsg==='__voice__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice`;
+      else if(_rawMsg==='__voice__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Vocal message`;
       else if(_rawMsg==='__gdrive__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>File`;
       else if(_rawMsg.startsWith('__doc__:'))_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>${esc(_rawMsg.slice(8))||'Document'}`;
       else _msgHtml=esc(_rawMsg||'Tap to chat');
