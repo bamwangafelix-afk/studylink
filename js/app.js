@@ -1259,8 +1259,7 @@ async function startVoice(){
     el('sendB').classList.add('rec');el('sendB').style.background='#e74c3c';
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     // Show header recording indicator
-    try{const r=el('recIcon');if(r){r.style.display='inline-flex';r.classList.add('recPulse');}}
-    catch(e){}
+    try{const r=el('recIcon');if(r){r.style.display='inline-flex';r.style.visibility='visible';r.style.opacity='1';r.style.zIndex='9999';r.classList.add('recPulse');}}catch(e){}
     el('vbar').style.display='flex';
     drawWave('vWave',()=>isRec);
     vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
@@ -1279,7 +1278,7 @@ async function stopAndSendVoice(){
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
   el('sendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
-  try{const r=el('recIcon');if(r){r.style.display='none';r.classList.remove('recPulse');}}catch(e){}
+  try{const r=el('recIcon');if(r){r.style.display='none';r.style.visibility='hidden';r.classList.remove('recPulse');}}catch(e){}
   if(!chunks.length||!curChat){showToast('⚠️ Nothing recorded');return;}
   await new Promise(r=>setTimeout(r,300));
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
@@ -1300,9 +1299,15 @@ async function stopAndSendVoice(){
     const mbEl=el('msgB');
     const localMsg={id:msgRef.id,senderUid:CU.uid,senderName:MP?.name||'',type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,time:t,status:'sending',seen:false};
     const bblHtml=buildBbl(localMsg,false);
-    if(bblHtml){
+    if(bblHtml && mbEl){
       const tmp=document.createElement('div');tmp.innerHTML=bblHtml;const node=tmp.firstElementChild; if(node){ mbEl.appendChild(node); mbEl.scrollTop=mbEl.scrollHeight; }
-    }else console.debug('buildBbl returned empty for local voice');
+    }else{
+      console.debug('buildBbl returned empty or msgB missing, inserting fallback bubble',bblHtml,!!mbEl);
+      if(mbEl){
+        const fallback=`<div class="bw s" data-id="${msgRef.id}" data-sender="${esc(MP?.name||'')}"><div class="bbl s"><div style="font-size:12px;margin-bottom:6px;">Voice message</div><audio src="${localUrl}" controls style="width:180px;display:block;margin-bottom:6px;"></audio><div class="btime">${t}</div></div></div>`;
+        const tmp2=document.createElement('div');tmp2.innerHTML=fallback;mbEl.appendChild(tmp2.firstElementChild);mbEl.scrollTop=mbEl.scrollHeight;
+      }
+    }
   }catch(e){console.debug('append local voice failed',e);} 
   // ✅ BACKGROUND: Upload without blocking UI
   uploadCloud(file,'audio').then(url=>{
@@ -1381,7 +1386,14 @@ async function stopAndSendGVoice(){
     const gb=el('grpB');
     const localMsg={id:gvRef.id,senderUid:CU.uid,senderName:MP?.name||'Me',type:'voice',data:localUrl,dur:mm+':'+(ss<10?'0':'')+ss,time:t,status:'sending',seen:false};
     const bblHtml=buildBbl(localMsg,true);
-    if(bblHtml){const tmp=document.createElement('div');tmp.innerHTML=bblHtml;const node=tmp.firstElementChild;if(node){gb.appendChild(node);gb.scrollTop=gb.scrollHeight;}}
+    if(bblHtml && gb){const tmp=document.createElement('div');tmp.innerHTML=bblHtml;const node=tmp.firstElementChild;if(node){gb.appendChild(node);gb.scrollTop=gb.scrollHeight;}}
+    else{
+      console.debug('buildBbl returned empty or grpB missing, inserting fallback group bubble',bblHtml,!!gb);
+      if(gb){
+        const fallback=`<div class="bw s" data-id="${gvRef.id}" data-sender="${esc(MP?.name||'Me')}"><div class="bbl s"><div style="font-size:12px;margin-bottom:6px;">Voice message</div><audio src="${localUrl}" controls style="width:180px;display:block;margin-bottom:6px;"></audio><div class="btime">${t}</div></div></div>`;
+        const tmp2=document.createElement('div');tmp2.innerHTML=fallback;gb.appendChild(tmp2.firstElementChild);gb.scrollTop=gb.scrollHeight;
+      }
+    }
   }catch(e){console.debug('append local group voice failed',e);} 
   // ✅ BACKGROUND: Upload without blocking UI
   uploadCloud(file,'audio').then(url=>{
