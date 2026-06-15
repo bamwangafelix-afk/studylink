@@ -1626,6 +1626,18 @@ function openPhoneSettings(){
   else if(/Android/.test(ua)){window.location.href='intent:#Intent;action=android.settings.SETTINGS;end';}
   else{showToast('⚙️ Open your device Settings app to change language, time, and other preferences.');}
 }
+
+// --- RUNTIME DEPLOY CHECK: logs DOM presence and timestamp to confirm deployed script version
+try{
+  const nowStr=new Date().toISOString();
+  console.debug('runtime-check: app.js loaded at',nowStr);
+  const r=el('recIcon'), mb=el('msgB'), gb=el('grpB');
+  console.debug('runtime-check: recIcon present?',!!r, r);
+  console.debug('runtime-check: msgB present?',!!mb, mb);
+  console.debug('runtime-check: grpB present?',!!gb, gb);
+  // show the timestamp in header small text to verify Netlify served latest
+  try{const tEl=el('topN'); if(tEl){tEl.textContent='Build: '+nowStr.slice(11,19); tEl.title='app.js loaded '+nowStr; tEl.style.opacity='0.9';}}catch(e){}
+}catch(e){console.debug('runtime-check failed',e);} 
 function toggleDark(){dark=!dark;document.body.classList.toggle('dark',dark);}
 function showToast(msg){const t=el('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',4000);}
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
