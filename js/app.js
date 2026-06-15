@@ -990,7 +990,7 @@ function buildBbl(m,isGrp){
   else if(type==='voice'){
     // For voice messages, label as 'vocal message' and show duration + receipt ticks
     const heardBadge=(m.voicePlayed&&self)?'<span class="vheard" style="font-size:10px;opacity:.7;margin-left:4px;">✓✓</span>':(m.voicePlayed?'<span class="vheard" style="font-size:10px;opacity:.7;margin-left:4px;">✓✓</span>':'');
-    const sentTick=(self&&m.status==='sent'&&!m.seen)?'<span style="font-size:12px;opacity:0.85;margin-left:6px;">✓</span>:'';
+    const sentTick=(self&&m.status==='sent'&&!m.seen)?'<span style="font-size:12px;opacity:0.85;margin-left:6px;">✓</span>':'';
     inner=`${nameTag}<div class="vbub" id="vp_${m.id}"><button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')">▶</button><div style="flex:1;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')"><div class="vfill" id="vfill_${m.id}"></div></div></div><span class="vdur" id="vdur_${m.id}">${m.dur||'0:00'}</span>${sentTick}${heardBadge}</div><div style="font-size:12px;opacity:0.8;margin-top:4px;">vocal message</div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','voice.webm')">⬇</button></div>${rcHtml}`;
   }
   else if(type==='doc'){const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';inner=`${nameTag}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;}
