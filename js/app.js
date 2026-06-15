@@ -391,22 +391,32 @@ function listenUsers(){
 
 // ── POSTS ──
 let cachedPosts=[],lastPostCount=0;
+let postsUnsub=null,homeLimit=10,postsPerPage=10;
 function listenPosts(){
-  db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
+  // Unsubscribe previous feed listener (keeps realtime updates limited)
+  try{if(typeof postsUnsub==='function')postsUnsub();}catch(e){}
+  postsUnsub=db.collection('posts').orderBy('createdAt','desc').limit(homeLimit).onSnapshot(sn=>{
     const newPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
     const isHomeVisible=el('Phome')&&el('Phome').style.display!=='none';
+    cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     if(isHomeVisible){
-      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
       renderHome(cachedPosts);
     }else{
-      // Not on home tab — just update badge count, don't re-render
+      // Not on home tab — only update badge count
       if(lastPostCount>0&&newPosts.length>lastPostCount){
         const newCount=newPosts.length-lastPostCount;
         const b=el('feedB');if(b){b.textContent=newCount;b.style.display='inline-block';}
       }
-      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     }
   },e=>console.log(e));
+}
+
+function loadMorePosts(){
+  // Increase the limit and re-subscribe to fetch more posts (keeps server load lower)
+  homeLimit+=postsPerPage;
+  // show a small local loading indicator
+  const f=el('feed');if(f)f.innerHTML+=`<p style="text-align:center;color:#888;">Loading more...</p>`;
+  listenPosts();
 }
 function toggleGN(val){el('gnW').style.display=val==='Group'?'block':'none';}
 async function addPost(){
@@ -478,6 +488,10 @@ function renderHome(posts){
       </div>
     </div>`;
   });
+  // Add "Load more" when there may be more posts in the database
+  if(cachedPosts.length>=homeLimit){
+    f.innerHTML += `<div style="text-align:center;margin-top:8px;"><button class="btn gray" id="loadMoreBtn" onclick="loadMorePosts()">Load more</button></div>`;
+  }
 }
 
 // ── FIND ──
@@ -1241,6 +1255,9 @@ async function startVoice(){
     // Button → red send arrow
     el('sendB').classList.add('rec');el('sendB').style.background='#e74c3c';
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+    // Show header recording indicator
+    try{const r=el('recIcon');if(r){r.style.display='inline-flex';r.classList.add('recPulse');}}
+    catch(e){}
     el('vbar').style.display='flex';
     drawWave('vWave',()=>isRec);
     vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
@@ -1259,6 +1276,7 @@ async function stopAndSendVoice(){
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
   el('sendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
+  try{const r=el('recIcon');if(r){r.style.display='none';r.classList.remove('recPulse');}}catch(e){}
   if(!chunks.length||!curChat){showToast('⚠️ Nothing recorded');return;}
   await new Promise(r=>setTimeout(r,300));
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
@@ -1311,6 +1329,7 @@ async function startGVoice(){
     gmr.start(200);gIsRec=true;gvSec=0;
     el('gSendB').classList.add('rec');el('gSendB').style.background='#e74c3c';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+    try{const r=el('recIcon');if(r){r.style.display='inline-flex';r.classList.add('recPulse');}}catch(e){}
     el('gvbar').style.display='flex';
     drawWave('gvWave',()=>gIsRec);
     gvInt=setInterval(()=>{gvSec++;const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
@@ -1328,6 +1347,7 @@ async function stopAndSendGVoice(){
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   el('gSendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
+  try{const r=el('recIcon');if(r){r.style.display='none';r.classList.remove('recPulse');}}catch(e){}
   if(!chunks.length||!curGrp){showToast('⚠️ Nothing recorded');return;}
   await new Promise(r=>setTimeout(r,300));
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
@@ -1352,6 +1372,7 @@ function cancelGVoice(){
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   el('gSendIcon').innerHTML='<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/>';
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
+  try{const r=el('recIcon');if(r){r.style.display='none';r.classList.remove('recPulse');}}catch(e){}
 }
 // Stubs for smartGSend compatibility
 function stopGVoice(){stopAndSendGVoice();}
