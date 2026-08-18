@@ -26,7 +26,8 @@ let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,allUsers=[];
 let fType=null,fDest='p';
-let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false;
+let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vStartAt=0;
+let gVStartAt=0;
 let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
@@ -1413,7 +1414,8 @@ async function startVoice(fromGesture=false){
     mr=new MediaRecorder(s,opts);vCh=[];
     mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
-    mr.start(200);isRec=true;vSec=0;
+    mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
+    el('sendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
     // Button → blue recording state
     el('sendB').classList.add('rec');el('sendB').style.background='#1976d2';
@@ -1421,7 +1423,10 @@ async function startVoice(fromGesture=false){
     el('vbar').style.display='flex';
     drawBars('vWave',()=>isRec);
     vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
-  }catch(err){showToast(err.name==='NotAllowedError'?'🎙️ Tap 🔒 → Allow Mic → Reload':'🎙️ '+err.message);}
+  }catch(err){
+    isRec=false;vStartAt=0;el('sendB').classList.remove('voice-pending','rec','voice-locked');
+    showToast(err.name==='NotAllowedError'?'🎙️ Tap 🔒 → Allow Mic → Reload':'🎙️ '+err.message);
+  }
 }
 function collectRecorderChunks(recorder, initialChunks){
   return new Promise(resolve=>{
@@ -1459,7 +1464,11 @@ async function stopAndSendVoice(){
   isRec=false;
   clearInterval(vInt);vInt=null;
   const dur=vSec;
-  el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
+  const elapsed=Date.now()-(vStartAt||Date.now());
+  // Android may deliver pointerup before MediaRecorder has emitted its first
+  // dataavailable event. Let the recorder run briefly before stopping it.
+  if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
+  el('sendB').classList.remove('rec','voice-pending');el('sendB').style.background='var(--btnB)';
   setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
   let chunks=[];
@@ -1467,7 +1476,7 @@ async function stopAndSendVoice(){
   try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
   recorder.ondataavailable=null;
   recorder.onstop=null;
-  vCh=[];vSec=0;mr=null;
+  vCh=[];vSec=0;mr=null;vStartAt=0;
   if(!chunks.length||!chat){vSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
@@ -1537,14 +1546,18 @@ async function startGVoice(fromGesture=false){
     gmr=new MediaRecorder(s,opts);gvCh=[];
     gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
-    gmr.start(200);gIsRec=true;gvSec=0;
+    gmr.start(200);gIsRec=true;gvSec=0;gVStartAt=Date.now();
+    el('gSendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
     el('gSendB').classList.add('rec');el('gSendB').style.background='#1976d2';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
     drawBars('gvWave',()=>gIsRec);
     gvInt=setInterval(()=>{gvSec++;const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
-  }catch(err){showToast(err.name==='NotAllowedError'?'🎙️ Allow Mic':'🎙️ '+err.message);}
+  }catch(err){
+    gIsRec=false;gVStartAt=0;el('gSendB').classList.remove('voice-pending','rec','voice-locked');
+    showToast(err.name==='NotAllowedError'?'🎙️ Allow Mic':'🎙️ '+err.message);
+  }
 }
 async function stopAndSendGVoice(){
   const recorder=gmr;
@@ -1554,7 +1567,9 @@ async function stopAndSendGVoice(){
   gIsRec=false;
   clearInterval(gvInt);gvInt=null;
   const dur=gvSec;
-  el('gSendB').classList.remove('rec');el('gSendB').style.background='#1976d2';
+  const elapsed=Date.now()-(gVStartAt||Date.now());
+  if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
+  el('gSendB').classList.remove('rec','voice-pending');el('gSendB').style.background='#1976d2';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   let chunks=[];
@@ -1562,7 +1577,7 @@ async function stopAndSendGVoice(){
   try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
   recorder.ondataavailable=null;
   recorder.onstop=null;
-  gvCh=[];gvSec=0;gmr=null;
+  gvCh=[];gvSec=0;gmr=null;gVStartAt=0;
   if(!chunks.length||!group){gVoiceSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
@@ -1621,7 +1636,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};
   const resetState=()=>{
     state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
-    btn.classList.remove('voice-locked');
+    btn.classList.remove('voice-locked','voice-pending');
     btn.title='Hold and slide up to record';
     setHint('↑ slide up to lock · ← cancel');
   };
@@ -1633,6 +1648,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     e.preventDefault();
     state.suppressClick=true;
     state.startX=e.clientX;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
+    btn.classList.add('voice-pending');
     try{btn.setPointerCapture(e.pointerId);}catch(err){}
     // A locked recording is completed by the next tap, not by a second start.
     if(btn.classList.contains('rec')&&state.locked){
@@ -1646,8 +1662,11 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     state.pending=true;
     Promise.resolve(startFn(true)).then(()=>{
       state.pending=false;
-      if(state.released&&!state.locked&&!state.cancelled&&btn.classList.contains('rec'))stopFn();
-    }).catch(()=>{state.pending=false;});
+      // Permission prompts and getUserMedia can resolve after the finger is
+      // released. Do not stop a recorder that never reached the rec state.
+      if(!btn.classList.contains('rec')){resetState();return;}
+      if(state.released&&!state.locked&&!state.cancelled)stopFn();
+    }).catch(()=>{state.pending=false;resetState();});
   },{passive:false});
   btn.addEventListener('pointermove',e=>{
     if(!state.active||state.pointerId!==e.pointerId)return;
@@ -1656,8 +1675,10 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     if(!state.locked&&left<-85){
       state.cancelled=true;state.active=false;vibrate([25,25]);cancelFn();releaseCapture();resetState();return;
     }
-    if(!state.locked&&up>70&&btn.classList.contains('rec')){
-      state.locked=true;state.active=false;btn.classList.add('voice-locked');btn.title='Tap to send voice message';
+    if(!state.locked&&up>70){
+      // Queue the lock even if getUserMedia is still pending. This prevents a
+      // fast Android swipe from being lost during the permission/startup gap.
+      state.locked=true;state.active=false;btn.classList.remove('voice-pending');btn.classList.add('voice-locked');btn.title='Tap to send voice message';
       setHint('🔒 locked · tap mic to send');vibrate([35,55,35]);releaseCapture();
     }
   },{passive:false});

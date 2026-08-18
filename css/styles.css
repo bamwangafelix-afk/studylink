@@ -61,10 +61,12 @@ body.dark .sbadge.offline{background:#1a1a1a;}
 .cin-attach svg{width:22px;height:22px;fill:currentColor;}
 .cin-camera{background:none;border:none;cursor:pointer;flex-shrink:0;padding:4px;color:var(--sub);}
 .cin-camera svg{width:22px;height:22px;fill:currentColor;}
-.cin-action{background:var(--btnB);color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.cin-action svg{width:18px;height:18px;fill:#fff;}
+.cin-action{background:var(--btnB);color:#fff;border:none;border-radius:50%;width:50px;height:50px;min-width:50px;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .16s ease,box-shadow .16s ease;}
+.cin-action svg{width:22px;height:22px;fill:#fff;}
+.cin-action:active{transform:scale(.96);}
+.cin-action.voice-pending{background:#1565c0;box-shadow:0 0 0 4px rgba(33,150,243,.22);}
 .cin-action.rec{background:#1976d2;animation:pulse 1s infinite;}
-.cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 4px rgba(33,150,243,.25);transform:translateY(-2px);}
+.cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);transform:translateY(-2px);}
 .cin-action.haptic-pulse{animation:hapticPulse .26s ease-out;}
 @keyframes hapticPulse{0%{transform:scale(1)}35%{transform:scale(1.12);box-shadow:0 0 0 5px rgba(33,150,243,.32)}100%{transform:scale(1);box-shadow:none}}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
