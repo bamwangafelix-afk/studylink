@@ -74,6 +74,7 @@ function setupPresence(){
 const CLOUD='dmhbui3wf';
 const PRESET='StudyLink';
 async function uploadCloud(file,type){
+  uploadCloud.lastError='';
   if(type==='image'){
     try{file=await compressImg(file);}catch(e){}
   }
@@ -108,9 +109,25 @@ async function uploadCloud(file,type){
       if(attempt===0&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,700));
     }
   }
+  uploadCloud.lastError=lastError;
   console.error('Cloudinary upload error:',lastError);
   showToast('❌ Upload failed: '+lastError);
   return null;
+}
+function voiceFileFromChunks(chunks){
+  const rawMime=chunks.find(c=>c?.type)?.type||'audio/webm';
+  const mime=rawMime.split(';')[0]||'audio/webm';
+  const ext=mime.includes('mp4')||mime.includes('m4a')?'m4a':mime.includes('ogg')?'ogg':mime.includes('wav')?'wav':'webm';
+  return new File([new Blob(chunks,{type:rawMime})],`voice.${ext}`,{type:rawMime});
+}
+function readVoiceAsDataUrl(file,maxBytes=300000){
+  return new Promise(resolve=>{
+    if(!file||file.size>maxBytes||typeof FileReader==='undefined'){resolve(null);return;}
+    const reader=new FileReader();
+    reader.onload=()=>resolve(typeof reader.result==='string'?reader.result:null);
+    reader.onerror=()=>resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
 function compressImg(file){
   return new Promise(res=>{
@@ -1355,10 +1372,14 @@ function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewF
 // ── VOICE (Private) ──
 // Flow: hold-swipe-up mic → vibrate → start recording (bar appears)
 //       release / tap send → stop recording → auto upload & send
+let lastHapticAt=0;
 function pulseHaptic(pattern=55,target){
   let didVibrate=false;
+  const nowMs=Date.now();
+  const allowDevicePulse=nowMs-lastHapticAt>80;
+  if(allowDevicePulse)lastHapticAt=nowMs;
   try{
-    if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+    if(allowDevicePulse&&typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
       const normalized=Array.isArray(pattern)
         ? pattern.map(v=>Math.max(0,Number(v)||0))
         : Math.max(0,Number(pattern)||0);
@@ -1390,6 +1411,7 @@ async function startVoice(fromGesture=false){
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     mr=new MediaRecorder(s,opts);vCh=[];
+    mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;
     // The direct pre-await pulse above is the reliable start feedback.
@@ -1447,8 +1469,7 @@ async function stopAndSendVoice(){
   recorder.onstop=null;
   vCh=[];vSec=0;mr=null;
   if(!chunks.length||!chat){vSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
-  const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
-  const file=new File([blob],'voice.webm',{type:blob.type||'audio/webm'});
+  const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
   const cid=getCID(CU.uid,chat.uid);
   const t=now();
@@ -1459,15 +1480,22 @@ async function stopAndSendVoice(){
       senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
       status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const url=await uploadCloud(file,'audio');
+    let url=await uploadCloud(file,'audio');
     if(!url){
-      await msgRef.update({status:'failed',error:'Audio upload failed'}).catch(()=>{});
+      // Cloudinary can be unreachable on some mobile networks. Keep short voice
+      // notes usable by storing a bounded data URL in the same Firestore message.
+      const inlineUrl=await readVoiceAsDataUrl(file);
+      if(inlineUrl){
+        try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){console.warn('Inline voice fallback failed:',fallbackErr);}
+      }
+    }
+    if(!url){
+      await msgRef.update({status:'failed',error:uploadCloud.lastError||'Audio upload failed'}).catch(()=>{});
       vSending=false;
-      showToast('⚠️ L’audio n’a pas pu être envoyé. Vérifiez votre connexion.');
+      showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
       return;
     }
-    await msgRef.update({data:url,status:'sent'});
-    uploadCommitted=true;
+    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
     const _vUpd={participants:[CU.uid,chat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
     _vUpd['unread.'+chat.uid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
@@ -1507,6 +1535,7 @@ async function startGVoice(fromGesture=false){
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     gmr=new MediaRecorder(s,opts);gvCh=[];
+    gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;
     // The direct pre-await pulse above is the reliable start feedback.
@@ -1535,8 +1564,7 @@ async function stopAndSendGVoice(){
   recorder.onstop=null;
   gvCh=[];gvSec=0;gmr=null;
   if(!chunks.length||!group){gVoiceSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
-  const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
-  const file=new File([blob],'voice.webm',{type:blob.type||'audio/webm'});
+  const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
   const t=now();
   let gvRef=null,uploadCommitted=false;
@@ -1546,15 +1574,20 @@ async function stopAndSendGVoice(){
       senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
       time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const url=await uploadCloud(file,'audio');
+    let url=await uploadCloud(file,'audio');
     if(!url){
-      await gvRef.update({status:'failed',error:'Audio upload failed'}).catch(()=>{});
+      const inlineUrl=await readVoiceAsDataUrl(file);
+      if(inlineUrl){
+        try{await gvRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){console.warn('Group inline voice fallback failed:',fallbackErr);}
+      }
+    }
+    if(!url){
+      await gvRef.update({status:'failed',error:uploadCloud.lastError||'Audio upload failed'}).catch(()=>{});
       gVoiceSending=false;
-      showToast('⚠️ L’audio n’a pas pu être envoyé. Vérifiez votre connexion.');
+      showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
       return;
     }
-    await gvRef.update({data:url,status:'sent'});
-    uploadCommitted=true;
+    if(!uploadCommitted){await gvRef.update({data:url,status:'sent'});uploadCommitted=true;}
   }catch(err){
     console.error('Group voice send error:',err);
     if(gvRef&&!uploadCommitted)await gvRef.update({status:'failed',error:err?.message||'Group voice send failed'}).catch(()=>{});
@@ -1576,6 +1609,11 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   btn.dataset.voiceGestureBound='1';
   btn.style.touchAction='none';
   const inputId=btnId==='gSendB'?'gIn':'mIn';
+  // Keep haptic feedback on the earliest Android touch event as well as the
+  // Pointer Events path. The debounce prevents a double pulse on Chrome.
+  btn.addEventListener('touchstart',e=>{
+    if(e.touches?.length===1&&!v(inputId).trim())vibrate(70);
+  },{passive:true});
   const barId=btnId==='gSendB'?'gvbar':'vbar';
   const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
   const vibrate=pattern=>pulseHaptic(pattern,btn);
