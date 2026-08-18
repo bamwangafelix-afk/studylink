@@ -28,8 +28,8 @@ let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,allUsers=[];
 let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false;
 let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false;
-// Mobile browsers can dispatch both touch and click for one tap. The recorder now uses
-// the button's native click only: tap once to record, tap again to stop and send.
+// Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
+// Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
 let voiceTouchSuppressUntil=0;
 let vPlayers={},notifUnsub=null,msgBUnsub=null;
 let replyMsg=null,curEId=null,curED=null,typDebounce=null;
@@ -1028,7 +1028,7 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':'#2196f3';
     const audioDur=m.dur||'0:00';
     if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':'#2196f3'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':'#2196f3'};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);">▶</button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:rgba(33,150,243,.22);border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:#2196f3;border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':'#2196f3'};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:rgba(33,150,243,.22);border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:#2196f3;border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -1059,21 +1059,21 @@ function buildBbl(m,isGrp){
         <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Échec de l’envoi vocal</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Vérifiez la connexion puis réessayez.</div></div>
       </div>${rcHtml}`;
     }else if(!m.data){
-      // Still sending — show mic + "Sending..." + timer
+      // Still sending — show progress + "Sending..." + timer
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
         <div style="flex:1;"><div class="vprog" style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:5px;"><div style="width:0%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div>
         <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;color:${self?'rgba(255,255,255,.8)':'var(--sub)'};">Sending...</span><span class="vdur">${durLabel}</span></div></div>
       </div>${rcHtml}`;
     }else{
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);">▶</button>
+        <button class="vpbtn" aria-label="Play voice message" onclick="toggleVP('${m.id}','${m.data}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
             ${waveSVG}
             <div style="position:absolute;left:0;top:0;width:0%;height:100%;background:rgba(33,150,243,.2);border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
-            <span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Voice message</span>
+            <span style="font-size:10px;color:#2196f3;font-weight:600;">Voice message</span>
             <div style="display:flex;align-items:center;gap:4px;"><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>${voiceReceipt}</div>
           </div>
         </div>
@@ -1348,8 +1348,8 @@ async function startVoice(){
     mr.start(200);isRec=true;vSec=0;
     // 1 vibration pulse on start (WhatsApp style)
     navigator.vibrate&&navigator.vibrate([60]);
-    // Button → red send arrow
-    el('sendB').classList.add('rec');el('sendB').style.background='#e74c3c';
+    // Button → blue recording state
+    el('sendB').classList.add('rec');el('sendB').style.background='#1976d2';
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('vbar').style.display='flex';
     drawBars('vWave',()=>isRec);
@@ -1459,7 +1459,7 @@ async function startGVoice(){
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;
     navigator.vibrate&&navigator.vibrate([60]);
-    el('gSendB').classList.add('rec');el('gSendB').style.background='#e74c3c';
+    el('gSendB').classList.add('rec');el('gSendB').style.background='#1976d2';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
     drawBars('gvWave',()=>gIsRec);
@@ -1474,7 +1474,7 @@ async function stopAndSendGVoice(){
   gIsRec=false;
   clearInterval(gvInt);gvInt=null;
   const dur=gvSec;
-  el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
+  el('gSendB').classList.remove('rec');el('gSendB').style.background='#1976d2';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   let chunks=[];
@@ -1511,24 +1511,75 @@ async function stopAndSendGVoice(){
 function cancelGVoice(){
   if(gmr&&gIsRec){try{gmr.ondataavailable=null;gmr.onstop=null;gmr.stop();}catch(e){}try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
   gIsRec=false;gvCh=[];gvSec=0;clearInterval(gvInt);
-  el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
+  el('gSendB').classList.remove('rec');el('gSendB').style.background='#1976d2';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
 }
-// ── SWIPE-UP TO RECORD (mic button touch events) ──
-// Called from HTML after chat opens
+// ── WHATSAPP-STYLE HOLD / SWIPE-UP TO RECORD ──
+// Hold the mic to start, swipe up to lock, release without stopping, then tap to send.
 function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
-  const btn=el(btnId);if(!btn||btn.dataset.voiceTapBound)return;
-  btn.dataset.voiceTapBound='1';
-  // The previous hold/swipe listeners competed with the inline click handler on Android:
-  // one gesture could start several recorders, suppress the stop click, and leave REC active.
-  // Keep this hook for compatibility, but use one deterministic tap-to-toggle interaction.
-  btn.addEventListener('click',e=>{
-    if(Date.now()<voiceTouchSuppressUntil){
-      e.preventDefault();
-      e.stopPropagation();
-      voiceTouchSuppressUntil=0;
+  const btn=el(btnId);if(!btn||btn.dataset.voiceGestureBound)return;
+  btn.dataset.voiceGestureBound='1';
+  btn.style.touchAction='none';
+  const inputId=btnId==='gSendB'?'gIn':'mIn';
+  const barId=btnId==='gSendB'?'gvbar':'vbar';
+  const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
+  const vibrate=pattern=>{try{if(navigator.vibrate)navigator.vibrate(pattern);}catch(e){}};
+  const hint=()=>el(barId)?.querySelector('[data-voice-hint]');
+  const setHint=text=>{const h=hint();if(h)h.textContent=text;};
+  const resetState=()=>{
+    state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
+    btn.classList.remove('voice-locked');
+    btn.title='Hold and slide up to record';
+    setHint('↑ slide up to lock · ← cancel');
+  };
+  const releaseCapture=()=>{try{if(state.pointerId!==null)btn.releasePointerCapture(state.pointerId);}catch(e){}state.pointerId=null;};
+  btn.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    // Preserve normal send behavior while the text field contains a message.
+    if(v(inputId).trim())return;
+    e.preventDefault();
+    state.suppressClick=true;
+    state.startX=e.clientX;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
+    try{btn.setPointerCapture(e.pointerId);}catch(err){}
+    // A locked recording is completed by the next tap, not by a second start.
+    if(btn.classList.contains('rec')&&state.locked){
+      Promise.resolve(stopFn()).finally(resetState);
+      return;
     }
+    state.pending=true;
+    Promise.resolve(startFn()).then(()=>{
+      state.pending=false;
+      if(state.released&&!state.locked&&!state.cancelled&&btn.classList.contains('rec'))stopFn();
+    }).catch(()=>{state.pending=false;});
+  },{passive:false});
+  btn.addEventListener('pointermove',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();
+    const up=state.startY-e.clientY,left=e.clientX-state.startX;
+    if(!state.locked&&left<-85){
+      state.cancelled=true;state.active=false;cancelFn();releaseCapture();resetState();return;
+    }
+    if(!state.locked&&up>70&&btn.classList.contains('rec')){
+      state.locked=true;state.active=false;btn.classList.add('voice-locked');btn.title='Tap to send voice message';
+      setHint('🔒 locked · tap mic to send');vibrate([35,55,35]);releaseCapture();
+    }
+  },{passive:false});
+  btn.addEventListener('pointerup',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();state.active=false;state.released=true;releaseCapture();
+    if(state.cancelled)return;
+    if(state.locked)return;
+    if(state.pending)return;
+    if(btn.classList.contains('rec')){Promise.resolve(stopFn()).finally(resetState);}else resetState();
+  },{passive:false});
+  btn.addEventListener('pointercancel',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();state.active=false;state.cancelled=true;releaseCapture();cancelFn();resetState();
+  },{passive:false});
+  // Suppress the synthetic click generated after touch gestures; text sends still use onclick.
+  btn.addEventListener('click',e=>{
+    if(state.suppressClick){e.preventDefault();e.stopPropagation();state.suppressClick=false;}
   },true);
 }
 // Stubs for smartGSend compatibility
@@ -1536,17 +1587,20 @@ function stopGVoice(){stopAndSendGVoice();}
 function processGVoice(){}
 function showGVoiceReady(){}
 function cancelGVoiceReady(){}
+const VOICE_PLAY_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>';
+const VOICE_PAUSE_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
+function setVoiceButtonIcon(btn,playing){if(btn)btn.innerHTML=playing?VOICE_PAUSE_ICON:VOICE_PLAY_ICON;}
 function toggleVP(id,src){
   const btn=document.querySelector(`#vp_${id} .vpbtn`);
-  if(vPlayers[id]&&!vPlayers[id].paused){vPlayers[id].pause();if(btn)btn.textContent='▶';return;}
+  if(vPlayers[id]&&!vPlayers[id].paused){vPlayers[id].pause();setVoiceButtonIcon(btn,false);return;}
   if(!vPlayers[id]){
     const a=new Audio();a.preload='metadata';a.src=src;vPlayers[id]=a;
     const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
     const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id);
     a.onloadedmetadata=()=>{const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
     a.ontimeupdate=()=>{const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
-    a.onended=()=>{const f=fillEl();if(f)f.style.width='0%';if(btn)btn.textContent='▶';};
-    a.onerror=()=>{delete vPlayers[id];showToast('⚠️ Impossible de lire cet audio.');if(btn)btn.textContent='▶';};
+    a.onended=()=>{const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(btn,false);};
+    a.onerror=()=>{delete vPlayers[id];showToast('⚠️ Impossible de lire cet audio.');setVoiceButtonIcon(btn,false);};
     // Mark as played for sender notification - only if receiver is playing
     a.onplay=()=>{
       if(!curChat)return;
@@ -1558,8 +1612,8 @@ function toggleVP(id,src){
     };
   }
   const playPromise=vPlayers[id].play();
-  if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{if(btn)btn.textContent='▶';showToast('⚠️ Impossible de lire cet audio.');});
-  if(btn)btn.textContent='⏸';
+  if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{setVoiceButtonIcon(btn,false);showToast('⚠️ Impossible de lire cet audio.');});
+  setVoiceButtonIcon(btn,true);
 }
 function seekVP(e,id){const bar=el('vbar_'+id);if(!bar||!vPlayers[id]?.duration)return;vPlayers[id].currentTime=((e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth)*vPlayers[id].duration;}
 // ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
@@ -1586,8 +1640,8 @@ function drawBars(canvasId,isRecFn){
       const bh=Math.max(4,Math.floor(h*H));
       const x=i*(barW+gap);
       const y=(H-bh)/2;
-      // Rounded rect bars in red
-      ctx.fillStyle='#e74c3c';
+      // Rounded rect bars in blue
+      ctx.fillStyle='#1976d2';
       const r=Math.min(barW/2,3);
       ctx.beginPath();
       ctx.roundRect?ctx.roundRect(x,y,barW,bh,r):ctx.rect(x,y,barW,bh);

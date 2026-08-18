@@ -63,9 +63,10 @@ body.dark .sbadge.offline{background:#1a1a1a;}
 .cin-camera svg{width:22px;height:22px;fill:currentColor;}
 .cin-action{background:var(--btnB);color:#fff;border:none;border-radius:50%;width:38px;height:38px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .cin-action svg{width:18px;height:18px;fill:#fff;}
-.cin-action.rec{background:#e74c3c;animation:pulse 1s infinite;}
+.cin-action.rec{background:#1976d2;animation:pulse 1s infinite;}
+.cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 4px rgba(33,150,243,.25);transform:translateY(-2px);}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
-#vbar,#gvbar{display:none;align-items:center;gap:8px;padding:8px 12px;background:#ffeaea;}
+#vbar,#gvbar{display:none;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,#e3f2fd,#f5fbff);border-top:1px solid #90caf9;}
 /* REPLY BAR */
 #rplybar{display:none;background:rgba(10,60,109,.08);padding:5px 12px;border-left:3px solid var(--btnB);font-size:12px;color:var(--sub);position:relative;}
 #rplybar span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88%;}
