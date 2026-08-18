@@ -28,6 +28,9 @@ let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,allUsers=[];
 let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false;
 let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false;
+// Mobile browsers can dispatch both touch and click for one tap. The recorder now uses
+// the button's native click only: tap once to record, tap again to stop and send.
+let voiceTouchSuppressUntil=0;
 let vPlayers={},notifUnsub=null,msgBUnsub=null;
 let replyMsg=null,curEId=null,curED=null,typDebounce=null;
 
@@ -702,12 +705,14 @@ function onGMsgInput(){
   }
 }
 function smartSend(){
+  if(vSending)return;
   if(isRec){stopAndSendVoice();return;}
   const hasText=el('mIn').value.trim().length>0;
   if(hasText){sendMsg();return;}
   startVoice();
 }
 function smartGSend(){
+  if(gVoiceSending)return;
   if(gIsRec){stopAndSendGVoice();return;}
   const hasText=el('gIn').value.trim().length>0;
   if(hasText){sendGMsg();return;}
@@ -1332,7 +1337,7 @@ function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewF
 //       release / tap send → stop recording → auto upload & send
 function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(){
-  if(vSending)return;
+  if(vSending||isRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -1354,9 +1359,11 @@ function collectRecorderChunks(recorder, initialChunks){
   return new Promise(resolve=>{
     const chunks=Array.isArray(initialChunks)?initialChunks.slice():[];
     let settled=false;
+    let timeout=null;
     const finish=()=>{
       if(settled)return;
       settled=true;
+      if(timeout)clearTimeout(timeout);
       recorder.removeEventListener('dataavailable',onData);
       recorder.removeEventListener('stop',onStop);
       resolve(chunks);
@@ -1365,9 +1372,10 @@ function collectRecorderChunks(recorder, initialChunks){
     const onStop=()=>finish();
     recorder.addEventListener('dataavailable',onData);
     recorder.addEventListener('stop',onStop,{once:true});
+    // Some mobile WebViews do not deliver the stop event reliably; never leave the UI locked.
+    timeout=setTimeout(finish,1800);
     try{
       if(recorder.state==='recording'){
-        try{recorder.requestData();}catch(e){}
         recorder.stop();
       }else finish();
     }catch(e){finish();}
@@ -1378,19 +1386,23 @@ async function stopAndSendVoice(){
   const chat=curChat;
   if(!recorder||!isRec||vSending)return;
   vSending=true;
-  clearInterval(vInt);
+  // Flip the UI out of recording mode before awaiting MediaRecorder events. This makes
+  // the second tap deterministic on Android and guarantees REC cannot run forever.
+  isRec=false;
+  clearInterval(vInt);vInt=null;
   const dur=vSec;
-  const chunks=await collectRecorderChunks(recorder,vCh);
-  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
-  recorder.ondataavailable=null;
-  recorder.onstop=null;
-  isRec=false;vCh=[];vSec=0;mr=null;
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
   setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
+  let chunks=[];
+  try{chunks=await collectRecorderChunks(recorder,vCh);}catch(e){console.error('Voice finalize error:',e);}
+  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  recorder.ondataavailable=null;
+  recorder.onstop=null;
+  vCh=[];vSec=0;mr=null;
   if(!chunks.length||!chat){vSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
-  const file=new File([blob],'voice.webm',{type:'audio/webm'});
+  const file=new File([blob],'voice.webm',{type:blob.type||'audio/webm'});
   const mm=Math.floor(dur/60),ss=dur%60;
   const cid=getCID(CU.uid,chat.uid);
   const t=now();
@@ -1437,7 +1449,7 @@ function cancelVoiceReady(){}
 // ── VOICE (Group) ──
 function toggleGVoice(){gIsRec?stopAndSendGVoice():startGVoice();}
 async function startGVoice(){
-  if(gVoiceSending)return;
+  if(gVoiceSending||gIsRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -1458,19 +1470,21 @@ async function stopAndSendGVoice(){
   const group=curGrp;
   if(!recorder||!gIsRec||gVoiceSending)return;
   gVoiceSending=true;
-  clearInterval(gvInt);
+  gIsRec=false;
+  clearInterval(gvInt);gvInt=null;
   const dur=gvSec;
-  const chunks=await collectRecorderChunks(recorder,gvCh);
-  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
-  recorder.ondataavailable=null;
-  recorder.onstop=null;
-  gIsRec=false;gvCh=[];gvSec=0;gmr=null;
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
+  let chunks=[];
+  try{chunks=await collectRecorderChunks(recorder,gvCh);}catch(e){console.error('Group voice finalize error:',e);}
+  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  recorder.ondataavailable=null;
+  recorder.onstop=null;
+  gvCh=[];gvSec=0;gmr=null;
   if(!chunks.length||!group){gVoiceSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
-  const file=new File([blob],'voice.webm',{type:'audio/webm'});
+  const file=new File([blob],'voice.webm',{type:blob.type||'audio/webm'});
   const mm=Math.floor(dur/60),ss=dur%60;
   const t=now();
   try{
@@ -1503,45 +1517,18 @@ function cancelGVoice(){
 // ── SWIPE-UP TO RECORD (mic button touch events) ──
 // Called from HTML after chat opens
 function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
-  const btn=el(btnId);if(!btn)return;
-  let startY=0,startX=0,swiped=false,holding=false,holdTimer=null;
-  btn.addEventListener('touchstart',e=>{
-    // Only activate swipe-up when input is empty (mic mode)
-    const inp=el('mIn')||el('gMIn');
-    if(inp&&inp.value.trim())return;
-    e.preventDefault();
-    const t=e.touches[0];startY=t.clientY;startX=t.clientX;swiped=false;holding=false;
-    // Short press → normal click handled by onclick
-    // Long press (>200ms) → activate swipe-to-record mode
-    holdTimer=setTimeout(()=>{
-      holding=true;
-      navigator.vibrate&&navigator.vibrate([60,30,40]);
-      startFn();
-    },200);
-  },{passive:false});
-  btn.addEventListener('touchmove',e=>{
-    if(!holding)return;
-    e.preventDefault();
-    const t=e.touches[0];
-    const dy=startY-t.clientY; // positive = swipe up
-    if(dy>40&&!swiped){swiped=true;}
-    // Swipe left >80px while recording = cancel
-    const dx=startX-t.clientX;
-    if(dx>80&&holding){
-      clearTimeout(holdTimer);holding=false;swiped=false;
-      cancelFn();
-      navigator.vibrate&&navigator.vibrate([30,30]);
-    }
-  },{passive:false});
-  btn.addEventListener('touchend',e=>{
-    clearTimeout(holdTimer);
-    if(holding){
+  const btn=el(btnId);if(!btn||btn.dataset.voiceTapBound)return;
+  btn.dataset.voiceTapBound='1';
+  // The previous hold/swipe listeners competed with the inline click handler on Android:
+  // one gesture could start several recorders, suppress the stop click, and leave REC active.
+  // Keep this hook for compatibility, but use one deterministic tap-to-toggle interaction.
+  btn.addEventListener('click',e=>{
+    if(Date.now()<voiceTouchSuppressUntil){
       e.preventDefault();
-      // Release finger → send
-      stopFn();
+      e.stopPropagation();
+      voiceTouchSuppressUntil=0;
     }
-    holding=false;swiped=false;
-  },{passive:false});
+  },true);
 }
 // Stubs for smartGSend compatibility
 function stopGVoice(){stopAndSendGVoice();}
