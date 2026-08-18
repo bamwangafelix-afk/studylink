@@ -47,3 +47,16 @@ test('uses large explicit non-submit microphone controls', async () => {
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
+
+test('does not require a reload after microphone permission is granted', () => {
+  assert.match(source, /function getVoiceStream\(\)/);
+  assert.match(source, /Microphone bloqué\. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici\./);
+  assert.doesNotMatch(source, /Allow Mic → Reload/);
+});
+
+test('protects an active mobile recording from accidental navigation and screen sleep', () => {
+  assert.match(source, /if\(isRec\|\|gIsRec\)\{e\.preventDefault\(\);e\.returnValue='';\}/);
+  assert.match(source, /navigator\.wakeLock\?\.request/);
+  assert.match(source, /void keepVoiceScreenOn\(\)/);
+  assert.match(source, /document\.activeElement\?\.id===inputId/);
+});

@@ -29,6 +29,7 @@ let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vStartAt=0;
 let gVStartAt=0;
 let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false;
+let voiceWakeLock=null;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
 let voiceTouchSuppressUntil=0;
@@ -64,9 +65,41 @@ function setupPresence(){
   document.addEventListener('visibilitychange',()=>{
     setPresence(document.visibilityState==='hidden'?'Offline':'Online');
   });
-  window.addEventListener('beforeunload',()=>setPresence('Offline'));
+  window.addEventListener('beforeunload',e=>{
+    setPresence('Offline');
+    // Do not let an accidental navigation/reload destroy an active recording.
+    if(isRec||gIsRec){e.preventDefault();e.returnValue='';}
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&(isRec||gIsRec))void keepVoiceScreenOn();
+  });
   window.addEventListener('focus',()=>setPresence('Online'));
   window.addEventListener('blur',()=>setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},3000));
+}
+
+async function keepVoiceScreenOn(){
+  if(!navigator.wakeLock?.request)return;
+  if(voiceWakeLock&&!voiceWakeLock.released)return;
+  try{
+    voiceWakeLock=await navigator.wakeLock.request('screen');
+    voiceWakeLock.addEventListener?.('release',()=>{voiceWakeLock=null;});
+  }catch(e){console.warn('Wake lock unavailable:',e?.message||e);}
+}
+async function releaseVoiceScreen(){
+  if(isRec||gIsRec)return;
+  const lock=voiceWakeLock;voiceWakeLock=null;
+  try{await lock?.release?.();}catch(e){}
+}
+async function getVoiceStream(){
+  let permission='prompt';
+  try{
+    const status=await navigator.permissions?.query?.({name:'microphone'});
+    permission=status?.state||'prompt';
+  }catch(e){}
+  if(permission==='denied'){
+    const err=new Error('Microphone permission denied');err.name='MicPermissionDenied';throw err;
+  }
+  return navigator.mediaDevices.getUserMedia({audio:true});
 }
 
 // ── CLOUDINARY ──
@@ -1409,12 +1442,13 @@ async function startVoice(fromGesture=false){
     // Pointer gestures pulse before calling this async function. Keep a fallback
     // pulse for the normal click/text-button path.
     if(!fromGesture)pulseHaptic(55,el('sendB'));
-    const s=await navigator.mediaDevices.getUserMedia({audio:true});
+    const s=await getVoiceStream();
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     mr=new MediaRecorder(s,opts);vCh=[];
     mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
+    void keepVoiceScreenOn();
     el('sendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
     // Button → blue recording state
@@ -1425,7 +1459,9 @@ async function startVoice(fromGesture=false){
     vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
   }catch(err){
     isRec=false;vStartAt=0;el('sendB').classList.remove('voice-pending','rec','voice-locked');
-    showToast(err.name==='NotAllowedError'?'🎙️ Tap 🔒 → Allow Mic → Reload':'🎙️ '+err.message);
+    void releaseVoiceScreen();
+    const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
+    showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
   }
 }
 function collectRecorderChunks(recorder, initialChunks){
@@ -1474,6 +1510,7 @@ async function stopAndSendVoice(){
   let chunks=[];
   try{chunks=await collectRecorderChunks(recorder,vCh);}catch(e){console.error('Voice finalize error:',e);}
   try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  void releaseVoiceScreen();
   recorder.ondataavailable=null;
   recorder.onstop=null;
   vCh=[];vSec=0;mr=null;vStartAt=0;
@@ -1521,8 +1558,10 @@ async function stopAndSendVoice(){
   vSending=false;
 }
 function cancelVoice(){
-  if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
-  isRec=false;vCh=[];vSec=0;clearInterval(vInt);
+    if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
+  isRec=false;
+  void releaseVoiceScreen();
+vCh=[];vSec=0;clearInterval(vInt);
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
   setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
@@ -1541,12 +1580,13 @@ async function startGVoice(fromGesture=false){
     // Pointer gestures pulse before calling this async function. Keep a fallback
     // pulse for the normal click/text-button path.
     if(!fromGesture)pulseHaptic(55,el('gSendB'));
-    const s=await navigator.mediaDevices.getUserMedia({audio:true});
+    const s=await getVoiceStream();
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     gmr=new MediaRecorder(s,opts);gvCh=[];
     gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;gVStartAt=Date.now();
+    void keepVoiceScreenOn();
     el('gSendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
     el('gSendB').classList.add('rec');el('gSendB').style.background='#1976d2';
@@ -1556,7 +1596,9 @@ async function startGVoice(fromGesture=false){
     gvInt=setInterval(()=>{gvSec++;const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
   }catch(err){
     gIsRec=false;gVStartAt=0;el('gSendB').classList.remove('voice-pending','rec','voice-locked');
-    showToast(err.name==='NotAllowedError'?'🎙️ Allow Mic':'🎙️ '+err.message);
+    void releaseVoiceScreen();
+    const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
+    showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
   }
 }
 async function stopAndSendGVoice(){
@@ -1575,6 +1617,7 @@ async function stopAndSendGVoice(){
   let chunks=[];
   try{chunks=await collectRecorderChunks(recorder,gvCh);}catch(e){console.error('Group voice finalize error:',e);}
   try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  void releaseVoiceScreen();
   recorder.ondataavailable=null;
   recorder.onstop=null;
   gvCh=[];gvSec=0;gmr=null;gVStartAt=0;
@@ -1611,8 +1654,10 @@ async function stopAndSendGVoice(){
   gVoiceSending=false;
 }
 function cancelGVoice(){
-  if(gmr&&gIsRec){try{gmr.ondataavailable=null;gmr.onstop=null;gmr.stop();}catch(e){}try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
-  gIsRec=false;gvCh=[];gvSec=0;clearInterval(gvInt);
+    if(gmr&&gIsRec){try{gmr.ondataavailable=null;gmr.onstop=null;gmr.stop();}catch(e){}try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
+  gIsRec=false;
+  void releaseVoiceScreen();
+gvCh=[];gvSec=0;clearInterval(gvInt);
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#1976d2';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
@@ -1638,7 +1683,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
     btn.classList.remove('voice-locked','voice-pending');
     btn.title='Hold and slide up to record';
-    setHint('↑ slide up to lock · ← cancel');
+    setHint('Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer');
   };
   const releaseCapture=()=>{try{if(state.pointerId!==null)btn.releasePointerCapture(state.pointerId);}catch(e){}state.pointerId=null;};
   btn.addEventListener('pointerdown',e=>{
@@ -1646,6 +1691,8 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     // Preserve normal send behavior while the text field contains a message.
     if(v(inputId).trim())return;
     e.preventDefault();
+    // Hide the Android keyboard before the permission prompt or recording starts.
+    if(document.activeElement?.id===inputId)document.activeElement.blur();
     state.suppressClick=true;
     state.startX=e.clientX;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
     btn.classList.add('voice-pending');
