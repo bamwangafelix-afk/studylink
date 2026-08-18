@@ -83,11 +83,17 @@ async function uploadCloud(file,type){
     ? ['auto','video']
     : [type==='doc'?'raw':'image'];
   let lastError='Upload failed';
+  // Keep a mobile upload from leaving the bubble in Sending... indefinitely.
+  // Each request gets up to 15 seconds, with a 45-second total ceiling across fallbacks.
+  const deadline=Date.now()+45000;
   for(const resourceType of endpoints){
+    if(Date.now()>=deadline)break;
     for(let attempt=0;attempt<2;attempt++){
+      const remaining=deadline-Date.now();
+      if(remaining<=0)break;
       const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
       const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),30000);
+      const timer=setTimeout(()=>controller.abort(),Math.min(15000,remaining));
       try{
         const r=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${resourceType}/upload`,{method:'POST',body:fd,signal:controller.signal});
         const raw=await r.text();
@@ -99,7 +105,7 @@ async function uploadCloud(file,type){
       }catch(e){
         lastError=e.name==='AbortError'?'Cloudinary upload timed out':(e.message||'Network error');
       }finally{clearTimeout(timer);}
-      if(attempt===0)await new Promise(resolve=>setTimeout(resolve,700));
+      if(attempt===0&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,700));
     }
   }
   console.error('Cloudinary upload error:',lastError);
@@ -1351,7 +1357,18 @@ function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewF
 //       release / tap send → stop recording → auto upload & send
 function pulseHaptic(pattern=55,target){
   let didVibrate=false;
-  try{if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function')didVibrate=navigator.vibrate(pattern)!==false;}catch(e){}
+  try{
+    if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+      const normalized=Array.isArray(pattern)
+        ? pattern.map(v=>Math.max(0,Number(v)||0))
+        : Math.max(0,Number(pattern)||0);
+      const result=navigator.vibrate(normalized);
+      didVibrate=result!==false;
+      // A few Android Chromium builds accept only a scalar duration even though
+      // the API advertises vibration patterns. Retry once with a short pulse.
+      if(result===false&&Array.isArray(normalized))didVibrate=navigator.vibrate(55)!==false;
+    }
+  }catch(e){}
   // Some Android browsers disable vibration in WebView/PWA contexts; keep a visible
   // press acknowledgement so the gesture is still clear to the user.
   if(target){
@@ -1363,12 +1380,13 @@ function pulseHaptic(pattern=55,target){
   return didVibrate;
 }
 function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
-async function startVoice(){
+async function startVoice(fromGesture=false){
   if(vSending||isRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
-    // Keep haptics inside the original pointer gesture before the first await.
-    pulseHaptic([55],el('sendB'));
+    // Pointer gestures pulse before calling this async function. Keep a fallback
+    // pulse for the normal click/text-button path.
+    if(!fromGesture)pulseHaptic(55,el('sendB'));
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     mr=new MediaRecorder(s,opts);vCh=[];
@@ -1434,8 +1452,9 @@ async function stopAndSendVoice(){
   const mm=Math.floor(dur/60),ss=dur%60;
   const cid=getCID(CU.uid,chat.uid);
   const t=now();
+  let msgRef=null,uploadCommitted=false;
   try{
-    const msgRef=await db.collection('chats').doc(cid).collection('messages').add({
+    msgRef=await db.collection('chats').doc(cid).collection('messages').add({
       type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
       senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
       status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1448,6 +1467,7 @@ async function stopAndSendVoice(){
       return;
     }
     await msgRef.update({data:url,status:'sent'});
+    uploadCommitted=true;
     const _vUpd={participants:[CU.uid,chat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
     _vUpd['unread.'+chat.uid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
@@ -1458,6 +1478,7 @@ async function stopAndSendVoice(){
     });
   }catch(err){
     console.error('Voice send error:',err);
+    if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Voice send failed'}).catch(()=>{});
     showToast('⚠️ Envoi vocal impossible. Réessayez.');
   }
   vSending=false;
@@ -1476,12 +1497,13 @@ function showVoiceReady(){}
 function cancelVoiceReady(){}
 // ── VOICE (Group) ──
 function toggleGVoice(){gIsRec?stopAndSendGVoice():startGVoice();}
-async function startGVoice(){
+async function startGVoice(fromGesture=false){
   if(gVoiceSending||gIsRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
-    // Keep haptics inside the original pointer gesture before the first await.
-    pulseHaptic([55],el('gSendB'));
+    // Pointer gestures pulse before calling this async function. Keep a fallback
+    // pulse for the normal click/text-button path.
+    if(!fromGesture)pulseHaptic(55,el('gSendB'));
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     gmr=new MediaRecorder(s,opts);gvCh=[];
@@ -1517,8 +1539,9 @@ async function stopAndSendGVoice(){
   const file=new File([blob],'voice.webm',{type:blob.type||'audio/webm'});
   const mm=Math.floor(dur/60),ss=dur%60;
   const t=now();
+  let gvRef=null,uploadCommitted=false;
   try{
-    const gvRef=await db.collection('groups').doc(group.id).collection('messages').add({
+    gvRef=await db.collection('groups').doc(group.id).collection('messages').add({
       type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
       senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
       time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -1531,8 +1554,10 @@ async function stopAndSendGVoice(){
       return;
     }
     await gvRef.update({data:url,status:'sent'});
+    uploadCommitted=true;
   }catch(err){
     console.error('Group voice send error:',err);
+    if(gvRef&&!uploadCommitted)await gvRef.update({status:'failed',error:err?.message||'Group voice send failed'}).catch(()=>{});
     showToast('⚠️ Envoi vocal impossible. Réessayez.');
   }
   gVoiceSending=false;
@@ -1573,11 +1598,15 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     try{btn.setPointerCapture(e.pointerId);}catch(err){}
     // A locked recording is completed by the next tap, not by a second start.
     if(btn.classList.contains('rec')&&state.locked){
+      vibrate(35);
       Promise.resolve(stopFn()).finally(resetState);
       return;
     }
+    // Fire the device vibration directly in pointerdown, before getUserMedia()
+    // can yield to a permission prompt or another asynchronous browser task.
+    vibrate(55);
     state.pending=true;
-    Promise.resolve(startFn()).then(()=>{
+    Promise.resolve(startFn(true)).then(()=>{
       state.pending=false;
       if(state.released&&!state.locked&&!state.cancelled&&btn.classList.contains('rec'))stopFn();
     }).catch(()=>{state.pending=false;});
@@ -1587,7 +1616,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     e.preventDefault();
     const up=state.startY-e.clientY,left=e.clientX-state.startX;
     if(!state.locked&&left<-85){
-      state.cancelled=true;state.active=false;cancelFn();releaseCapture();resetState();return;
+      state.cancelled=true;state.active=false;vibrate([25,25]);cancelFn();releaseCapture();resetState();return;
     }
     if(!state.locked&&up>70&&btn.classList.contains('rec')){
       state.locked=true;state.active=false;btn.classList.add('voice-locked');btn.title='Tap to send voice message';
@@ -1600,11 +1629,11 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     if(state.cancelled)return;
     if(state.locked)return;
     if(state.pending)return;
-    if(btn.classList.contains('rec')){Promise.resolve(stopFn()).finally(resetState);}else resetState();
+    if(btn.classList.contains('rec')){vibrate(35);Promise.resolve(stopFn()).finally(resetState);}else resetState();
   },{passive:false});
   btn.addEventListener('pointercancel',e=>{
     if(!state.active||state.pointerId!==e.pointerId)return;
-    e.preventDefault();state.active=false;state.cancelled=true;releaseCapture();cancelFn();resetState();
+    e.preventDefault();state.active=false;state.cancelled=true;vibrate([20,20]);releaseCapture();cancelFn();resetState();
   },{passive:false});
   // Suppress the synthetic click generated after touch gestures; text sends still use onclick.
   btn.addEventListener('click',e=>{
