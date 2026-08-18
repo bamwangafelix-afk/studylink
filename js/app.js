@@ -69,6 +69,10 @@ function setupPresence(){
 }
 
 // ── CLOUDINARY ──
+// Public Cloudinary configuration for the unsigned StudyLink upload preset.
+// These values match the user's Cloudinary dashboard.
+const CLOUD='dmhbui3wf';
+const PRESET='StudyLink';
 async function uploadCloud(file,type){
   if(type==='image'){
     try{file=await compressImg(file);}catch(e){}
