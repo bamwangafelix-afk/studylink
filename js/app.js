@@ -26,8 +26,8 @@ let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,allUsers=[];
 let fType=null,fDest='p';
-let mr=null,isRec=false,vCh=[],vSec=0,vInt=null;
-let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null;
+let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false;
+let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false;
 let vPlayers={},notifUnsub=null,msgBUnsub=null;
 let replyMsg=null,curEId=null,curED=null,typDebounce=null;
 
@@ -1045,7 +1045,12 @@ function buildBbl(m,isGrp){
     const durLabel=m.dur||'0:00';
     const playBtnBg=self?'rgba(255,255,255,0.25)':'#2196f3';
     const playBtnColor=self?'#fff':'#fff';
-    if(!m.data){
+    if(m.status==='failed'){
+      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
+        <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Échec de l’envoi vocal</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Vérifiez la connexion puis réessayez.</div></div>
+      </div>${rcHtml}`;
+    }else if(!m.data){
       // Still sending — show mic + "Sending..." + timer
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
         <div style="width:38px;height:38px;border-radius:50%;background:${playBtnBg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${micSVG}</div>
@@ -1327,6 +1332,7 @@ function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewF
 //       release / tap send → stop recording → auto upload & send
 function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(){
+  if(vSending)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -1344,46 +1350,77 @@ async function startVoice(){
     vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
   }catch(err){showToast(err.name==='NotAllowedError'?'🎙️ Tap 🔒 → Allow Mic → Reload':'🎙️ '+err.message);}
 }
+function collectRecorderChunks(recorder, initialChunks){
+  return new Promise(resolve=>{
+    const chunks=Array.isArray(initialChunks)?initialChunks.slice():[];
+    let settled=false;
+    const finish=()=>{
+      if(settled)return;
+      settled=true;
+      recorder.removeEventListener('dataavailable',onData);
+      recorder.removeEventListener('stop',onStop);
+      resolve(chunks);
+    };
+    const onData=e=>{if(e.data&&e.data.size>0)chunks.push(e.data);};
+    const onStop=()=>finish();
+    recorder.addEventListener('dataavailable',onData);
+    recorder.addEventListener('stop',onStop,{once:true});
+    try{
+      if(recorder.state==='recording'){
+        try{recorder.requestData();}catch(e){}
+        recorder.stop();
+      }else finish();
+    }catch(e){finish();}
+  });
+}
 async function stopAndSendVoice(){
-  if(!mr||!isRec)return;
-  // Stop mic
+  const recorder=mr;
+  const chat=curChat;
+  if(!recorder||!isRec||vSending)return;
+  vSending=true;
   clearInterval(vInt);
-  mr.ondataavailable=null;
-  const chunks=vCh.slice();
   const dur=vSec;
-  try{mr.stop();}catch(e){}
-  try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}
-  isRec=false;vCh=[];vSec=0;
+  const chunks=await collectRecorderChunks(recorder,vCh);
+  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  recorder.ondataavailable=null;
+  recorder.onstop=null;
+  isRec=false;vCh=[];vSec=0;mr=null;
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
   setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
-  if(!chunks.length||!curChat){showToast('⚠️ Nothing recorded');return;}
-  await new Promise(r=>setTimeout(r,300));
+  if(!chunks.length||!chat){vSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
   const file=new File([blob],'voice.webm',{type:'audio/webm'});
   const mm=Math.floor(dur/60),ss=dur%60;
-  const cid=getCID(CU.uid,curChat.uid);
+  const cid=getCID(CU.uid,chat.uid);
   const t=now();
-  // ✅ INSTANT: Show message immediately with sending status
-  const msgRef=await db.collection('chats').doc(cid).collection('messages').add({
-    type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
-    senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
-    status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  });
-  // ✅ BACKGROUND: Upload without blocking UI
-  uploadCloud(file,'audio').then(url=>{
-    if(url) msgRef.update({data:url,status:'sent'});
-  });
-  const _vUpd={participants:[CU.uid,curChat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
-  _vUpd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
-  await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
-  // Signal receiver's inbox listener + increment nav badge unread
-  const _vRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-  _vRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-  db.collection('users').doc(curChat.uid).update(_vRecvUpd).catch(()=>{
-    db.collection('users').doc(curChat.uid).set(_vRecvUpd,{merge:true}).catch(()=>{});
-  });
-  // Silent send — no toast needed, bubble appears instantly
+  try{
+    const msgRef=await db.collection('chats').doc(cid).collection('messages').add({
+      type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
+      senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
+      status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const url=await uploadCloud(file,'audio');
+    if(!url){
+      await msgRef.update({status:'failed',error:'Audio upload failed'}).catch(()=>{});
+      vSending=false;
+      showToast('⚠️ L’audio n’a pas pu être envoyé. Vérifiez votre connexion.');
+      return;
+    }
+    await msgRef.update({data:url,status:'sent'});
+    const _vUpd={participants:[CU.uid,chat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
+    _vUpd['unread.'+chat.uid]=firebase.firestore.FieldValue.increment(1);
+    await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
+    const _vRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+    _vRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    db.collection('users').doc(chat.uid).update(_vRecvUpd).catch(()=>{
+      db.collection('users').doc(chat.uid).set(_vRecvUpd,{merge:true}).catch(()=>{});
+    });
+  }catch(err){
+    console.error('Voice send error:',err);
+    showToast('⚠️ Envoi vocal impossible. Réessayez.');
+  }
+  vSending=false;
 }
 function cancelVoice(){
   if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
@@ -1400,6 +1437,7 @@ function cancelVoiceReady(){}
 // ── VOICE (Group) ──
 function toggleGVoice(){gIsRec?stopAndSendGVoice():startGVoice();}
 async function startGVoice(){
+  if(gVoiceSending)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -1416,34 +1454,44 @@ async function startGVoice(){
   }catch(err){showToast(err.name==='NotAllowedError'?'🎙️ Allow Mic':'🎙️ '+err.message);}
 }
 async function stopAndSendGVoice(){
-  if(!gmr||!gIsRec)return;
+  const recorder=gmr;
+  const group=curGrp;
+  if(!recorder||!gIsRec||gVoiceSending)return;
+  gVoiceSending=true;
   clearInterval(gvInt);
-  gmr.ondataavailable=null;
-  const chunks=gvCh.slice();
   const dur=gvSec;
-  try{gmr.stop();}catch(e){}
-  try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}
-  gIsRec=false;gvCh=[];gvSec=0;
+  const chunks=await collectRecorderChunks(recorder,gvCh);
+  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  recorder.ondataavailable=null;
+  recorder.onstop=null;
+  gIsRec=false;gvCh=[];gvSec=0;gmr=null;
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
-  if(!chunks.length||!curGrp){showToast('⚠️ Nothing recorded');return;}
-  await new Promise(r=>setTimeout(r,300));
+  if(!chunks.length||!group){gVoiceSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
   const file=new File([blob],'voice.webm',{type:'audio/webm'});
   const mm=Math.floor(dur/60),ss=dur%60;
   const t=now();
-  // ✅ INSTANT: Show voice message immediately
-  const gvRef=await db.collection('groups').doc(curGrp.id).collection('messages').add({
-    type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
-    senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
-    time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  });
-  // ✅ BACKGROUND: Upload without blocking UI
-  uploadCloud(file,'audio').then(url=>{
-    if(url) gvRef.update({data:url,status:'sent'});
-  });
-  // Group voice sent silently
+  try{
+    const gvRef=await db.collection('groups').doc(group.id).collection('messages').add({
+      type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
+      senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
+      time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const url=await uploadCloud(file,'audio');
+    if(!url){
+      await gvRef.update({status:'failed',error:'Audio upload failed'}).catch(()=>{});
+      gVoiceSending=false;
+      showToast('⚠️ L’audio n’a pas pu être envoyé. Vérifiez votre connexion.');
+      return;
+    }
+    await gvRef.update({data:url,status:'sent'});
+  }catch(err){
+    console.error('Group voice send error:',err);
+    showToast('⚠️ Envoi vocal impossible. Réessayez.');
+  }
+  gVoiceSending=false;
 }
 function cancelGVoice(){
   if(gmr&&gIsRec){try{gmr.ondataavailable=null;gmr.onstop=null;gmr.stop();}catch(e){}try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
