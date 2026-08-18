@@ -77,21 +77,34 @@ async function uploadCloud(file,type){
   if(type==='image'){
     try{file=await compressImg(file);}catch(e){}
   }
-  const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
-  // Cloudinary resource types: image→image, audio/voice→video, doc→raw
-  const rtype=(type==='audio'||type==='voice')?'video':type==='doc'?'raw':'image';
-  try{
-    const r=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${rtype}/upload`,{method:'POST',body:fd});
-    if(!r.ok&&r.status===401){throw new Error('Upload config error — check Cloudinary preset');}
-    const d=await r.json();
-    if(d.secure_url)return d.secure_url;
-    throw new Error(d.error?.message||'Upload failed');
-  }catch(e){
-    // Don't crash the app — just show error
-    console.error('Cloudinary upload error:',e);
-    showToast('❌ Upload failed: '+e.message);
-    return null;
+  // Audio is accepted by Cloudinary through auto/upload and video/upload.
+  // Try auto first, then video, with one retry for transient mobile failures.
+  const endpoints=(type==='audio'||type==='voice')
+    ? ['auto','video']
+    : [type==='doc'?'raw':'image'];
+  let lastError='Upload failed';
+  for(const resourceType of endpoints){
+    for(let attempt=0;attempt<2;attempt++){
+      const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),30000);
+      try{
+        const r=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${resourceType}/upload`,{method:'POST',body:fd,signal:controller.signal});
+        const raw=await r.text();
+        let d={};try{d=raw?JSON.parse(raw):{};}catch(e){}
+        if(r.ok&&d.secure_url)return d.secure_url;
+        lastError=d.error?.message||`HTTP ${r.status} from Cloudinary`;
+        // Configuration and validation errors will not improve by retrying the same endpoint.
+        if(r.status>=400&&r.status<500&&r.status!==408&&r.status!==429)break;
+      }catch(e){
+        lastError=e.name==='AbortError'?'Cloudinary upload timed out':(e.message||'Network error');
+      }finally{clearTimeout(timer);}
+      if(attempt===0)await new Promise(resolve=>setTimeout(resolve,700));
+    }
   }
+  console.error('Cloudinary upload error:',lastError);
+  showToast('❌ Upload failed: '+lastError);
+  return null;
 }
 function compressImg(file){
   return new Promise(res=>{
@@ -1336,18 +1349,32 @@ function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewF
 // ── VOICE (Private) ──
 // Flow: hold-swipe-up mic → vibrate → start recording (bar appears)
 //       release / tap send → stop recording → auto upload & send
+function pulseHaptic(pattern=55,target){
+  let didVibrate=false;
+  try{if(typeof navigator!=='undefined'&&typeof navigator.vibrate==='function')didVibrate=navigator.vibrate(pattern)!==false;}catch(e){}
+  // Some Android browsers disable vibration in WebView/PWA contexts; keep a visible
+  // press acknowledgement so the gesture is still clear to the user.
+  if(target){
+    target.classList.remove('haptic-pulse');
+    void target.offsetWidth;
+    target.classList.add('haptic-pulse');
+    setTimeout(()=>target.classList.remove('haptic-pulse'),260);
+  }
+  return didVibrate;
+}
 function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(){
   if(vSending||isRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
+    // Keep haptics inside the original pointer gesture before the first await.
+    pulseHaptic([55],el('sendB'));
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     mr=new MediaRecorder(s,opts);vCh=[];
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;
-    // 1 vibration pulse on start (WhatsApp style)
-    navigator.vibrate&&navigator.vibrate([60]);
+    // The direct pre-await pulse above is the reliable start feedback.
     // Button → blue recording state
     el('sendB').classList.add('rec');el('sendB').style.background='#1976d2';
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
@@ -1453,12 +1480,14 @@ async function startGVoice(){
   if(gVoiceSending||gIsRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
+    // Keep haptics inside the original pointer gesture before the first await.
+    pulseHaptic([55],el('gSendB'));
     const s=await navigator.mediaDevices.getUserMedia({audio:true});
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     gmr=new MediaRecorder(s,opts);gvCh=[];
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;
-    navigator.vibrate&&navigator.vibrate([60]);
+    // The direct pre-await pulse above is the reliable start feedback.
     el('gSendB').classList.add('rec');el('gSendB').style.background='#1976d2';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
@@ -1524,7 +1553,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   const inputId=btnId==='gSendB'?'gIn':'mIn';
   const barId=btnId==='gSendB'?'gvbar':'vbar';
   const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
-  const vibrate=pattern=>{try{if(navigator.vibrate)navigator.vibrate(pattern);}catch(e){}};
+  const vibrate=pattern=>pulseHaptic(pattern,btn);
   const hint=()=>el(barId)?.querySelector('[data-voice-hint]');
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};
   const resetState=()=>{
