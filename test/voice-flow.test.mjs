@@ -99,3 +99,9 @@ test('isolates playback failures and stale callbacks', () => {
   assert.match(source, /Lecture impossible\. Appuyez de nouveau sur lecture/);
   assert.match(source, /a\.onerror=/);
 });
+
+test('keeps the group microphone orange in markup and recording state transitions', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="gSendB"[^>]*background:#e67e22/);
+  assert.equal((source.match(/gSendB'\)\.style\.background='#e67e22'/g) || []).length, 3);
+});

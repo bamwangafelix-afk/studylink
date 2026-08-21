@@ -1622,7 +1622,7 @@ async function startGVoice(fromGesture=false){
     void keepVoiceScreenOn();
     el('gSendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
-    el('gSendB').classList.add('rec');el('gSendB').style.background='#1976d2';
+    el('gSendB').classList.add('rec');el('gSendB').style.background='#e67e22';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
     drawBars('gvWave',()=>gIsRec);
@@ -1646,7 +1646,7 @@ async function stopAndSendGVoice(){
   const elapsed=Date.now()-(gVStartAt||Date.now());
   const dur=Math.max(gvSec,Math.floor(Math.max(0,elapsed)/1000));
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
-  el('gSendB').classList.remove('rec','voice-pending');el('gSendB').style.background='#1976d2';
+  el('gSendB').classList.remove('rec','voice-pending');el('gSendB').style.background='#e67e22';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   let chunks=[];
@@ -1707,7 +1707,7 @@ function cancelGVoice(){
   gIsRec=false;
   void releaseVoiceScreen();
 gvCh=[];gvSec=0;clearInterval(gvInt);
-  el('gSendB').classList.remove('rec');el('gSendB').style.background='#1976d2';
+  el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
 }
