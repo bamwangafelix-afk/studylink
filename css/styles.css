@@ -68,6 +68,8 @@ body.dark .sbadge.offline{background:#1a1a1a;}
 .cin-action.rec{background:#1976d2;animation:pulse 1s infinite;}
 .cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);transform:translateY(-2px);}
 .cin-action.haptic-pulse{animation:hapticPulse .26s ease-out;}
+/* Group chat keeps its orange identity in every microphone state; private chat remains blue. */
+#gSendB,#gSendB.voice-pending,#gSendB.rec,#gSendB.voice-locked{background:#e67e22;}
 @keyframes hapticPulse{0%{transform:scale(1)}35%{transform:scale(1.12);box-shadow:0 0 0 5px rgba(33,150,243,.32)}100%{transform:scale(1);box-shadow:none}}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 #vbar,#gvbar{display:none;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,#e3f2fd,#f5fbff);border-top:1px solid #90caf9;}

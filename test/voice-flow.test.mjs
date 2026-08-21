@@ -47,6 +47,7 @@ test('uses large explicit non-submit microphone controls', async () => {
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
   assert.match(html, /<script src="js\/app\.js\?v=56d828f"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=orange-group-mic-2">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -101,8 +102,12 @@ test('isolates playback failures and stale callbacks', () => {
   assert.match(source, /a\.onerror=/);
 });
 
-test('keeps the group microphone orange in markup and recording state transitions', async () => {
+test('keeps the group microphone orange in every state while private chat stays blue', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /id="gSendB"[^>]*background:#e67e22/);
   assert.equal((source.match(/gSendB'\)\.style\.background='#e67e22'/g) || []).length, 3);
+  assert.match(css, /#gSendB,#gSendB\.voice-pending,#gSendB\.rec,#gSendB\.voice-locked\{background:#e67e22;\}/);
+  assert.match(css, /\.cin-action\{background:var\(--btnB\)/);
+  assert.match(css, /\.cin-action\.rec\{background:#1976d2/);
 });
