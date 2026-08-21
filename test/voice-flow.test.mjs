@@ -61,3 +61,26 @@ test('protects an active mobile recording from accidental navigation and screen 
   assert.match(source, /void keepVoiceScreenOn\(\)/);
   assert.match(source, /document\.activeElement\?\.id===inputId/);
 });
+
+test('uses elapsed wall-clock time instead of an accelerating interval counter', () => {
+  assert.match(source, /const refreshVoiceTimer=\(\)=>\{vSec=Math\.max\(0,Math\.floor\(\(Date\.now\(\)-vStartAt\)\/1000\)\)/);
+  assert.match(source, /const refreshGroupVoiceTimer=\(\)=>\{gvSec=Math\.max\(0,Math\.floor\(\(Date\.now\(\)-gVStartAt\)\/1000\)\)/);
+  assert.match(source, /setInterval\(refreshVoiceTimer,250\)/);
+  assert.match(source, /setInterval\(refreshGroupVoiceTimer,250\)/);
+});
+
+test('allows a new recording after finalization without overlapping recorder state', () => {
+  assert.match(source, /vFinalizing=false/);
+  assert.match(source, /if\(vFinalizing\|\|isRec\)return;/);
+  assert.match(source, /vCh=\[\];vSec=0;mr=null;vStartAt=0;vFinalizing=false;/);
+  assert.match(source, /gVFinalizing=false/);
+  assert.match(source, /if\(gVFinalizing\|\|gIsRec\)return;/);
+  assert.match(source, /gvCh=\[\];gvSec=0;gmr=null;gVStartAt=0;gVFinalizing=false;/);
+});
+
+test('stops other audio players and clamps seek positions', () => {
+  assert.match(source, /function stopOtherVoicePlayers\(exceptId\)/);
+  assert.match(source, /stopOtherVoicePlayers\(id\)/);
+  assert.match(source, /const ratio=Math\.max\(0,Math\.min\(1,/);
+  assert.match(source, /try\{.*a\.pause\(\);a\.currentTime=0/s);
+});

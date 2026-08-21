@@ -27,9 +27,9 @@ let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,allUsers=[];
 let fType=null,fDest='p';
-let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vStartAt=0;
+let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vFinalizing=false,vStartAt=0;
 let gVStartAt=0;
-let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false;
+let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false,gVFinalizing=false;
 let voiceWakeLock=null;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
@@ -797,15 +797,15 @@ function onGMsgInput(){
   }
 }
 function smartSend(){
-  if(vSending)return;
   if(isRec){stopAndSendVoice();return;}
+  if(vFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
   const hasText=el('mIn').value.trim().length>0;
   if(hasText){sendMsg();return;}
   startVoice();
 }
 function smartGSend(){
-  if(gVoiceSending)return;
   if(gIsRec){stopAndSendGVoice();return;}
+  if(gVFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
   const hasText=el('gIn').value.trim().length>0;
   if(hasText){sendGMsg();return;}
   startGVoice();
@@ -1454,7 +1454,7 @@ function pulseHaptic(pattern=55,target){
 }
 function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(fromGesture=false){
-  if(vSending||isRec)return;
+  if(vFinalizing||isRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
     // Pointer gestures pulse before calling this async function. Keep a fallback
@@ -1474,7 +1474,9 @@ async function startVoice(fromGesture=false){
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('vbar').style.display='flex';
     drawBars('vWave',()=>isRec);
-    vInt=setInterval(()=>{vSec++;const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
+    const refreshVoiceTimer=()=>{vSec=Math.max(0,Math.floor((Date.now()-vStartAt)/1000));const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
+    refreshVoiceTimer();
+    vInt=setInterval(refreshVoiceTimer,250);
   }catch(err){
     isRec=false;vStartAt=0;el('sendB').classList.remove('voice-pending','rec','voice-locked');
     void releaseVoiceScreen();
@@ -1511,14 +1513,14 @@ function collectRecorderChunks(recorder, initialChunks){
 async function stopAndSendVoice(){
   const recorder=mr;
   const chat=curChat;
-  if(!recorder||!isRec||vSending)return;
-  vSending=true;
+  if(!recorder||!isRec||vFinalizing)return;
+  vFinalizing=true;vSending=true;
   // Flip the UI out of recording mode before awaiting MediaRecorder events. This makes
   // the second tap deterministic on Android and guarantees REC cannot run forever.
   isRec=false;
   clearInterval(vInt);vInt=null;
-  const dur=vSec;
   const elapsed=Date.now()-(vStartAt||Date.now());
+  const dur=Math.max(vSec,Math.floor(Math.max(0,elapsed)/1000));
   // Android may deliver pointerup before MediaRecorder has emitted its first
   // dataavailable event. Let the recorder run briefly before stopping it.
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
@@ -1531,7 +1533,7 @@ async function stopAndSendVoice(){
   void releaseVoiceScreen();
   recorder.ondataavailable=null;
   recorder.onstop=null;
-  vCh=[];vSec=0;mr=null;vStartAt=0;
+  vCh=[];vSec=0;mr=null;vStartAt=0;vFinalizing=false;
   if(!chunks.length||!chat){vSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
@@ -1605,7 +1607,7 @@ function cancelVoiceReady(){}
 // ── VOICE (Group) ──
 function toggleGVoice(){gIsRec?stopAndSendGVoice():startGVoice();}
 async function startGVoice(fromGesture=false){
-  if(gVoiceSending||gIsRec)return;
+  if(gVFinalizing||gIsRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   try{
     // Pointer gestures pulse before calling this async function. Keep a fallback
@@ -1624,7 +1626,9 @@ async function startGVoice(fromGesture=false){
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
     drawBars('gvWave',()=>gIsRec);
-    gvInt=setInterval(()=>{gvSec++;const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;},1000);
+    const refreshGroupVoiceTimer=()=>{gvSec=Math.max(0,Math.floor((Date.now()-gVStartAt)/1000));const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
+    refreshGroupVoiceTimer();
+    gvInt=setInterval(refreshGroupVoiceTimer,250);
   }catch(err){
     gIsRec=false;gVStartAt=0;el('gSendB').classList.remove('voice-pending','rec','voice-locked');
     void releaseVoiceScreen();
@@ -1635,12 +1639,12 @@ async function startGVoice(fromGesture=false){
 async function stopAndSendGVoice(){
   const recorder=gmr;
   const group=curGrp;
-  if(!recorder||!gIsRec||gVoiceSending)return;
-  gVoiceSending=true;
+  if(!recorder||!gIsRec||gVFinalizing)return;
+  gVFinalizing=true;gVoiceSending=true;
   gIsRec=false;
   clearInterval(gvInt);gvInt=null;
-  const dur=gvSec;
   const elapsed=Date.now()-(gVStartAt||Date.now());
+  const dur=Math.max(gvSec,Math.floor(Math.max(0,elapsed)/1000));
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
   el('gSendB').classList.remove('rec','voice-pending');el('gSendB').style.background='#1976d2';
   setMicIcon('gSendIcon');
@@ -1651,7 +1655,7 @@ async function stopAndSendGVoice(){
   void releaseVoiceScreen();
   recorder.ondataavailable=null;
   recorder.onstop=null;
-  gvCh=[];gvSec=0;gmr=null;gVStartAt=0;
+  gvCh=[];gvSec=0;gmr=null;gVStartAt=0;gVFinalizing=false;
   if(!chunks.length||!group){gVoiceSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
@@ -1799,32 +1803,41 @@ function cancelGVoiceReady(){}
 const VOICE_PLAY_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>';
 const VOICE_PAUSE_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
 function setVoiceButtonIcon(btn,playing){if(btn)btn.innerHTML=playing?VOICE_PAUSE_ICON:VOICE_PLAY_ICON;}
+function stopOtherVoicePlayers(exceptId){
+  Object.entries(vPlayers).forEach(([pid,a])=>{
+    if(pid===String(exceptId))return;
+    try{a.pause();a.currentTime=0;}catch(e){}
+    setVoiceButtonIcon(document.querySelector(`#vp_${pid} .vpbtn`),false);
+    const fill=el('vfill_'+pid);if(fill)fill.style.width='0%';
+  });
+}
 function toggleVP(id,src){
   const btn=document.querySelector(`#vp_${id} .vpbtn`);
-  if(vPlayers[id]&&!vPlayers[id].paused){vPlayers[id].pause();setVoiceButtonIcon(btn,false);return;}
-  if(!vPlayers[id]){
-    const a=new Audio();a.preload='metadata';a.src=src;vPlayers[id]=a;
-    const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
-    const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id);
-    a.onloadedmetadata=()=>{const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
-    a.ontimeupdate=()=>{const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
-    a.onended=()=>{const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(btn,false);};
-    a.onerror=()=>{delete vPlayers[id];showToast('⚠️ Impossible de lire cet audio.');setVoiceButtonIcon(btn,false);};
-    // Mark as played for sender notification - only if receiver is playing
-    a.onplay=()=>{
-      if(!curChat)return;
-      const bw=document.querySelector(`.bw[data-id="${id}"]`);
-      if(bw&&!bw.classList.contains('s')){
-        // This is receiver playing sender's voice note
-        markVoicePlayed(id,null);
-      }
-    };
-  }
-  const playPromise=vPlayers[id].play();
-  if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{setVoiceButtonIcon(btn,false);showToast('⚠️ Impossible de lire cet audio.');});
-  setVoiceButtonIcon(btn,true);
+  if(!src){showToast('⚠️ Cet audio est indisponible.');return;}
+  try{
+    const existing=vPlayers[id];
+    if(existing&&!existing.paused){existing.pause();setVoiceButtonIcon(btn,false);return;}
+    stopOtherVoicePlayers(id);
+    if(!vPlayers[id]){
+      const a=new Audio();a.preload='metadata';a.src=src;vPlayers[id]=a;
+      const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
+      const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id);
+      a.onloadedmetadata=()=>{const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
+      a.ontimeupdate=()=>{const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
+      a.onended=()=>{const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),false);};
+      a.onerror=()=>{delete vPlayers[id];setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),false);showToast('⚠️ Impossible de lire cet audio.');};
+      a.onplay=()=>{
+        if(!curChat)return;
+        const bw=document.querySelector(`.bw[data-id="${id}"]`);
+        if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);
+      };
+    }
+    const playPromise=vPlayers[id].play();
+    setVoiceButtonIcon(btn,true);
+    if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),false);showToast('⚠️ Impossible de lire cet audio.');});
+  }catch(e){setVoiceButtonIcon(btn,false);showToast('⚠️ Impossible de lire cet audio.');}
 }
-function seekVP(e,id){const bar=el('vbar_'+id);if(!bar||!vPlayers[id]?.duration)return;vPlayers[id].currentTime=((e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth)*vPlayers[id].duration;}
+function seekVP(e,id){const bar=el('vbar_'+id);if(!bar||!vPlayers[id]?.duration)return;const ratio=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth));vPlayers[id].currentTime=ratio*vPlayers[id].duration;}
 // ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
 function drawBars(canvasId,isRecFn){
   const cv=el(canvasId);if(!cv)return;
