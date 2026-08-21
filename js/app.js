@@ -1112,18 +1112,22 @@ function buildBbl(m,isGrp){
     // Uploaded audio files use the same custom player as recorded voice notes.
     // Native <audio controls> is inconsistently rendered in mobile WebViews and
     // can leave the bubble without a visible play button.
-    const audioBg=self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)';
-    const audioColor=self?'rgba(255,255,255,.82)':'#2196f3';
+    const audioBg=isGrp?(self?'linear-gradient(135deg,#e67e22,#f39c12)':'rgba(230,126,34,.13)'):(self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)');
+    const audioAccent=isGrp?'#e67e22':'#2196f3';
+    const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
+    const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     const audioDur=m.dur||'0:00';
-    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':'#2196f3'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':'#2196f3'};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:rgba(33,150,243,.22);border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:#2196f3;border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
-    // Blue accent color for voice bubbles (like WhatsApp)
-    const vBlue='#2196f3';
-    const vBubbleBg=self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)';
-    const vWaveColor=self?'rgba(255,255,255,0.8)':vBlue;
+    // Private voice messages stay blue; group voice messages use orange.
+    const vBlue='#2196f3',vOrange='#e67e22';
+    const vBubbleBg=isGrp?(self?'linear-gradient(135deg,#e67e22,#f39c12)':'rgba(230,126,34,.13)'):(self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)');
+    const vWaveColor=self?'rgba(255,255,255,0.8)':(isGrp?vOrange:vBlue);
+    const vAccent=isGrp?vOrange:vBlue;
+    const vPlayedColor=isGrp?'#ffd7ad':'#4fc3f7';
     // Waveform bars SVG
     const waveSVG=`<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
       ${[2,4,8,6,10,14,18,12,20,24,28,22,26,30,24,20,28,22,18,24,16,12,18,10,14,8,6,10,4,6].map((h,i)=>{
@@ -1134,13 +1138,14 @@ function buildBbl(m,isGrp){
     // Voice receipts: ✓ = sent, ✓✓ = delivered/seen, blue ✓✓ = played
     let voiceReceipt='';
     if(self){
-      if(m.voicePlayed){voiceReceipt='<span style="font-size:11px;color:#4fc3f7;margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>';}
+      if(m.voicePlayed){voiceReceipt=`<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;}
       else if(m.seen){voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.9);margin-left:4px;">✓✓</span>';}
       else{voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
     }
     const durLabel=m.dur||'0:00';
-    const playBtnBg=self?'rgba(255,255,255,0.25)':'#2196f3';
-    const playBtnColor=self?'#fff':'#fff';
+    const playBtnBg=self?'rgba(255,255,255,0.25)':vAccent;
+    const playBtnColor='#fff';
+    const playShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     if(m.status==='failed'){
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
         <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
@@ -1154,14 +1159,14 @@ function buildBbl(m,isGrp){
       </div>${rcHtml}`;
     }else{
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
             ${waveSVG}
-            <div style="position:absolute;left:0;top:0;width:0%;height:100%;background:rgba(33,150,243,.2);border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div>
+            <div style="position:absolute;left:0;top:0;width:0%;height:100%;background:${isGrp?'rgba(230,126,34,.24)':'rgba(33,150,243,.2)'};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
-            <span style="font-size:10px;color:#2196f3;font-weight:600;">Voice message</span>
+            <span style="font-size:10px;color:${self?'rgba(255,255,255,.82)':vAccent};font-weight:600;">Voice message</span>
             <div style="display:flex;align-items:center;gap:4px;"><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>${voiceReceipt}</div>
           </div>
         </div>
@@ -1473,7 +1478,7 @@ async function startVoice(fromGesture=false){
     el('sendB').classList.add('rec');el('sendB').style.background='#1976d2';
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('vbar').style.display='flex';
-    drawBars('vWave',()=>isRec);
+    drawBars('vWave',()=>isRec,'#1976d2');
     const refreshVoiceTimer=()=>{vSec=Math.max(0,Math.floor((Date.now()-vStartAt)/1000));const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
     refreshVoiceTimer();
     vInt=setInterval(refreshVoiceTimer,250);
@@ -1625,7 +1630,7 @@ async function startGVoice(fromGesture=false){
     el('gSendB').classList.add('rec');el('gSendB').style.background='#e67e22';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
-    drawBars('gvWave',()=>gIsRec);
+    drawBars('gvWave',()=>gIsRec,'#e67e22');
     const refreshGroupVoiceTimer=()=>{gvSec=Math.max(0,Math.floor((Date.now()-gVStartAt)/1000));const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
     refreshGroupVoiceTimer();
     gvInt=setInterval(refreshGroupVoiceTimer,250);
@@ -1846,7 +1851,7 @@ function toggleVP(id,src){
 }
 function seekVP(e,id){const bar=el('vbar_'+id),player=voicePlayer;if(!bar||!player||String(voicePlayerId)!==String(id)||!Number.isFinite(player.duration)||player.duration<=0)return;const ratio=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/Math.max(1,bar.offsetWidth)));try{player.currentTime=ratio*player.duration;}catch(e){}}
 // ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
-function drawBars(canvasId,isRecFn){
+function drawBars(canvasId,isRecFn,color='#1976d2'){
   const cv=el(canvasId);if(!cv)return;
   const ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height;
@@ -1869,8 +1874,8 @@ function drawBars(canvasId,isRecFn){
       const bh=Math.max(4,Math.floor(h*H));
       const x=i*(barW+gap);
       const y=(H-bh)/2;
-      // Rounded rect bars in blue
-      ctx.fillStyle='#1976d2';
+      // Private waveform stays blue; group waveform passes the orange accent.
+      ctx.fillStyle=color;
       const r=Math.min(barW/2,3);
       ctx.beginPath();
       ctx.roundRect?ctx.roundRect(x,y,barW,bh,r):ctx.rect(x,y,barW,bh);
