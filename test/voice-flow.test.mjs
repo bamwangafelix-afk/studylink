@@ -10,10 +10,11 @@ test('records the actual MediaRecorder MIME type in the uploaded filename', () =
   assert.match(source, /return new File\(\[new Blob\(chunks/);
 });
 
-test('uses a bounded Firestore inline fallback when Cloudinary upload fails', () => {
-  assert.match(source, /function readVoiceAsDataUrl\(file,maxBytes=300000\)/);
+test('uses a multi-stage fallback (Firebase Storage + Inline) when Cloudinary fails', () => {
+  assert.match(source, /function uploadVoiceToFirebase\(file\)/);
+  assert.match(source, /storage:'firebase-storage'/);
   assert.match(source, /storage:'firestore-inline'/);
-  assert.match(source, /uploadCloud\.lastError\|\|'Audio upload failed'/);
+  assert.match(source, /failure=\[uploadCloud\.lastError,voiceFallbackError\]/);
 });
 
 test('covers Android touchstart and pointer haptic paths', () => {

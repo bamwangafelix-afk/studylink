@@ -21,6 +21,7 @@ window.addEventListener('error',e=>{
 
 firebase.initializeApp({apiKey:"AIzaSyBQXvheNG_6r5NYjwru_0l_EUsKYrT4w1g",authDomain:"studylink-e1803.firebaseapp.com",projectId:"studylink-e1803",storageBucket:"studylink-e1803.firebasestorage.app",messagingSenderId:"51988890739",appId:"1:51988890739:web:fa5b3486e7a32c3fe95606"});
 const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAuthProvider();
+const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
@@ -145,7 +146,7 @@ async function uploadCloud(file,type){
   }
   uploadCloud.lastError=lastError;
   console.error('Cloudinary upload error:',lastError);
-  showToast('❌ Upload failed: '+lastError);
+  if(type!=='audio'&&type!=='voice')showToast('❌ Upload failed: '+lastError);
   return null;
 }
 function voiceFileFromChunks(chunks){
@@ -153,6 +154,23 @@ function voiceFileFromChunks(chunks){
   const mime=rawMime.split(';')[0]||'audio/webm';
   const ext=mime.includes('mp4')||mime.includes('m4a')?'m4a':mime.includes('ogg')?'ogg':mime.includes('wav')?'wav':'webm';
   return new File([new Blob(chunks,{type:rawMime})],`voice.${ext}`,{type:rawMime});
+}
+async function uploadVoiceToFirebase(file){
+  if(!voiceStorage||!CU||!file)return null;
+  const ext=(file.name||'voice.webm').split('.').pop()||'webm';
+  const key=`voice/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const ref=voiceStorage.ref().child(key);
+  const task=ref.put(file,{contentType:file.type||'audio/webm'});
+  await new Promise((resolve,reject)=>{
+    let done=false;
+    const timer=setTimeout(()=>{if(!done){done=true;reject(new Error('Firebase Storage upload timed out'));}},30000);
+    task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},err=>{
+      if(done)return;done=true;clearTimeout(timer);reject(err);
+    },()=>{
+      if(done)return;done=true;clearTimeout(timer);resolve();
+    });
+  });
+  return ref.getDownloadURL();
 }
 function readVoiceAsDataUrl(file,maxBytes=300000){
   return new Promise(resolve=>{
@@ -1527,16 +1545,29 @@ async function stopAndSendVoice(){
       status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
     let url=await uploadCloud(file,'audio');
+    let voiceFallbackError='';
     if(!url){
-      // Cloudinary can be unreachable on some mobile networks. Keep short voice
-      // notes usable by storing a bounded data URL in the same Firestore message.
-      const inlineUrl=await readVoiceAsDataUrl(file);
-      if(inlineUrl){
-        try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){console.warn('Inline voice fallback failed:',fallbackErr);}
+      try{
+        const storageUrl=await uploadVoiceToFirebase(file);
+        if(storageUrl){
+          await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
+          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
+        }
+      }catch(storageErr){
+        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
+        console.warn('Firebase voice fallback failed:',storageErr);
       }
     }
     if(!url){
-      await msgRef.update({status:'failed',error:uploadCloud.lastError||'Audio upload failed'}).catch(()=>{});
+      // Keep very short voice notes usable even if both remote upload paths fail.
+      const inlineUrl=await readVoiceAsDataUrl(file);
+      if(inlineUrl){
+        try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){voiceFallbackError=fallbackErr?.message||'Inline voice fallback failed';console.warn('Inline voice fallback failed:',fallbackErr);}
+      }
+    }
+    if(!url){
+      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      await msgRef.update({status:'failed',error:failure}).catch(()=>{});
       vSending=false;
       showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
       return;
@@ -1633,14 +1664,28 @@ async function stopAndSendGVoice(){
       time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
     let url=await uploadCloud(file,'audio');
+    let voiceFallbackError='';
     if(!url){
-      const inlineUrl=await readVoiceAsDataUrl(file);
-      if(inlineUrl){
-        try{await gvRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){console.warn('Group inline voice fallback failed:',fallbackErr);}
+      try{
+        const storageUrl=await uploadVoiceToFirebase(file);
+        if(storageUrl){
+          await gvRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
+          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
+        }
+      }catch(storageErr){
+        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
+        console.warn('Firebase group voice fallback failed:',storageErr);
       }
     }
     if(!url){
-      await gvRef.update({status:'failed',error:uploadCloud.lastError||'Audio upload failed'}).catch(()=>{});
+      const inlineUrl=await readVoiceAsDataUrl(file);
+      if(inlineUrl){
+        try{await gvRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){voiceFallbackError=fallbackErr?.message||'Inline voice fallback failed';console.warn('Group inline voice fallback failed:',fallbackErr);}
+      }
+    }
+    if(!url){
+      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      await gvRef.update({status:'failed',error:failure}).catch(()=>{});
       gVoiceSending=false;
       showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
       return;
