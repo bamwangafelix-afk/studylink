@@ -46,8 +46,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script src="js\/app\.js\?v=56d828f"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=orange-group-mic-2">/);
+  assert.match(html, /<script src="js\/app\.js\?v=orange-group-voice-3"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=orange-group-voice-3">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -110,4 +110,17 @@ test('keeps the group microphone orange in every state while private chat stays 
   assert.match(css, /#gSendB,#gSendB\.voice-pending,#gSendB\.rec,#gSendB\.voice-locked\{background:#e67e22;\}/);
   assert.match(css, /\.cin-action\{background:var\(--btnB\)/);
   assert.match(css, /\.cin-action\.rec\{background:#1976d2/);
+});
+
+test('keeps the group recording strip and voice player orange while private voice stays blue', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+  assert.match(html, /id="gvbar"[^>]*background:linear-gradient\(90deg,#fff3e0,#fffaf5\);border-top:1px solid #e67e22/);
+  assert.match(html, /id="gvbar"[\s\S]*color:#e67e22/);
+  assert.match(css, /#gvbar\{background:linear-gradient\(90deg,#fff3e0,#fffaf5\);border-top-color:#e67e22;\}/);
+  assert.match(source, /drawBars\('gvWave',\(\)=>gIsRec,'#e67e22'\)/);
+  assert.match(source, /const vBlue='#2196f3',vOrange='#e67e22'/);
+  assert.match(source, /const vAccent=isGrp\?vOrange:vBlue/);
+  assert.match(source, /const vBubbleBg=isGrp\?\(self\?'linear-gradient\(135deg,#e67e22,#f39c12\)'/);
+  assert.match(source, /const audioAccent=isGrp\?'#e67e22':'#2196f3'/);
 });
