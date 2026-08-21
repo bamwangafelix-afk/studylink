@@ -34,7 +34,7 @@ let voiceWakeLock=null;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
 let voiceTouchSuppressUntil=0;
-let vPlayers={},notifUnsub=null,msgBUnsub=null;
+let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null;
 let replyMsg=null,curEId=null,curED=null,typDebounce=null;
 
 async function loadFavs(){
@@ -1116,7 +1116,7 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':'#2196f3';
     const audioDur=m.dur||'0:00';
     if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':'#2196f3'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" onclick="toggleVP('${m.id}','${m.data}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':'#2196f3'};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:rgba(33,150,243,.22);border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:#2196f3;border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':'#2196f3'};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:rgba(33,150,243,.22);border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:#2196f3;border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -1154,7 +1154,7 @@ function buildBbl(m,isGrp){
       </div>${rcHtml}`;
     }else{
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" aria-label="Play voice message" onclick="toggleVP('${m.id}','${m.data}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(33,150,243,.4);"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
             ${waveSVG}
@@ -1803,41 +1803,48 @@ function cancelGVoiceReady(){}
 const VOICE_PLAY_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>';
 const VOICE_PAUSE_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
 function setVoiceButtonIcon(btn,playing){if(btn)btn.innerHTML=playing?VOICE_PAUSE_ICON:VOICE_PLAY_ICON;}
-function stopOtherVoicePlayers(exceptId){
-  Object.entries(vPlayers).forEach(([pid,a])=>{
-    if(pid===String(exceptId))return;
-    try{a.pause();a.currentTime=0;}catch(e){}
-    setVoiceButtonIcon(document.querySelector(`#vp_${pid} .vpbtn`),false);
-    const fill=el('vfill_'+pid);if(fill)fill.style.width='0%';
-  });
+function resetVoicePlayer(){
+  const player=voicePlayer,oldId=voicePlayerId;
+  voicePlayerToken++;
+  voicePlayer=null;voicePlayerId=null;
+  if(player){
+    try{player.pause();}catch(e){}
+    player.onloadedmetadata=null;player.ontimeupdate=null;player.onended=null;player.onerror=null;player.onplay=null;player.onpause=null;
+    try{player.removeAttribute('src');player.load();}catch(e){}
+  }
+  if(oldId){
+    setVoiceButtonIcon(document.querySelector(`#vp_${oldId} .vpbtn`),false);
+    const fill=el('vfill_'+oldId);if(fill)fill.style.width='0%';
+  }
 }
+function stopOtherVoicePlayers(exceptId){if(voicePlayer&&String(voicePlayerId)!==String(exceptId))resetVoicePlayer();}
 function toggleVP(id,src){
-  const btn=document.querySelector(`#vp_${id} .vpbtn`);
-  if(!src){showToast('⚠️ Cet audio est indisponible.');return;}
+  const bubble=el('vp_'+id),btn=bubble?.querySelector('.vpbtn'),resolvedSrc=src||btn?.dataset?.voiceSrc||bubble?.dataset?.voiceSrc||'';
+  if(!resolvedSrc){showToast('⚠️ Cet audio est indisponible.');return;}
   try{
-    const existing=vPlayers[id];
-    if(existing&&!existing.paused){existing.pause();setVoiceButtonIcon(btn,false);return;}
-    stopOtherVoicePlayers(id);
-    if(!vPlayers[id]){
-      const a=new Audio();a.preload='metadata';a.src=src;vPlayers[id]=a;
+    if(voicePlayer&&String(voicePlayerId)===String(id)){
+      if(!voicePlayer.paused){voicePlayer.pause();setVoiceButtonIcon(btn,false);return;}
+      if(voicePlayer.ended)voicePlayer.currentTime=0;
+    }else{
+      stopOtherVoicePlayers(id);
+      const a=new Audio();a.preload='metadata';a.playsInline=true;a.src=resolvedSrc;
+      voicePlayer=a;voicePlayerId=String(id);
+      const token=voicePlayerToken;
       const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
-      const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id);
-      a.onloadedmetadata=()=>{const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
-      a.ontimeupdate=()=>{const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
-      a.onended=()=>{const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),false);};
-      a.onerror=()=>{delete vPlayers[id];setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),false);showToast('⚠️ Impossible de lire cet audio.');};
-      a.onplay=()=>{
-        if(!curChat)return;
-        const bw=document.querySelector(`.bw[data-id="${id}"]`);
-        if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);
-      };
+      const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id),currentButton=()=>document.querySelector(`#vp_${id} .vpbtn`);
+      a.onloadedmetadata=()=>{if(token!==voicePlayerToken)return;const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
+      a.ontimeupdate=()=>{if(token!==voicePlayerToken)return;const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
+      a.onended=()=>{if(token!==voicePlayerToken)return;a.currentTime=0;const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(currentButton(),false);};
+      a.onpause=()=>{if(token===voicePlayerToken&&!a.ended)setVoiceButtonIcon(currentButton(),false);};
+      a.onerror=()=>{if(token!==voicePlayerToken)return;resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');};
+      a.onplay=()=>{if(token!==voicePlayerToken)return;if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
     }
-    const playPromise=vPlayers[id].play();
+    const player=voicePlayer,playPromise=player?.play();
     setVoiceButtonIcon(btn,true);
-    if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),false);showToast('⚠️ Impossible de lire cet audio.');});
-  }catch(e){setVoiceButtonIcon(btn,false);showToast('⚠️ Impossible de lire cet audio.');}
+    if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{if(player===voicePlayer){resetVoicePlayer();showToast('⚠️ Lecture impossible. Appuyez de nouveau sur lecture.');}});
+  }catch(e){resetVoicePlayer();showToast('⚠️ Lecture audio interrompue.');}
 }
-function seekVP(e,id){const bar=el('vbar_'+id);if(!bar||!vPlayers[id]?.duration)return;const ratio=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/bar.offsetWidth));vPlayers[id].currentTime=ratio*vPlayers[id].duration;}
+function seekVP(e,id){const bar=el('vbar_'+id),player=voicePlayer;if(!bar||!player||String(voicePlayerId)!==String(id)||!Number.isFinite(player.duration)||player.duration<=0)return;const ratio=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/Math.max(1,bar.offsetWidth)));try{player.currentTime=ratio*player.duration;}catch(e){}}
 // ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
 function drawBars(canvasId,isRecFn){
   const cv=el(canvasId);if(!cv)return;

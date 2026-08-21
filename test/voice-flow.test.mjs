@@ -82,5 +82,20 @@ test('stops other audio players and clamps seek positions', () => {
   assert.match(source, /function stopOtherVoicePlayers\(exceptId\)/);
   assert.match(source, /stopOtherVoicePlayers\(id\)/);
   assert.match(source, /const ratio=Math\.max\(0,Math\.min\(1,/);
-  assert.match(source, /try\{.*a\.pause\(\);a\.currentTime=0/s);
+  assert.match(source, /try\{player\.pause\(\);\}/);
+});
+
+test('uses one shared audio player and reads voice URLs from safe data attributes', () => {
+  assert.match(source, /let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0/);
+  assert.match(source, /data-voice-src="\$\{esc\(m\.data\)\}" onclick="toggleVP\('\$\{m\.id\}'\)"/);
+  assert.match(source, /btn\?\.dataset\?\.voiceSrc\|\|bubble\?\.dataset\?\.voiceSrc/);
+  assert.match(source, /function resetVoicePlayer\(\)/);
+  assert.match(source, /player\.removeAttribute\('src'\);player\.load\(\)/);
+});
+
+test('isolates playback failures and stale callbacks', () => {
+  assert.match(source, /voicePlayerToken\+\+/);
+  assert.match(source, /if\(token!==voicePlayerToken\)return/);
+  assert.match(source, /Lecture impossible\. Appuyez de nouveau sur lecture/);
+  assert.match(source, /a\.onerror=/);
 });
