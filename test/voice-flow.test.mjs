@@ -46,8 +46,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script defer src="js\/app\.js\?v=studylink-pwa-5"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-5">/);
+  assert.match(html, /<script defer src="js\/app\.js\?v=studylink-pwa-6"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-6">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -144,24 +144,27 @@ test('recovers cleanly if Android ends the microphone track or MediaRecorder fai
 test('ships an installable PWA shell with the supplied StudyLink icon', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
-  const worker = await readFile(new URL('../sw-v5.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sw-v6.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-5"/);
-  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-5/);
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-6"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-6/);
   assert.match(html, /id="installBanner"/);
   assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /id="disconnectBtn"/);
   assert.doesNotMatch(html, /onclick="doOut\(\)"/);
-  assert.match(source, /navigator\.serviceWorker\.register\('sw-v5\.js\?v=studylink-pwa-5'/);
+  assert.match(source, /navigator\.serviceWorker\.register\('sw-v6.js\?v=studylink-pwa-6'/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /appinstalled/);
+  assert.match(source, /updateViaCache:'none'/);
+  assert.match(source, /display-mode: standalone/);
+  assert.match(manifest, /"id": "https:\/\/bamwangafelix-afk\.github\.io\/studylink\//);
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
   assert.match(manifest, /"prefer_related_applications": false/);
-  assert.match(worker, /studylink-shell-v5/);
-  assert.match(manifest, /"start_url": "\.\/\?source=pwa-5"/);
-  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-5/);
+  assert.match(worker, /studylink-shell-v6/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-6"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-6/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
   assert.match(css, /#auth\{[^}]*background:url\("data:image\/png;base64,/);
@@ -221,5 +224,16 @@ test('restores the login background and gives the top wordmark a clearer mobile 
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(css, /#auth\{[^}]*background:url\("data:image\/png;base64,/);
-  assert.match(html, /font-size:18px;font-weight:bold;color:#fff/);
+  assert.match(html, /font-size:22px;font-weight:bold;color:#fff/);
+});
+
+test('keeps the Android install action explicit when Chrome has not exposed a prompt', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /Installer l’application StudyLink/);
+  assert.match(source, /Install and create shortcut/);
+  assert.match(html, /Installer l’app/);
+  assert.match(html, /font-size:22px;font-weight:bold;color:#fff/);
+  assert.match(source, /Pour une vraie application/);
+  assert.match(source, /window\.setTimeout\(show,900\)/);
+  assert.match(source, /choice\?\.outcome==='accepted'/);
 });
