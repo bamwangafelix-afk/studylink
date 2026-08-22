@@ -41,3 +41,8 @@
 - [x] Add regression coverage for private and group presence writes, listeners, and cleanup behavior.
 - [x] Publish and verify the presence-indicator update on the live StudyLink build.
 - [x] Correct the GitHub upload workflow so all pwa-7 root, js, css, and test files are actually committed and served by GitHub Pages.
+
+- [x] Diagnose and fix blocked navigation menus in the published StudyLink build.
+- [x] Diagnose and fix missing account discovery/user-list loading in the Messages page.
+- [ ] Verify that private/group typing and recording indicators remain integrated in the Messages page after the fix.
+- [x] Advance the PWA asset version so installed and cached clients receive the corrected runtime instead of stale pwa-7 JavaScript.
