@@ -39,5 +39,5 @@
 - [x] Add a unified real-time presence state for private-chat typing and voice recording.
 - [x] Add real-time typing and voice-recording indicators for group chats with cleanup on send, cancel, close, and disconnect.
 - [x] Add regression coverage for private and group presence writes, listeners, and cleanup behavior.
-- [ ] Publish and verify the presence-indicator update on the live StudyLink build.
-- [ ] Correct the GitHub upload workflow so all pwa-7 root, js, css, and test files are actually committed and served by GitHub Pages.
+- [x] Publish and verify the presence-indicator update on the live StudyLink build.
+- [x] Correct the GitHub upload workflow so all pwa-7 root, js, css, and test files are actually committed and served by GitHub Pages.
