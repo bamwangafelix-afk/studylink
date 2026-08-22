@@ -393,7 +393,24 @@ async function notifyAllExcept(senderUid,icon,title,body){
   }catch(e){console.log(e);}
 }
 function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
-async function doOut(){if(!confirm('Disconnect?'))return;await setPresence('Offline');if(inboxChatUnsub)inboxChatUnsub();await auth.signOut();}
+let signOutInProgress=false;
+async function doOut(){
+  if(signOutInProgress||!confirm('Disconnect?'))return;
+  signOutInProgress=true;
+  const button=document.querySelector('#Pme .btn.g');
+  if(button){button.disabled=true;button.setAttribute('aria-busy','true');button.textContent='Disconnecting...';}
+  try{
+    await Promise.race([setPresence('Offline'),new Promise(resolve=>setTimeout(resolve,1500))]);
+  }catch(e){}
+  try{if(typeof inboxUnsub==='function')inboxUnsub();}catch(e){}
+  try{if(typeof inboxChatsUnsub==='function')inboxChatsUnsub();}catch(e){}
+  try{await auth.signOut();}
+  catch(e){
+    signOutInProgress=false;
+    if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent='Disconnect';}
+    showToast('❌ Unable to disconnect. Please try again.');
+  }
+}
 async function delAccount(){
   if(!confirm('Delete account permanently?'))return;
   showOv(true);
