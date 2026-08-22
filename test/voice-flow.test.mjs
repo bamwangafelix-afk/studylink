@@ -46,8 +46,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script defer src="js\/app-v8\.js\?v=studylink-pwa-8"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-8">/);
+  assert.match(html, /<script defer src="js\/app-v9\.js\?v=studylink-pwa-9"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-9">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -144,16 +144,16 @@ test('recovers cleanly if Android ends the microphone track or MediaRecorder fai
 test('ships an installable PWA shell with the supplied StudyLink icon', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
-  const worker = await readFile(new URL('../sw-v8.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sw-v9.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-8"/);
-  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-8/);
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-9"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-9/);
   assert.match(html, /id="installBanner"/);
   assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /id="disconnectBtn"/);
   assert.doesNotMatch(html, /onclick="doOut\(\)"/);
-  assert.match(source, /navigator\.serviceWorker\.register\('sw-v8.js\?v=studylink-pwa-8'/);
+  assert.match(source, /navigator\.serviceWorker\.register\('sw-v9.js\?v=studylink-pwa-9'/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /appinstalled/);
   assert.match(source, /updateViaCache:'none'/);
@@ -162,9 +162,9 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
   assert.match(manifest, /"prefer_related_applications": false/);
-  assert.match(worker, /studylink-shell-v8/);
-  assert.match(manifest, /"start_url": "\.\/\?source=pwa-8"/);
-  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-8/);
+  assert.match(worker, /studylink-shell-v9/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-9"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-9/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
   assert.match(css, /#auth\{[^}]*background:linear-gradient\(135deg,rgba\(243,247,252,\.95\),rgba\(229,238,249,\.98\)\),url\("\.\.\/icons\/studylink-512\.png"\)/);
@@ -253,4 +253,28 @@ test('keeps the Android install action explicit when Chrome has not exposed a pr
   assert.match(source, /Pour une vraie application/);
   assert.match(source, /window\.setTimeout\(show,900\)/);
   assert.match(source, /choice\?\.outcome==='accepted'/);
+});
+
+test('bounds Firebase startup so Android cannot remain on Loading forever', () => {
+  const runtime = source;
+  assert.match(runtime, /let authStateResolved=false/);
+  assert.match(runtime, /const authFallbackTimer=setTimeout/);
+  assert.match(runtime, /},10000\)/);
+  assert.match(runtime, /Reveal the shell immediately/);
+  assert.match(runtime, /el\('auth'\)\.style\.display='none'/);
+  assert.match(runtime, /el\('ov'\)\.style\.display='none'/);
+});
+
+test('renders text-only typing and recording status in the Messages list and open chat', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(source, /function privatePresenceText\(name,data,uid\)/);
+  assert.match(source, /return name\+' is recording\.\.\.'/);
+  assert.match(source, /return name\+' is typing\.\.\.'/);
+  assert.doesNotMatch(source, /return '🎙️ '\+name\+' is recording/);
+  assert.doesNotMatch(source, /return '⌨️ '\+name\+' is typing/);
+  assert.match(source, /const _presenceText=privatePresenceText\(o\.name\|\|'User',data,ouid\)/);
+  assert.match(source, /class="inbox-presence"/);
+  assert.match(source, /esc\(_presenceText\|\|''\)\|\|_msgHtml/);
+  assert.match(html, /id="typebar"/);
+  assert.match(html, /id="gTypebar"/);
 });
