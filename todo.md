@@ -23,6 +23,15 @@
 - [x] Publish the repository manifest and service worker on pwa-4; raw GitHub still serves pwa-3 and v3 cache content
 - [x] Move the pwa-4 service worker to a new filename so GitHub Pages and installed clients cannot retain the stale `sw.js` response
 - [x] Verify the new worker controls the installed app and the Disconnect handler is served from the matching pwa-4 bundle
-- [ ] Fix mobile navigation menus that do not respond and make Android Chrome expose a proper standalone installation action instead of “Install and create shortcut”.
-- [ ] Add regression coverage for mobile menu event wiring and the updated PWA install criteria.
-- [ ] Publish and verify the corrected mobile build on GitHub Pages.
+- [x] Fix mobile navigation menus that do not respond and make Android Chrome expose a proper standalone installation action instead of “Install and create shortcut”.
+- [x] Add regression coverage for mobile menu event wiring and the updated PWA install criteria.
+- [x] Publish and verify the corrected mobile build on GitHub Pages.
+- [x] Restore the previous login-page background visual without regressing the working Disconnect and mobile navigation flows.
+- [x] Slightly enlarge the StudyLink wordmark beside the top-bar icon and verify responsive layout.
+- [x] Run regression and responsive visual checks, then publish the visual refinement.
+- [x] Make the Android install path use the in-app PWA prompt clearly and explain the native Chrome fallback without creating a plain shortcut.
+- [x] Enlarge the StudyLink top-bar wordmark again while preserving mobile layout.
+- [x] Add regression coverage for the strengthened install prompt and new wordmark size.
+- [x] Publish and verify the Android installation refinement on GitHub Pages.
+- [x] Create a lighter login-background preview with a pale blue-gray base and subtle StudyLink logo watermark while preserving the current design as the rollback reference.
+- [x] Verify the preview visually and with the existing regression suite before publishing it.
