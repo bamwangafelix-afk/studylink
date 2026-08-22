@@ -35,6 +35,7 @@ let voiceWakeLock=null;
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
 let voiceTouchSuppressUntil=0;
 let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null;
+const waveTimers=Object.create(null);
 let replyMsg=null,curEId=null,curED=null,typDebounce=null;
 
 async function loadFavs(){
@@ -98,8 +99,8 @@ function resetRecorderUi(kind){
   const bar=el(group?'gvbar':'vbar');
   const timer=el(group?'gvTimer':'vTimer');
   const recIndicator=el('gRecIndicator');
-  if(group){gIsRec=false;gVStartAt=0;clearInterval(gvInt);gvInt=null;gVoiceSending=false;gVFinalizing=false;}
-  else{isRec=false;vStartAt=0;clearInterval(vInt);vInt=null;vSending=false;vFinalizing=false;}
+  if(group){gIsRec=false;gVStartAt=0;clearInterval(gvInt);gvInt=null;stopWave('gvWave');gVoiceSending=false;gVFinalizing=false;}
+  else{isRec=false;vStartAt=0;clearInterval(vInt);vInt=null;stopWave('vWave');vSending=false;vFinalizing=false;}
   try{(group?gmr:mr)?.stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
   if(group)gmr=null;else mr=null;
   button?.classList.remove('voice-pending','rec','voice-locked');
@@ -1553,7 +1554,7 @@ async function stopAndSendVoice(){
   // Flip the UI out of recording mode before awaiting MediaRecorder events. This makes
   // the second tap deterministic on Android and guarantees REC cannot run forever.
   isRec=false;
-  clearInterval(vInt);vInt=null;
+  clearInterval(vInt);vInt=null;stopWave('vWave');
   const elapsed=Date.now()-(vStartAt||Date.now());
   const dur=Math.max(vSec,Math.floor(Math.max(0,elapsed)/1000));
   // Android may deliver pointerup before MediaRecorder has emitted its first
@@ -1627,7 +1628,7 @@ async function stopAndSendVoice(){
 }
 function cancelVoice(){
     if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
-  isRec=false;
+  isRec=false;stopWave('vWave');
   void releaseVoiceScreen();
 vCh=[];vSec=0;clearInterval(vInt);
   el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
@@ -1679,7 +1680,7 @@ async function stopAndSendGVoice(){
   if(!recorder||!gIsRec||gVFinalizing)return;
   gVFinalizing=true;gVoiceSending=true;
   gIsRec=false;
-  clearInterval(gvInt);gvInt=null;
+  clearInterval(gvInt);gvInt=null;stopWave('gvWave');
   const elapsed=Date.now()-(gVStartAt||Date.now());
   const dur=Math.max(gvSec,Math.floor(Math.max(0,elapsed)/1000));
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
@@ -1741,7 +1742,7 @@ async function stopAndSendGVoice(){
 }
 function cancelGVoice(){
     if(gmr&&gIsRec){try{gmr.ondataavailable=null;gmr.onstop=null;gmr.stop();}catch(e){}try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
-  gIsRec=false;
+  gIsRec=false;stopWave('gvWave');
   void releaseVoiceScreen();
 gvCh=[];gvSec=0;clearInterval(gvInt);
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
@@ -1884,38 +1885,44 @@ function toggleVP(id,src){
 }
 function seekVP(e,id){const bar=el('vbar_'+id),player=voicePlayer;if(!bar||!player||String(voicePlayerId)!==String(id)||!Number.isFinite(player.duration)||player.duration<=0)return;const ratio=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/Math.max(1,bar.offsetWidth)));try{player.currentTime=ratio*player.duration;}catch(e){}}
 // ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
+function stopWave(canvasId){
+  const timer=waveTimers[canvasId];
+  if(timer){clearTimeout(timer);delete waveTimers[canvasId];}
+}
 function drawBars(canvasId,isRecFn,color='#1976d2'){
   const cv=el(canvasId);if(!cv)return;
+  stopWave(canvasId);
   const ctx=cv.getContext('2d');
   const W=cv.width,H=cv.height;
   const barCount=28,barW=Math.floor(W/barCount)-1,gap=1;
-  // Random heights per bar, animated
+  // Keep the recorder preview intentionally light on Android: 12.5 paints/second.
   let heights=Array.from({length:barCount},()=>Math.random()*0.5+0.1);
   let targets=heights.slice();
-  function tick(){
-    if(!isRecFn())return;
-    // Update targets periodically for smooth random wave
+  const tick=()=>{
+    if(!isRecFn()){
+      delete waveTimers[canvasId];
+      ctx.clearRect(0,0,W,H);
+      return;
+    }
     targets=targets.map((_,i)=>{
       const base=0.15+Math.abs(Math.sin(Date.now()*0.003+i*0.7))*0.6;
       const noise=(Math.random()-0.5)*0.25;
       return Math.min(1,Math.max(0.08,base+noise));
     });
-    // Smooth towards targets
     heights=heights.map((h,i)=>h+(targets[i]-h)*0.25);
     ctx.clearRect(0,0,W,H);
     heights.forEach((h,i)=>{
       const bh=Math.max(4,Math.floor(h*H));
       const x=i*(barW+gap);
       const y=(H-bh)/2;
-      // Private waveform stays blue; group waveform passes the orange accent.
       ctx.fillStyle=color;
       const r=Math.min(barW/2,3);
       ctx.beginPath();
       ctx.roundRect?ctx.roundRect(x,y,barW,bh,r):ctx.rect(x,y,barW,bh);
       ctx.fill();
     });
-    requestAnimationFrame(tick);
-  }
+    waveTimers[canvasId]=setTimeout(tick,80);
+  };
   tick();
 }
 // Keep old drawWave as alias
@@ -2168,7 +2175,7 @@ function setupPWA(){
   dismiss?.addEventListener('click',()=>{localStorage.setItem('studylinkInstallDismissed','1');hide();});
   window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('✅ StudyLink est installé sur votre écran d’accueil.');});
 }
-window.onload=()=>{
+function bootstrapStudyLink(){
   setupPWA();
   // Countries
   const uc=el('uC');COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;uc.appendChild(o);});
@@ -2180,5 +2187,12 @@ window.onload=()=>{
     ts.appendChild(b);
   });
   el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartSend();});
-  el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartGSend();});
+    el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartGSend();});
+}
+const startStudyLink=()=>{
+  if(window.__studylinkBooted)return;
+  window.__studylinkBooted=true;
+  bootstrapStudyLink();
 };
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startStudyLink,{once:true});
+else startStudyLink();
