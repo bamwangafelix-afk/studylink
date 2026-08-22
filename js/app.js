@@ -81,7 +81,7 @@ function renderGroupPresence(data){
   const bar=el('gTypebar');if(!bar)return;
   const text=groupPresenceText(data);bar.textContent=text;bar.style.display=text?'block':'none';
 }
-function loadFavs(){
+async function loadFavs(){
   if(!CU)return;
   try{
     const sn=await db.collection('users').doc(CU.uid).get();
