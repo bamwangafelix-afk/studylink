@@ -294,11 +294,24 @@ function resetLoggedOutUi(){
   const button=el('disconnectBtn');
   if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent='Disconnect';}
 }
-// Show spinner while waiting for auth state - prevents flash of login screen
+// Show spinner only until Firebase answers; never let a slow mobile request block the app forever.
 el('ov').style.display='flex';
+let authStateResolved=false;
+const authFallbackTimer=setTimeout(()=>{
+  if(!authStateResolved&&!CU){
+    console.warn('Auth state timeout; showing login fallback.');
+    resetLoggedOutUi();
+  }
+},10000);
 auth.onAuthStateChanged(async u=>{
+  authStateResolved=true;
+  clearTimeout(authFallbackTimer);
   if(u){
     CU=u;
+    // Reveal the shell immediately. Profile, inbox, and user-list hydration continue in the background.
+    el('auth').style.display='none';
+    el('ov').style.display='none';
+    tab('home');
     const sn=await db.collection('users').doc(u.uid).get().catch(()=>null);
     const data=sn?.exists?sn.data():null;
     if(data&&!data.country&&el('step2F').style.display!=='flex'){
@@ -326,9 +339,6 @@ auth.onAuthStateChanged(async u=>{
     try{listenUsers();}catch(e){}
     try{setupNotifL();}catch(e){}
     try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
-    el('auth').style.display='none';
-    el('ov').style.display='none';
-    tab('home');
   }else{
     // Firebase can call this branch after a successful sign-out and later after a new login.
     // Always release the click guard so Disconnect works on every session, not only the first one.
