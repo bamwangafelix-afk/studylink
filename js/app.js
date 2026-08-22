@@ -2186,9 +2186,26 @@ function tab(id){
 }
 document.addEventListener('click',e=>{if(!e.target.closest('#emojiP')&&!e.target.closest('.mabtn'))el('emojiP').style.display='none';});
 
+function setupNavigation(){
+  const activate=item=>{
+    const id=item?.dataset?.tab;
+    if(!id)return;
+    const home=el('Phome');
+    if(id==='home'&&home&&home.style.display!=='none')tab('home','refresh');
+    else tab(id);
+  };
+  document.querySelectorAll('.ni[data-tab]').forEach(item=>{
+    item.addEventListener('click',()=>activate(item));
+    item.addEventListener('keydown',event=>{
+      if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(item);}
+    });
+  });
+  el('darkModeBtn')?.addEventListener('click',()=>toggleDark());
+  el('alertsBtn')?.addEventListener('click',()=>tab('alerts'));
+}
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  navigator.serviceWorker.register('sw-v4.js?v=studylink-pwa-4',{scope:'./'}).then(reg=>{
+  navigator.serviceWorker.register('sw-v5.js?v=studylink-pwa-5',{scope:'./'}).then(reg=>{
     reg.update().catch(()=>{});
   }).catch(err=>console.warn('PWA service worker unavailable:',err));
   let installEvent=null;
@@ -2199,7 +2216,7 @@ function setupPWA(){
     if(!localStorage.getItem('studylinkInstallDismissed'))banner?.classList.add('show');
   });
   installBtn?.addEventListener('click',async()=>{
-    if(!installEvent){showToast('Ouvrez le menu ⋮ de Chrome puis choisissez « Ajouter à l’écran d’accueil ».');return;}
+    if(!installEvent){showToast('Dans Chrome, ouvrez ⋮ → « Install and create shortcut » → « Install ».');return;}
     const event=installEvent;installEvent=null;hide();
     try{await event.prompt();await event.userChoice;}catch(e){console.warn('Install prompt unavailable:',e);}
   });
@@ -2207,6 +2224,7 @@ function setupPWA(){
   window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('✅ StudyLink est installé sur votre écran d’accueil.');});
 }
 function bootstrapStudyLink(){
+  setupNavigation();
   setupPWA();
   const disconnectButton=el('disconnectBtn');
   disconnectButton?.addEventListener('click',()=>{void doOut();});
