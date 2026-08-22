@@ -9,21 +9,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyLink">
 <meta name="description" content="StudyLink — Connect, Learn, Grow.">
-<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-4">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-4">
-<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-4">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-5">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-5">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-5">
 <title>StudyLink Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-4">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-5">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
 <div id="toast" style="display:none;"></div>
 <div id="installBanner" role="status" aria-live="polite">
-  <img src="icons/studylink-192.png?v=studylink-pwa-4" alt="StudyLink" width="42" height="42">
+  <img src="icons/studylink-192.png?v=studylink-pwa-5" alt="StudyLink" width="42" height="42">
   <div class="install-copy"><strong>Installer StudyLink</strong><span>Accédez rapidement à l’application depuis votre écran d’accueil.</span></div>
   <button type="button" id="installBtn">Installer</button>
   <button type="button" id="installDismiss" aria-label="Fermer">×</button>
@@ -85,10 +85,10 @@
   <div style="display:flex;align-items:center;gap:6px;"><img src="icons/studylink-512.png" style="height:32px;width:auto;" alt="StudyLink"><span style="font-size:15px;font-weight:bold;color:#fff;">StudyLink</span></div>
   <div style="display:flex;gap:6px;align-items:center;">
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.8);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-    <button class="dark-btn" onclick="toggleDark()" title="Toggle dark mode">
+    <button type="button" class="dark-btn" id="darkModeBtn" title="Toggle dark mode">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
     </button>
-    <button class="dark-btn" onclick="tab('alerts')" title="Alerts" style="position:relative;">
+    <button type="button" class="dark-btn" id="alertsBtn" title="Alerts" style="position:relative;">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
       <span id="notifB" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:bold;line-height:16px;text-align:center;"></span>
     </button>
@@ -450,25 +450,25 @@
 
 <!-- NAV -->
 <div class="nav">
-  <div onclick="el('Phome').style.display!=='none'?tab('home','refresh'):tab('home')" id="nhome" class="ni on">
+  <div data-tab="home" id="nhome" class="ni on" role="button" tabindex="0">
     <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home
     <span id="feedB" class="nbadge" style="display:none;"></span>
   </div>
-  <div onclick="tab('find')" id="nfind" class="ni">
+  <div data-tab="find" id="nfind" class="ni" role="button" tabindex="0">
     <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Find
   </div>
-  <div onclick="tab('post')" id="npost" class="ni">
+  <div data-tab="post" id="npost" class="ni" role="button" tabindex="0">
     <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Post
   </div>
-  <div onclick="tab('msgs')" id="nmsgs" class="ni">
+  <div data-tab="msgs" id="nmsgs" class="ni" role="button" tabindex="0">
     <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>Msgs
     <span id="msgB2" class="nbadge" style="display:none;"></span>
   </div>
-  <div onclick="tab('me')" id="nme" class="ni">
+  <div data-tab="me" id="nme" class="ni" role="button" tabindex="0">
     <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Me
   </div>
 </div>
 
-<script src="js/app.js?v=studylink-pwa-4"></script>
+<script defer src="js/app.js?v=studylink-pwa-5"></script>
 </body>
 </html>

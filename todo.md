@@ -1,0 +1,28 @@
+# StudyLink Maintenance TODO
+
+- [x] Refresh PWA cache/version identifiers to deliver the latest Android recorder safeguards
+- [x] Audit private and group recorder lifecycle, pointer gestures, and microphone-track recovery
+- [x] Update regression coverage for the refreshed PWA version and recorder safeguards
+- [x] Run automated tests and inspect the live shell, manifest, and service worker
+- [x] Save the validated StudyLink checkpoint and report physical Android retest steps; all automated regression checks pass successfully
+- [x] Reconcile the GitHub publishing session with the bamwangafelix-afk owner account
+- [x] Verify installed PWA recorder behavior and session configuration
+- [x] Fix the Me-page Disconnect button so it signs out reliably and returns to login
+- [x] Add regression coverage for the Disconnect action
+- [x] Validate the fix in the browser and publish when repository access is available
+- [x] Reproduce the intermittent Disconnect failure and trace the complete click/auth/UI path
+- [x] Replace the Disconnect flow with deterministic sign-out and reset behavior
+- [x] Add or strengthen regression coverage for repeated Disconnect clicks and auth-state reset
+- [x] Validate the second fix against the live GitHub Pages build
+- [x] Update the live service-worker cache name from `studylink-shell-v2` to `studylink-shell-v3` so installed clients evict the stale bundle
+- [x] Recheck public manifest propagation after the service-worker cache invalidation
+- [x] Make StudyLink meet Android standalone-install criteria instead of falling back to a shortcut
+- [x] Trace why Disconnect still fails in the installed/live app and make sign-out deterministic
+- [x] Add regression coverage for standalone PWA metadata and Disconnect execution
+- [x] Validate the installed-app flow and publish the final release
+- [x] Publish the repository manifest and service worker on pwa-4; raw GitHub still serves pwa-3 and v3 cache content
+- [x] Move the pwa-4 service worker to a new filename so GitHub Pages and installed clients cannot retain the stale `sw.js` response
+- [x] Verify the new worker controls the installed app and the Disconnect handler is served from the matching pwa-4 bundle
+- [ ] Fix mobile navigation menus that do not respond and make Android Chrome expose a proper standalone installation action instead of “Install and create shortcut”.
+- [ ] Add regression coverage for mobile menu event wiring and the updated PWA install criteria.
+- [ ] Publish and verify the corrected mobile build on GitHub Pages.
