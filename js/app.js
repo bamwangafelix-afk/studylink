@@ -2157,7 +2157,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#emojiP')&&!e.target
 
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  navigator.serviceWorker.register('sw.js?v=studylink-pwa-1',{scope:'./'}).then(reg=>{
+  navigator.serviceWorker.register('sw.js?v=studylink-pwa-2',{scope:'./'}).then(reg=>{
     reg.update().catch(()=>{});
   }).catch(err=>console.warn('PWA service worker unavailable:',err));
   let installEvent=null;
