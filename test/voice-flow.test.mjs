@@ -46,8 +46,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script src="js\/app\.js\?v=orange-group-voice-3"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=orange-group-voice-3">/);
+  assert.match(html, /<script defer src="js\/app\.js\?v=studylink-pwa-5"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-5">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -123,4 +123,95 @@ test('keeps the group recording strip and voice player orange while private voic
   assert.match(source, /const vAccent=isGrp\?vOrange:vBlue/);
   assert.match(source, /const vBubbleBg=isGrp\?\(self\?'linear-gradient\(135deg,#e67e22,#f39c12\)'/);
   assert.match(source, /const audioAccent=isGrp\?'#e67e22':'#2196f3'/);
+});
+
+test('adds and removes the group REC pulse animation during active recording', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="gRecIndicator"[^>]*class="recPulse"|id="gRecIndicator"/);
+  assert.match(source, /gRecIndicator/);
+  assert.match(source, /recPulse/);
+});
+
+test('recovers cleanly if Android ends the microphone track or MediaRecorder fails', () => {
+  assert.match(source, /function resetRecorderUi\(kind\)/);
+  assert.match(source, /function bindRecorderSafety\(stream,kind\)/);
+  assert.match(source, /track\.addEventListener\('ended'/);
+  assert.match(source, /resetRecorderUi\(kind\)/);
+  assert.match(source, /resetRecorderUi\('private'\)/);
+  assert.match(source, /resetRecorderUi\('group'\)/);
+});
+
+test('ships an installable PWA shell with the supplied StudyLink icon', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sw-v5.js', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-5"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-5/);
+  assert.match(html, /id="installBanner"/);
+  assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
+  assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
+  assert.match(html, /id="disconnectBtn"/);
+  assert.doesNotMatch(html, /onclick="doOut\(\)"/);
+  assert.match(source, /navigator\.serviceWorker\.register\('sw-v5\.js\?v=studylink-pwa-5'/);
+  assert.match(source, /beforeinstallprompt/);
+  assert.match(source, /appinstalled/);
+  assert.match(manifest, /"display": "standalone"/);
+  assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
+  assert.match(manifest, /"prefer_related_applications": false/);
+  assert.match(worker, /studylink-shell-v5/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-5"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-5/);
+  assert.match(worker, /self\.addEventListener\('fetch'/);
+  assert.doesNotMatch(html, /data:image\/png;base64,/);
+  assert.doesNotMatch(css, /data:image\/png;base64,/);
+});
+
+test('cancels recorder waveforms and keeps PWA bootstrap reliable after DOM readiness', () => {
+  assert.match(source, /const waveTimers=Object\.create\(null\)/);
+  assert.match(source, /function stopWave\(canvasId\)/);
+  assert.match(source, /waveTimers\[canvasId\]=setTimeout\(tick,80\)/);
+  assert.match(source, /stopWave\('vWave'\)/);
+  assert.match(source, /stopWave\('gvWave'\)/);
+  assert.match(source, /function bootstrapStudyLink\(\)/);
+  assert.match(source, /if\(document\.readyState==='loading'\)document\.addEventListener\('DOMContentLoaded',startStudyLink/);
+  assert.match(source, /else startStudyLink\(\)/);
+});
+
+test('mobile navigation uses explicit data-tab controls and keyboard-safe handlers', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /data-tab="home"[^>]*role="button"/);
+  assert.match(html, /data-tab="find"[^>]*role="button"/);
+  assert.match(html, /data-tab="post"[^>]*role="button"/);
+  assert.match(html, /data-tab="msgs"[^>]*role="button"/);
+  assert.match(html, /data-tab="me"[^>]*role="button"/);
+  assert.doesNotMatch(html, /onclick="tab\('/);
+  assert.match(source, /function setupNavigation\(\)/);
+  assert.match(source, /document\.querySelectorAll\('\.ni\[data-tab\]'\)/);
+  assert.match(source, /event\.key==='Enter'\|\|event\.key===' '/);
+  assert.match(source, /el\('darkModeBtn'\)\?\.addEventListener/);
+  assert.match(source, /el\('alertsBtn'\)\?\.addEventListener/);
+});
+
+test('Disconnect is explicitly bound and resets the UI after every auth session', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="disconnectBtn"/);
+  assert.match(source, /let signOutInProgress=false,disconnectBound=false/);
+  assert.match(source, /const disconnectButton=el\('disconnectBtn'\)/);
+  assert.match(source, /disconnectButton\?\.addEventListener\('click',\(\)=>\{void doOut\(\);\}\)/);
+  assert.match(source, /function cleanupAuthListeners\(\)/);
+  assert.match(source, /function resetLoggedOutUi\(\)/);
+  assert.match(source, /resetLoggedOutUi\(\);\n  \}catch/);
+});
+
+test('Disconnect cannot be blocked by an undeclared cleanup listener or slow presence update', () => {
+  assert.match(source, /let signOutInProgress=false/);
+  assert.match(source, /Promise\.race\(\[setPresence\('Offline'\),new Promise\(resolve=>setTimeout\(resolve,1500\)\)\]\)/);
+  assert.match(source, /typeof inboxUnsub==='function'/);
+  assert.match(source, /typeof inboxChatsUnsub==='function'/);
+  assert.match(source, /await auth\.signOut\(\)/);
+  assert.match(source, /button\.disabled=true/);
+  assert.match(source, /}else\{\n    \/\/ Firebase can call this branch/);
+  assert.match(source, /resetLoggedOutUi\(\)/);
+  assert.match(source, /cleanupAuthListeners\(\)/);
 });
