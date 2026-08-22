@@ -1,0 +1,2327 @@
+const SUBJECTS=["Math","Algebra","Calculus","Statistics","Physics","Chemistry","Biology","CS","Python","JavaScript","TypeScript","Java","C++","C#","C","Rust","Go","Ruby","PHP","Swift","Kotlin","React","Vue","Angular","Node.js","HTML/CSS","SQL","MySQL","PostgreSQL","MongoDB","Firebase","Docker","Linux","Git","AWS","Cloud","AI/ML","Deep Learning","Data Science","Cybersecurity","Networks","English","French","Spanish","Arabic","Chinese","Portuguese","History","Economics","Law","Medicine","Engineering","Business","Psychology","Art","Music","Geography","Philosophy","Accounting","Marketing"];
+const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahrain","Bangladesh","Belarus","Belgium","Belize","Benin","Bolivia","Bosnia","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cambodia","Cameroon","Canada","Cape Verde","Chad","Chile","China","Colombia","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominican Republic","DR Congo","Ecuador","Egypt","El Salvador","Eritrea","Estonia","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Guatemala","Guinea","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saudi Arabia","Senegal","Serbia","Sierra Leone","Singapore","Slovakia","Slovenia","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Sweden","Switzerland","Syria","Taiwan","Tanzania","Thailand","Togo","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
+const STICKERS=["😀","😁","😂","🤣","😃","😄","😅","😆","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤬","😱","😰","🤔","🙄","😏","🥺","🥹","🫡","🤗","😇","🤓","😴","🤤","🙈","🙉","🙊","🐶","🐱","🐼","🦊","🦁","🐯","🐸","🐧","🐦","🦄","🐉","🦋","🌟","⭐","🔥","💯","🎉","🎊","🏆","💪","👏","🙌","🤜","🤛","✌️","🤞","💡","📚","✏️","🖊️","🎓","🏫","💻","📱","🤖","🚀","🛸","🌈","☀️","🌙","⚡","❄️","🌊","🍕","🍔","🍟","🍣","🍜","🧁","🍰","☕","🧋","🎮","🎵","🎸","🎤","🏀","⚽","🏆","🥇","❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💝","💖","💫","✨","🌸","🌺","🌻","🌹"];
+const FLAGS=["🇦🇫","🇦🇱","🇩🇿","🇦🇩","🇦🇴","🇦🇷","🇦🇲","🇦🇺","🇦🇹","🇦🇿","🇧🇭","🇧🇩","🇧🇾","🇧🇪","🇧🇿","🇧🇯","🇧🇴","🇧🇦","🇧🇼","🇧🇷","🇧🇳","🇧🇬","🇧🇫","🇧🇮","🇰🇭","🇨🇲","🇨🇦","🇨🇻","🇹🇩","🇨🇱","🇨🇳","🇨🇴","🇨🇬","🇨🇷","🇭🇷","🇨🇺","🇨🇾","🇨🇿","🇩🇰","🇩🇯","🇩🇴","🇨🇩","🇪🇨","🇪🇬","🇸🇻","🇪🇷","🇪🇪","🇪🇹","🇫🇯","🇫🇮","🇫🇷","🇬🇦","🇬🇲","🇬🇪","🇩🇪","🇬🇭","🇬🇷","🇬🇹","🇬🇳","🇭🇹","🇭🇳","🇭🇺","🇮🇸","🇮🇳","🇮🇩","🇮🇷","🇮🇶","🇮🇪","🇮🇱","🇮🇹","🇨🇮","🇯🇲","🇯🇵","🇯🇴","🇰🇿","🇰🇪","🇽🇰","🇰🇼","🇰🇬","🇱🇦","🇱🇻","🇱🇧","🇱🇸","🇱🇷","🇱🇾","🇱🇹","🇱🇺","🇲🇬","🇲🇼","🇲🇾","🇲🇻","🇲🇱","🇲🇹","🇲🇷","🇲🇺","🇲🇽","🇲🇩","🇲🇳","🇲🇪","🇲🇦","🇲🇿","🇲🇲","🇳🇦","🇳🇵","🇳🇱","🇳🇿","🇳🇮","🇳🇪","🇳🇬","🇰🇵","🇲🇰","🇳🇴","🇴🇲","🇵🇰","🇵🇸","🇵🇦","🇵🇾","🇵🇪","🇵🇭","🇵🇱","🇵🇹","🇶🇦","🇷🇴","🇷🇺","🇷🇼","🇸🇦","🇸🇳","🇷🇸","🇸🇱","🇸🇬","🇸🇰","🇸🇮","🇸🇴","🇿🇦","🇰🇷","🇸🇸","🇪🇸","🇱🇰","🇸🇩","🇸🇪","🇨🇭","🇸🇾","🇹🇼","🇹🇿","🇹🇭","🇹🇬","🇹🇳","🇹🇷","🇹🇲","🇺🇬","🇺🇦","🇦🇪","🇬🇧","🇺🇸","🇺🇾","🇺🇿","🇻🇪","🇻🇳","🇾🇪","🇿🇲","🇿🇼"];
+const MIC_SVG_INNER='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
+function setMicIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 48 48');ic.setAttribute('width','26');ic.setAttribute('height','26');ic.innerHTML=MIC_SVG_INNER;}
+function setSendIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 24 24');ic.setAttribute('width','24');ic.setAttribute('height','24');ic.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';}
+
+
+
+// ── GLOBAL CRASH PREVENTION ──
+window.addEventListener('unhandledrejection',e=>{
+  console.warn('Unhandled promise rejection (caught):', e.reason);
+  e.preventDefault(); // Prevents page crash/reload
+});
+window.addEventListener('error',e=>{
+  console.warn('Global error caught:', e.message);
+  // Don't crash on non-critical errors
+  if(e.message&&(e.message.includes('ResizeObserver')||e.message.includes('Script error')))e.preventDefault();
+});
+
+firebase.initializeApp({apiKey:"AIzaSyBQXvheNG_6r5NYjwru_0l_EUsKYrT4w1g",authDomain:"studylink-e1803.firebaseapp.com",projectId:"studylink-e1803",storageBucket:"studylink-e1803.firebasestorage.app",messagingSenderId:"51988890739",appId:"1:51988890739:web:fa5b3486e7a32c3fe95606"});
+const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAuthProvider();
+const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
+
+let CU=null,MP=null,myPho='';
+let selTags=[],ftab='all',dark=false,favs=new Set();
+let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
+let fType=null,fDest='p';
+let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vFinalizing=false,vStartAt=0;
+let gVStartAt=0;
+let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false,gVFinalizing=false;
+let voiceWakeLock=null;
+// Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
+// Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
+let voiceTouchSuppressUntil=0;
+let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null;
+let signOutInProgress=false,disconnectBound=false;
+const waveTimers=Object.create(null);
+let replyMsg=null,curEId=null,curED=null,typDebounce=null,gTypDebounce=null;
+
+function presenceRef(kind,id){return kind==='group'?db.collection('groups').doc(id):db.collection('chats').doc(id);}
+function setPresenceState(kind,id,state,active){
+  if(!CU||!id||!state)return Promise.resolve();
+  const upd={};upd[`presence.${CU.uid}.${state}`]=!!active;upd[`presence.${CU.uid}.updatedAt`]=firebase.firestore.FieldValue.serverTimestamp();
+  return presenceRef(kind,id).set(upd,{merge:true}).catch(e=>console.warn('Presence update failed:',e?.message||e));
+}
+function clearPresenceState(kind,id){
+  if(!CU||!id)return Promise.resolve();
+  const upd={};upd[`presence.${CU.uid}.typing`]=false;upd[`presence.${CU.uid}.recording`]=false;upd[`presence.${CU.uid}.updatedAt`]=firebase.firestore.FieldValue.serverTimestamp();
+  return presenceRef(kind,id).set(upd,{merge:true}).catch(e=>console.warn('Presence cleanup failed:',e?.message||e));
+}
+function presenceFor(data,uid){
+  const p=data?.presence?.[uid]||{};
+  const legacy=(data?.ty||data?.typing||{})[uid]===true;
+  return {typing:p.typing===true||legacy,recording:p.recording===true};
+}
+function privatePresenceText(name,data,uid){
+  const p=presenceFor(data,uid);
+  if(p.recording)return '🎙️ '+name+' is recording...';
+  if(p.typing)return '⌨️ '+name+' is typing...';
+  return '';
+}
+function groupPresenceText(data){
+  const entries=Object.entries(data?.presence||{}).filter(([uid,p])=>uid!==CU?.uid&&(p?.recording===true||p?.typing===true));
+  if(!entries.length)return '';
+  const recording=entries.filter(([,p])=>p.recording===true);
+  const typing=recording.length?[]:entries.filter(([,p])=>p.typing===true);
+  const active=recording.length?recording:typing;
+  const names=active.map(([uid])=>allUsers.find(u=>u.uid===uid)?.name||'Someone');
+  const verb=recording.length?'is recording...':'is typing...';
+  if(names.length===1)return (recording.length?'🎙️ ':'⌨️ ')+names[0]+' '+verb;
+  if(names.length===2)return (recording.length?'🎙️ ':'⌨️ ')+names[0]+' and '+names[1]+' are '+verb.replace(/^is /,'');
+  return (recording.length?'🎙️ ':'⌨️ ')+names[0]+' and '+(names.length-1)+' others are '+verb.replace(/^is /,'');
+}
+function renderPrivatePresence(data){
+  const bar=el('typebar');if(!bar||!curChat)return;
+  const text=privatePresenceText(curChat.name,data,curChat.uid);bar.textContent=text;bar.style.display=text?'block':'none';
+}
+function renderGroupPresence(data){
+  const bar=el('gTypebar');if(!bar)return;
+  const text=groupPresenceText(data);bar.textContent=text;bar.style.display=text?'block':'none';
+}
+function loadFavs(){
+  if(!CU)return;
+  try{
+    const sn=await db.collection('users').doc(CU.uid).get();
+    const data=sn.exists?sn.data():null;
+    favs=new Set(data?.favs||[]);
+  }catch(e){favs=new Set();}
+}
+async function saveFavs(){
+  if(!CU)return;
+  try{await db.collection('users').doc(CU.uid).update({favs:[...favs]});}catch(e){}
+}
+
+// ── AUTO PRESENCE ──
+async function setPresence(status){
+  if(!CU)return;
+  try{
+    const upd={status};
+    if(status==='Offline')upd.lastSeen=firebase.firestore.FieldValue.serverTimestamp();
+    await db.collection('users').doc(CU.uid).update(upd);
+  }catch(e){}
+}
+function setupPresence(){
+  setPresence('Online');
+  // Heartbeat every 15 seconds for faster online detection
+  setInterval(()=>{if(CU&&document.visibilityState!=='hidden')setPresence('Online');},15000);
+  document.addEventListener('visibilitychange',()=>{
+    setPresence(document.visibilityState==='hidden'?'Offline':'Online');
+  });
+  window.addEventListener('beforeunload',e=>{
+    setPresence('Offline');
+    // Do not let an accidental navigation/reload destroy an active recording.
+    if(isRec||gIsRec){e.preventDefault();e.returnValue='';}
+  });
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&(isRec||gIsRec))void keepVoiceScreenOn();
+  });
+  window.addEventListener('focus',()=>setPresence('Online'));
+  window.addEventListener('blur',()=>setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},3000));
+}
+
+async function keepVoiceScreenOn(){
+  if(!navigator.wakeLock?.request)return;
+  if(voiceWakeLock&&!voiceWakeLock.released)return;
+  try{
+    voiceWakeLock=await navigator.wakeLock.request('screen');
+    voiceWakeLock.addEventListener?.('release',()=>{voiceWakeLock=null;});
+  }catch(e){console.warn('Wake lock unavailable:',e?.message||e);}
+}
+async function releaseVoiceScreen(){
+  if(isRec||gIsRec)return;
+  const lock=voiceWakeLock;voiceWakeLock=null;
+  try{await lock?.release?.();}catch(e){}
+}
+function resetRecorderUi(kind){
+  const group=kind==='group';
+  const button=el(group?'gSendB':'sendB');
+  const icon=group?'gSendIcon':'sendIcon';
+  const bar=el(group?'gvbar':'vbar');
+  const timer=el(group?'gvTimer':'vTimer');
+  const recIndicator=el('gRecIndicator');
+  if(group){gIsRec=false;gVStartAt=0;clearInterval(gvInt);gvInt=null;stopWave('gvWave');gVoiceSending=false;gVFinalizing=false;}
+  else{isRec=false;vStartAt=0;clearInterval(vInt);vInt=null;stopWave('vWave');vSending=false;vFinalizing=false;}
+  try{(group?gmr:mr)?.stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
+  if(group)gmr=null;else mr=null;
+  if(group&&curGrp)void setPresenceState('group',curGrp.id,'recording',false);
+  if(!group&&curChat&&CU)void setPresenceState('private',getCID(CU.uid,curChat.uid),'recording',false);
+  button?.classList.remove('voice-pending','rec','voice-locked');
+  if(button)button.style.background=group?'#e67e22':'var(--btnB)';
+  setMicIcon(icon);
+  if(bar)bar.style.display='none';
+  if(timer)timer.textContent='0:00';
+  recIndicator?.classList.remove('recPulse');
+}
+function bindRecorderSafety(stream,kind){
+  const track=stream?.getAudioTracks?.()[0];
+  if(track)track.addEventListener('ended',()=>{
+    const active=kind==='group'?gIsRec:isRec;
+    if(!active)return;
+    console.warn(kind+' voice track ended unexpectedly');
+    resetRecorderUi(kind);
+    showToast('🎙️ Android a interrompu le microphone. Vérifiez Chrome puis réessayez.');
+  },{once:true});
+  return track;
+}
+async function getVoiceStream(){
+  let permission='prompt';
+  try{
+    const status=await navigator.permissions?.query?.({name:'microphone'});
+    permission=status?.state||'prompt';
+  }catch(e){}
+  if(permission==='denied'){
+    const err=new Error('Microphone permission denied');err.name='MicPermissionDenied';throw err;
+  }
+  return navigator.mediaDevices.getUserMedia({audio:true});
+}
+
+// ── CLOUDINARY ──
+// Public Cloudinary configuration for the unsigned StudyLink upload preset.
+// These values match the user's Cloudinary dashboard.
+const CLOUD='dmhbui3wf';
+const PRESET='StudyLink';
+async function uploadCloud(file,type){
+  uploadCloud.lastError='';
+  if(type==='image'){
+    try{file=await compressImg(file);}catch(e){}
+  }
+  // Audio is accepted by Cloudinary through auto/upload and video/upload.
+  // Try auto first, then video, with one retry for transient mobile failures.
+  const endpoints=(type==='audio'||type==='voice')
+    ? ['auto','video']
+    : [type==='doc'?'raw':'image'];
+  let lastError='Upload failed';
+  // Keep a mobile upload from leaving the bubble in Sending... indefinitely.
+  // Each request gets up to 15 seconds, with a 45-second total ceiling across fallbacks.
+  const deadline=Date.now()+45000;
+  for(const resourceType of endpoints){
+    if(Date.now()>=deadline)break;
+    for(let attempt=0;attempt<2;attempt++){
+      const remaining=deadline-Date.now();
+      if(remaining<=0)break;
+      const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),Math.min(15000,remaining));
+      try{
+        const r=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${resourceType}/upload`,{method:'POST',body:fd,signal:controller.signal});
+        const raw=await r.text();
+        let d={};try{d=raw?JSON.parse(raw):{};}catch(e){}
+        if(r.ok&&d.secure_url)return d.secure_url;
+        lastError=d.error?.message||`HTTP ${r.status} from Cloudinary`;
+        // Configuration and validation errors will not improve by retrying the same endpoint.
+        if(r.status>=400&&r.status<500&&r.status!==408&&r.status!==429)break;
+      }catch(e){
+        lastError=e.name==='AbortError'?'Cloudinary upload timed out':(e.message||'Network error');
+      }finally{clearTimeout(timer);}
+      if(attempt===0&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,700));
+    }
+  }
+  uploadCloud.lastError=lastError;
+  console.error('Cloudinary upload error:',lastError);
+  if(type!=='audio'&&type!=='voice')showToast('❌ Upload failed: '+lastError);
+  return null;
+}
+function voiceFileFromChunks(chunks){
+  const rawMime=chunks.find(c=>c?.type)?.type||'audio/webm';
+  const mime=rawMime.split(';')[0]||'audio/webm';
+  const ext=mime.includes('mp4')||mime.includes('m4a')?'m4a':mime.includes('ogg')?'ogg':mime.includes('wav')?'wav':'webm';
+  return new File([new Blob(chunks,{type:rawMime})],`voice.${ext}`,{type:rawMime});
+}
+async function uploadVoiceToFirebase(file){
+  if(!voiceStorage||!CU||!file)return null;
+  const ext=(file.name||'voice.webm').split('.').pop()||'webm';
+  const key=`voice/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const ref=voiceStorage.ref().child(key);
+  const task=ref.put(file,{contentType:file.type||'audio/webm'});
+  await new Promise((resolve,reject)=>{
+    let done=false;
+    const timer=setTimeout(()=>{if(!done){done=true;reject(new Error('Firebase Storage upload timed out'));}},30000);
+    task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},err=>{
+      if(done)return;done=true;clearTimeout(timer);reject(err);
+    },()=>{
+      if(done)return;done=true;clearTimeout(timer);resolve();
+    });
+  });
+  return ref.getDownloadURL();
+}
+function readVoiceAsDataUrl(file,maxBytes=300000){
+  return new Promise(resolve=>{
+    if(!file||file.size>maxBytes||typeof FileReader==='undefined'){resolve(null);return;}
+    const reader=new FileReader();
+    reader.onload=()=>resolve(typeof reader.result==='string'?reader.result:null);
+    reader.onerror=()=>resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+function compressImg(file){
+  return new Promise(res=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      // Max 1000px, quality 0.7 — keeps files well under 2MB
+      const c=document.createElement('canvas');let w=img.width,h=img.height,mx=1000;
+      if(w>mx||h>mx){if(w>h){h=Math.round(h*mx/w);w=mx;}else{w=Math.round(w*mx/h);h=mx;}}
+      c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      c.toBlob(b=>res(new File([b],file.name,{type:'image/jpeg'})),'image/jpeg',0.7);URL.revokeObjectURL(url);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);res(file);};
+    img.src=url;
+  });
+}
+
+// ── AUTH ──
+function cleanupAuthListeners(){
+  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub,grpPresenceUnsub,window._typingUnsub,window._statusUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
+  if(typeof inboxUnsub==='function')try{inboxUnsub();}catch(e){}
+  if(typeof inboxChatsUnsub==='function')try{inboxChatsUnsub();}catch(e){}
+  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;grpPresenceUnsub=null;
+  window._typingUnsub=null;window._statusUnsub=null;
+  if(typeof inboxUnsub==='function')inboxUnsub=null;
+  if(typeof inboxChatsUnsub==='function')inboxChatsUnsub=null;
+  if(typeof _cachedInboxDocs!=='undefined')_cachedInboxDocs=null;
+}
+function resetLoggedOutUi(){
+  if(CU?.uid&&curChat)void clearPresenceState('private',getCID(CU.uid,curChat.uid));
+  if(CU?.uid&&curGrp)void clearPresenceState('group',curGrp.id);
+  signOutInProgress=false;
+  cleanupAuthListeners();
+  CU=null;MP=null;
+  el('auth').style.display='flex';
+  el('ov').style.display='none';
+  showLogin();
+  const button=el('disconnectBtn');
+  if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent='Disconnect';}
+}
+// Show spinner while waiting for auth state - prevents flash of login screen
+el('ov').style.display='flex';
+auth.onAuthStateChanged(async u=>{
+  if(u){
+    CU=u;
+    const sn=await db.collection('users').doc(u.uid).get().catch(()=>null);
+    const data=sn?.exists?sn.data():null;
+    if(data&&!data.country&&el('step2F').style.display!=='flex'){
+      el('ov').style.display='none';
+      el('auth').style.display='flex';
+      showStep2();
+      return;
+    }
+    try{await loadPro();}catch(e){console.log('loadPro error:',e);}
+    try{await loadFavs();}catch(e){}
+    // Migrate existing chats to chatIds array — only runs once ever (when migrated flag not set)
+    try{
+      const userSnap=await db.collection('users').doc(u.uid).get();
+      const ud=userSnap.data()||{};
+      if(!ud.chatIdsMigrated&&!ud.chatIds?.length){
+        const allChats=await db.collection('chats').where('participants','array-contains',u.uid).get();
+        const myChatIds=allChats.docs.map(d=>d.id);
+        await db.collection('users').doc(u.uid).update({chatIds:myChatIds,chatIdsMigrated:true});
+      }else if(!ud.chatIdsMigrated){
+        db.collection('users').doc(u.uid).update({chatIdsMigrated:true}).catch(()=>{});
+      }
+    }catch(e){console.log('migrate chatIds:',e);}
+    try{setupPresence();}catch(e){}
+    try{listenPosts();}catch(e){}
+    try{listenUsers();}catch(e){}
+    try{setupNotifL();}catch(e){}
+    try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
+    el('auth').style.display='none';
+    el('ov').style.display='none';
+    tab('home');
+  }else{
+    // Firebase can call this branch after a successful sign-out and later after a new login.
+    // Always release the click guard so Disconnect works on every session, not only the first one.
+    resetLoggedOutUi();
+  }
+});
+
+function showLogin(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('loginF').style.display='flex';el('asub').textContent='Connect • Learn • Grow'; el('asub').style.fontStyle='italic';el('lErr').textContent='';}
+function showReg(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('regF').style.display='flex';el('asub').textContent='Connect • Learn • Grow'; el('asub').style.fontStyle='italic';el('rErr').textContent='';}
+function showReset(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('resetF').style.display='flex';el('asub').textContent='Connect • Learn • Grow'; el('asub').style.fontStyle='italic';}
+
+let s2Intent='both',s2SelTags=[];
+function showStep2(){
+  ['loginF','regF','resetF'].forEach(id=>el(id).style.display='none');
+  el('step2F').style.display='flex';
+  el('asub').textContent='Step 2 of 2 — Your Profile';
+  // Populate countries
+  const sc=el('s2C');
+  if(sc.options.length<=1){COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sc.appendChild(o);});}
+  // Populate subject tags
+  const st=el('s2Tags');
+  if(!st.children.length){
+    SUBJECTS.forEach(s=>{
+      const b=document.createElement('button');
+      b.type='button';
+      b.textContent=s;
+      b.style.cssText='padding:4px 10px;border-radius:20px;font-size:11px;font-weight:bold;border:2px solid rgba(255,255,255,.5);color:rgba(255,255,255,.8);cursor:pointer;background:transparent;margin:2px;';
+      b.onclick=()=>{
+        if(s2SelTags.includes(s)){s2SelTags=s2SelTags.filter(t=>t!==s);b.style.background='transparent';b.style.color='rgba(255,255,255,.8)';}
+        else{s2SelTags.push(s);b.style.background='rgba(255,255,255,.25)';b.style.color='#fff';}
+      };
+      st.appendChild(b);
+    });
+  }
+  setIntent('both');
+}
+function setIntent(v){
+  s2Intent=v;
+  ['need','help','both'].forEach(t=>{
+    const b=el('s2'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn');
+    if(b){b.style.background=v===t?'rgba(243,156,18,.8)':'transparent';b.style.color=v===t?'#fff':'rgba(255,255,255,.7)';b.style.borderColor=v===t?'#F39C12':'rgba(255,255,255,.4)';}
+  });
+}
+async function completeProfile(){
+  if(!CU)return;
+  const uni=el('s2U').value.trim(),course=el('s2Co').value.trim(),year=el('s2Y').value.trim(),country=el('s2C').value;
+  if(!country){el('s2Err').textContent='Please select your country';return;}
+  if(!uni){el('s2Err').textContent='Please enter your university or school';return;}
+  if(!course){el('s2Err').textContent='Please enter your course or major';return;}
+  el('s2Err').textContent='';
+  showOv(true);
+  try{
+    await db.collection('users').doc(CU.uid).set({country,uni,course,year,tags:s2SelTags,intent:s2Intent},{merge:true});
+    await loadPro();
+    el('auth').style.display='none';
+    showOv(false);
+    tab('home');
+  }catch(e){el('s2Err').textContent='❌ '+e.message;showOv(false);}
+}
+async function doLogin(){
+  const e=v('lE'),p=v('lP');
+  if(!e||!p){el('lErr').textContent='Fill all fields';return;}
+  el('lErr').textContent='';
+  const btn=document.querySelector('#loginF .abtn');
+  if(btn){btn.disabled=true;btn.textContent='Logging in...';}
+  try{
+    await auth.signInWithEmailAndPassword(e,p);
+    // onAuthStateChanged will handle the rest
+  }catch(err){
+    el('lErr').textContent=fErr(err.code);
+    if(btn){btn.disabled=false;btn.textContent='🔐 Login';}
+  }
+}
+async function doGoogle(){
+  const btn=document.querySelector('#loginF .abtn.g')||document.querySelector('#regF .abtn.g');
+  try{
+    const r=await auth.signInWithPopup(GP);const u=r.user;
+    const sn=await db.collection('users').doc(u.uid).get();
+    if(!sn.exists){
+      await db.collection('users').doc(u.uid).set({name:u.displayName||'User',email:u.email||'',country:'',uni:'',course:'',year:'',langs:[],bio:'',skills:[],status:'Online',photo:u.photoURL||'',uid:u.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      notifyAllExcept(u.uid,'🎓','New Member!',`${u.displayName||'Someone'} just joined StudyLink!`);
+    }
+  }catch(err){showToast('❌ '+err.message);}
+}
+async function doReg(){
+  const name=v('rN'),email=v('rE'),pass=v('rP');
+  if(!name||!email||!pass){el('rErr').textContent='Fill all fields';return;}
+  if(pass.length<6){el('rErr').textContent='Min 6 chars';return;}
+  el('rErr').textContent='';
+  const btn=document.querySelector('#regF .abtn');
+  if(btn){btn.disabled=true;btn.textContent='Creating...';}
+  try{
+    const c=await auth.createUserWithEmailAndPassword(email,pass);
+    CU=c.user;
+    await db.collection('users').doc(c.user.uid).set({name,email,country:'',uni:'',course:'',year:'',langs:[],bio:'',skills:[],tags:[],intent:'both',status:'Online',photo:'',uid:c.user.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    notifyAllExcept(c.user.uid,'🎓','New Member!',`${name} just joined StudyLink!`);
+    if(btn){btn.disabled=false;btn.textContent='✅ Create Account';}
+    showStep2();
+  }catch(err){
+    el('rErr').textContent=fErr(err.code);
+    if(btn){btn.disabled=false;btn.textContent='✅ Create Account';}
+  }
+}
+async function doReset(){
+  const e=v('resetE');if(!e){el('resetErr').textContent='Enter email';return;}
+  showOv(true);
+  try{await auth.sendPasswordResetEmail(e);showToast('📧 Reset email sent!');showLogin();}
+  catch(err){el('resetErr').textContent=fErr(err.code);}
+  showOv(false);
+}
+async function notifyAllExcept(senderUid,icon,title,body){
+  try{
+    const sn=await db.collection('users').get();
+    const b=db.batch();
+    sn.docs.forEach(d=>{
+      if(d.id!==senderUid){
+        b.set(db.collection('notifications').doc(),{toUid:d.id,icon,title,body,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      }
+    });
+    await b.commit();
+  }catch(e){console.log(e);}
+}
+function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
+async function doOut(){
+  if(signOutInProgress)return;
+  if(!window.confirm('Disconnect?'))return;
+  signOutInProgress=true;
+  const button=el('disconnectBtn')||document.querySelector('#Pme .btn.g');
+  if(button){button.disabled=true;button.setAttribute('aria-busy','true');button.textContent='Disconnecting...';}
+  try{
+    // Presence is best-effort and must never block authentication sign-out.
+    await Promise.race([setPresence('Offline'),new Promise(resolve=>setTimeout(resolve,1500))]);
+  }catch(e){}
+  try{
+    await auth.signOut();
+    // Do not wait for the auth observer: Firebase sign-out is complete locally.
+    resetLoggedOutUi();
+  }catch(e){
+    signOutInProgress=false;
+    if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent='Disconnect';}
+    showToast('❌ Unable to disconnect. Please try again.');
+  }
+}
+async function delAccount(){
+  if(!confirm('Delete account permanently?'))return;
+  showOv(true);
+  try{
+    await setPresence('Offline');
+    const b=db.batch();
+    const ps=await db.collection('posts').where('uid','==',CU.uid).get();
+    ps.docs.forEach(d=>b.delete(d.ref));
+    b.delete(db.collection('users').doc(CU.uid));
+    await b.commit();await CU.delete();
+  }catch(e){showToast('❌ Sign out and back in first');showOv(false);}
+}
+
+// ── PROFILE ──
+async function loadPro(){
+  try{
+    const sn=await db.collection('users').doc(CU.uid).get();
+    if(sn.exists){
+      MP=sn.data();myPho=MP.photo||'';
+      el('topN').textContent=MP.name||'';
+      el('uN').value=MP.name||'';el('uBio').value=MP.bio||'';
+      el('uU').value=MP.uni||'';el('uCo').value=MP.course||'';
+      el('uY').value=MP.year||'';
+      el('uL').value=(MP.langs||[]).join(', ');
+      el('uSk').value=(MP.skills||[]).join(', ');
+      if(MP.country)el('uC').value=MP.country;
+      if(MP.intent)setEIntent(MP.intent);else setEIntent('both');
+      if(MP.photo){el('myPic').innerHTML=`<img src="${MP.photo}">`;el('pcPic').innerHTML=`<img src="${MP.photo}">`;}
+      el('myDot').className='odot online';
+      el('pcDot').className='odot online';
+      if(MP.name){updatePC();el('pcardEl').style.display='flex';el('EF').style.display='none';}
+      else el('EF').style.display='block';
+    }else el('EF').style.display='block';
+  }catch(e){console.log(e);}
+}
+function showEF(){el('EF').style.display='block';el('EF').scrollIntoView({behavior:'smooth'});}
+function hideEF(){el('EF').style.display='none';}
+function getFlag(country){
+  const idx=COUNTRIES.indexOf(country);
+  return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
+}
+function getIntentBadge(intent){
+  if(intent==='need')return'<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e8f4fd;color:#1565c0;margin-top:3px;">🙋 Needs Help</span>';
+  if(intent==='help')return'<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e8f8ef;color:#1a7a3c;margin-top:3px;">🧑‍🏫 Can Help</span>';
+  return'';
+}
+function updatePC(){
+  if(!MP)return;
+  el('pcPic').innerHTML=MP.photo?`<img src="${MP.photo}">`:'👤';
+  el('pcDot').className='odot online';
+  el('pcName').textContent=MP.name||'';
+  el('pcBio').textContent=MP.bio||'';
+  el('pcInfo').textContent=getFlag(MP.country||'')+' '+(MP.country||'—')+' | 🏛️ '+(MP.uni||'—')+' | 📖 '+(MP.course||'—');
+  // Intent badge — add after pcInfo
+  let ib=el('pcIntent');
+  if(!ib){ib=document.createElement('div');ib.id='pcIntent';el('pcardEl').querySelector('div:last-child').appendChild(ib);}
+  ib.innerHTML=getIntentBadge(MP.intent||'both');
+}
+function loadPic(e){
+  if(!e.target.files[0])return;
+  const r=new FileReader();
+  r.onload=()=>{myPho=r.result;el('myPic').innerHTML=`<img src="${r.result}">`;showToast('📷 Photo ready');};
+  r.readAsDataURL(e.target.files[0]);
+}
+let eIntent='both';
+function setEIntent(v){
+  eIntent=v;
+  ['need','help','both'].forEach(t=>{
+    const b=el('e'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn');
+    if(b){b.style.background=v===t?'var(--btnB)':'transparent';b.style.color=v===t?'#fff':'var(--txt)';b.style.borderColor=v===t?'var(--btnB)':'var(--brd)';}
+  });
+}
+async function savePro(){
+  if(!CU)return;
+  const name=v('uN');if(!name){showToast('❌ Name required');return;}
+  const langs=v('uL').split(',').map(l=>l.trim()).filter(Boolean);
+  const skills=v('uSk').split(',').map(s=>s.trim()).filter(Boolean);
+  const data={name,bio:v('uBio'),country:el('uC').value||'',uni:v('uU'),course:v('uCo'),year:v('uY'),langs,skills,intent:eIntent,status:'Online',photo:myPho};
+  showOv(true);
+  try{
+    await db.collection('users').doc(CU.uid).set(data,{merge:true});
+    MP={...MP,...data};el('topN').textContent=name;updatePC();
+    el('pcardEl').style.display='flex';el('EF').style.display='none';
+    showToast('✅ Saved!');
+  }catch(e){showToast('❌ '+e.message);}
+  showOv(false);
+}
+
+// ── USERS ──
+function listenUsers(){
+  db.collection('users').onSnapshot(sn=>{
+    allUsers=sn.docs.map(d=>d.data());
+    // Only re-render Find if it's currently visible
+    if(el('Pfind')&&el('Pfind').style.display!=='none'){
+      renderFind(el('findQ')?.value||'');
+    }
+    // Update online dots on feed without full re-render
+    sn.docChanges().forEach(change=>{
+      if(change.type==='modified'){
+        const u=change.doc.data();
+        // Update status dot in inbox if visible
+        const st=getStatusInfo(u.status,u.lastSeen);
+        document.querySelectorAll(`[data-uid="${u.uid}"] .status-dot`).forEach(dot=>{
+          dot.style.background=st.cls==='online'?'#2ECC71':st.cls==='busy'?'#e74c3c':'#95a5a6';
+        });
+      }
+    });
+  },e=>console.log('users:',e));
+}
+
+// ── POSTS ──
+let cachedPosts=[],lastPostCount=0,_feedShown=10;
+function listenPosts(){
+  // Listen to latest 30 posts in real-time; we only render _feedShown of them
+  db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
+    const newPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
+    const isHomeVisible=el('Phome')&&el('Phome').style.display!=='none';
+    if(isHomeVisible){
+      // Detect truly new posts (vs initial load)
+      const hadPosts=cachedPosts.length>0;
+      if(hadPosts&&newPosts.length>cachedPosts.length){
+        const newCount=newPosts.length-cachedPosts.length;
+        const b=el('feedB');if(b){b.textContent='+'+newCount+' new';b.style.display='inline-block';}
+      }
+      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
+      renderHome(cachedPosts,_feedShown);
+    }else{
+      if(lastPostCount>0&&newPosts.length>lastPostCount){
+        const newCount=newPosts.length-lastPostCount;
+        const b=el('feedB');if(b){b.textContent='+'+newCount+' new';b.style.display='inline-block';}
+      }
+      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
+    }
+  },e=>console.log(e));
+}
+function loadMorePosts(){
+  _feedShown+=10;
+  renderHome(cachedPosts,_feedShown);
+  // If we've exhausted the local 30, fetch more from Firestore
+  if(_feedShown>cachedPosts.length){
+    const lastDoc=cachedPosts[cachedPosts.length-1];
+    if(!lastDoc)return;
+    db.collection('posts').orderBy('createdAt','desc')
+      .startAfter(lastDoc.createdAt||0).limit(10).get()
+      .then(sn=>{
+        const more=sn.docs.map(d=>({id:d.id,...d.data()}));
+        if(more.length){cachedPosts=[...cachedPosts,...more];renderHome(cachedPosts,_feedShown);}
+        else{showToast('✅ All posts loaded');}
+      }).catch(()=>{});
+  }
+}
+function toggleGN(val){el('gnW').style.display=val==='Group'?'block':'none';}
+async function addPost(){
+  if(!MP?.name)return alert('Complete your profile first');
+  const text=v('pText');if(!text)return alert('Write something');
+  const type=el('pType').value;
+  const gname=type==='Group'?v('gName'):'';
+  if(type==='Group'&&!gname)return alert('Enter group name');
+  showOv(true);
+  try{
+    const ref=await db.collection('posts').add({type,text,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    // only send to ALERTS (not messages)
+    notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
+    selTags=[];document.querySelectorAll('#tagSel .tag').forEach(b=>b.classList.remove('sel'));
+    el('pText').value='';el('pType').value='Individual';el('gName').value='';el('gnW').style.display='none';
+    showToast('📢 Posted!');tab('home');
+  }catch(e){showToast('❌ '+e.message);}
+  showOv(false);
+}
+async function delPost(id){if(!confirm('Delete?'))return;await db.collection('posts').doc(id).delete();}
+function fmtLastSeen(lastSeen){
+  if(!lastSeen)return'Active a while ago';
+  const sec=Math.floor((Date.now()-(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000))/1000);
+  if(sec<10)return'Active just now';
+  if(sec<60)return'Active '+sec+'s ago';
+  const min=Math.floor(sec/60);
+  if(min<60)return'Active '+min+'m ago';
+  const hr=Math.floor(min/60);
+  if(hr<24)return'Active '+hr+'h ago';
+  const dy=Math.floor(hr/24);
+  if(dy===1)return'Active yesterday';
+  if(dy<7)return'Active '+dy+'d ago';
+  return'Active over a week ago';
+}
+function getStatusInfo(status,lastSeen){
+  if(status==='Online')return{cls:'online',label:'🟢 Online'};
+  if(status==='Busy')return{cls:'busy',label:'🔴 Busy'};
+  return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
+}
+function renderHome(posts,limit){
+  const f=el('feed');
+  if(!posts?.length){f.innerHTML="<p style='text-align:center;color:#888;padding:24px;'>No posts yet. Be the first to post! 🎓</p>";return;}
+  const shown=posts.slice(0,limit||10);
+  const hasMore=posts.length>(limit||10);
+  f.innerHTML='';
+  shown.forEach(p=>{
+    const isG=p.type==='Group',isOwn=p.uid===CU?.uid;
+    const st=getStatusInfo(p.user?.status,p.user?.lastSeen);
+    const tags=(p.tags||[]).map(t=>`<span class="tbadge">${t}</span>`).join('');
+    const av=p.user?.photo?`<img src="${p.user.photo}">`:'👤';
+    const liveUser=allUsers.find(u=>u.uid===p.uid);
+    const intent=p.user?.intent||liveUser?.intent||'';
+    f.innerHTML+=`<div class="card ${isG?'grp':''}">
+      <div style="display:flex;gap:10px;margin-bottom:8px;">
+        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div style="flex:1;overflow:hidden;">
+          <b style="color:var(--btnB);font-size:14px;">${esc(p.user?.name||'?')}${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}</b>
+          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(p.user?.country||'')} ${p.user?.country||'—'} | 🏛️ ${p.user?.uni||'—'}</p>
+          <p style="font-size:11px;color:var(--sub);margin:2px 0;">📖 ${p.user?.course||'—'} ${p.user?.year?'('+p.user.year+')':''}</p>
+          ${getIntentBadge(intent)}
+        </div>
+      </div>
+      ${tags?`<div style="margin-bottom:6px;">${tags}</div>`:''}
+      <p style="font-size:13px;margin-bottom:8px;">${esc(p.text)}</p>
+      <div style="display:flex;gap:6px;">
+        ${isG?`<button class="btn o" style="flex:1;" onclick="openGroup('${p.id}','${e2(p.groupName||'Group')}')">🤝 Join Group</button>`:
+              `<button class="btn" style="flex:1;" onclick="openChat('${e2(p.user?.name||'')}','${p.uid||''}')">💬 Message</button>`}
+        ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
+      </div>
+    </div>`;
+  });
+  // Load More button — matches your screenshot style
+  if(hasMore||posts.length===30){
+    f.innerHTML+=`<button onclick="loadMorePosts()" style="display:block;width:100%;padding:14px;margin-top:4px;border:none;border-radius:14px;background:var(--btnB);color:#fff;font-size:15px;font-weight:bold;cursor:pointer;letter-spacing:.3px;">Load more</button>`;
+  }
+}
+
+// ── FIND ──
+function switchFT(t,el2){ftab=t;document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));el2.classList.add('on');renderFind();}
+function toggleFav(uid){
+  const wasFav=favs.has(uid);
+  if(wasFav){favs.delete(uid);}else{favs.add(uid);}
+  saveFavs();
+  if(!wasFav){
+    const u=allUsers.find(x=>x.uid===uid);
+    if(u){
+      db.collection('notifications').add({toUid:uid,icon:'⭐',title:'New Favourite!',body:(MP?.name||'Someone')+' added you to favourites!',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    }
+    showToast('⭐ Favourited!');
+  }else showToast('💔 Removed');
+  renderFind(el('findQ')?.value||'');
+}
+function mscore(u){if(!MP)return 0;let s=0;if(u.country&&u.country===MP.country)s+=35;if(u.uni&&u.uni===MP.uni)s+=35;if(u.course&&u.course===MP.course)s+=30;return s;}
+function renderFind(q=""){
+  const f=el('findL');
+  if(!allUsers.length){
+    f.innerHTML="<p style='text-align:center;color:#888;'>Loading students...</p>";
+    db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>d.data());renderFind(q);});
+    return;
+  }
+  let list=ftab==='fav'?allUsers.filter(u=>favs.has(u.uid)):[...allUsers];
+  if(q)list=list.filter(u=>{
+    const s=q.toLowerCase();
+    return(u.name||'').toLowerCase().includes(s)||(u.country||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s)||(u.course||'').toLowerCase().includes(s);
+  });
+  if(ftab==='match')list=list.filter(u=>u.uid!==CU?.uid).sort((a,b)=>mscore(b)-mscore(a));
+  if(!list.length){f.innerHTML="<p style='text-align:center;color:#888;'>No students found.</p>";return;}
+  f.innerHTML='';
+  list.forEach(u=>{
+    const isSelf=u.uid===CU?.uid,isFav=favs.has(u.uid),sc=mscore(u);
+    const st=getStatusInfo(u.status,u.lastSeen);
+    const langs=(u.langs||[]).map(l=>`<span class="lang-chip">${l}</span>`).join('');
+    const skills=(u.skills||[]).map(s=>`<span class="tbadge" style="background:#fff3e0;color:#e65100;">${s}</span>`).join('');
+    const av=u.photo?`<img src="${u.photo}">`:'👤';
+    f.innerHTML+=`<div class="card">
+      ${!isSelf?`<button class="fav-btn" onclick="toggleFav('${u.uid}')">${isFav?'⭐':'☆'}</button>`:''}
+      <div style="display:flex;gap:10px;margin-bottom:6px;">
+        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div style="flex:1;overflow:hidden;">
+          <b style="color:var(--btnB);font-size:14px;">${esc(u.name||'?')}${isSelf?' <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">You</span>':''}</b>
+          ${u.bio?`<p style="font-size:11px;font-style:italic;color:var(--sub);margin:1px 0;">${esc(u.bio)}</p>`:''}
+          <p style="font-size:11px;color:var(--sub);margin:1px 0;">${getFlag(u.country||'')} ${u.country||'—'} | 🏛️ ${u.uni||'—'}</p>
+          <p style="font-size:11px;color:var(--sub);margin:1px 0;">📖 ${u.course||'—'} ${u.year?'('+u.year+')':''}</p>
+          ${getIntentBadge(u.intent||'')}
+        </div>
+      </div>
+      ${langs?`<div style="margin:3px 0;">${langs}</div>`:''}
+      ${skills?`<div style="margin:3px 0;">${skills}</div>`:''}
+      ${ftab==='match'&&!isSelf?`<div style="background:linear-gradient(135deg,var(--btnB),#1565c0);color:#fff;border-radius:10px;padding:9px;margin:6px 0;"><b style="font-size:24px;">${sc}%</b> Match<div style="height:5px;background:rgba(255,255,255,.3);border-radius:3px;margin:4px 0;"><div style="height:100%;width:${sc}%;background:#fff;border-radius:3px;"></div></div></div>`:''}
+      ${!isSelf?`<button class="btn" onclick="openChat('${e2(u.name||'')}','${u.uid||''}')">💬 Message</button>`:'<p style="font-size:11px;color:var(--sub);text-align:center;margin-top:6px;">This is your profile</p>'}
+    </div>`;
+  });
+}
+
+// ── CHAT ──
+function getCID(a,b){return [a,b].sort().join('_');}
+function setupMsgBL(){
+  // Replaced by setupInbox() which handles both badge and real-time inbox updates
+  setupInbox();
+}
+function openChat(name,uid){
+  if(!uid||uid==='undefined'||uid==='null'||uid===''){
+    const found=allUsers.find(u=>u.name===name||u.name?.toLowerCase()===name?.toLowerCase());
+    if(found)uid=found.uid;else return showToast('❌ User not found. Try from Find tab.');
+  }
+  if(uid===CU?.uid)return showToast('❌ Cannot message yourself');
+  // Unsubscribe all old listeners
+  if(chatUnsub){chatUnsub();chatUnsub=null;}
+  if(window._typingUnsub){window._typingUnsub();window._typingUnsub=null;}
+  if(window._statusUnsub){window._statusUnsub();window._statusUnsub=null;}
+  if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
+  curChat=null;replyMsg=null;
+  const mb=el('msgB');if(mb)mb.innerHTML='';
+  curChat={name,uid};
+  el('chatT').textContent=name;
+  const other=allUsers.find(u=>u.uid===uid);
+  const st=getStatusInfo(other?.status,other?.lastSeen);
+  el('chatSt').textContent=st.label;
+  el('chatW').style.display='flex';
+  el('rplybar').style.display='none';
+  el('csBar').style.display='none';
+  closeMediaPanel();closeStickers();
+  // Setup swipe-up to record on mic button
+  setTimeout(()=>setupVoiceSwipe('sendB',startVoice,stopAndSendVoice,cancelVoice),100);
+
+  const cid=getCID(CU.uid,uid);
+
+  // Zero unread immediately in ALL in-memory sources so badge vanishes instantly
+  if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
+  // Override map hard-forces 0 even if Firestore snapshot still has old value
+  if(!window._unreadOverride)window._unreadOverride={};
+  window._unreadOverride[cid]=0;
+  // Re-render inbox immediately — badge gone before any Firestore round-trip
+  if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
+
+  // Live status listener
+  window._statusUnsub=db.collection('users').doc(uid).onSnapshot(snap=>{
+    if(!snap.exists)return;
+    const s=getStatusInfo(snap.data()?.status,snap.data()?.lastSeen);
+    if(el('chatSt'))el('chatSt').textContent=s.label;
+  });
+
+  // Init chat doc + clear unread in Firestore
+  const initData={participants:[CU.uid,uid]};
+  db.collection('chats').doc(cid).set(initData,{merge:true}).then(()=>{
+    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    db.collection('users').doc(uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    const resetUnread={};resetUnread['unread.'+CU.uid]=0;
+    db.collection('chats').doc(cid).update(resetUnread).then(()=>{
+      // Firestore confirmed reset — remove override so future messages can show badge again
+      if(window._unreadOverride)delete window._unreadOverride[cid];
+    }).catch(()=>{});
+    const userReset={};userReset['unread.'+cid]=0;
+    db.collection('users').doc(CU.uid).update(userReset).catch(()=>{});
+  }).catch(e=>console.log('chatInit:',e));
+
+  // Messages listener — paginated with limit(50), supports load-more
+  let _msgLimit=50;
+  const _loadMsgs=(lim)=>{
+    if(chatUnsub){chatUnsub();chatUnsub=null;}
+    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('createdAt').limitToLast(lim).onSnapshot(sn=>{
+      const mb=el('msgB');
+      sn.docChanges().forEach(change=>{
+        if(change.type==='removed'){
+          const ex=mb.querySelector(`.bw[data-id="${change.doc.id}"]`);
+          if(ex)ex.remove();return;
+        }
+        const m={id:change.doc.id,...change.doc.data()};
+        const bbl=buildBbl(m,false);if(!bbl)return;
+        const tmp=document.createElement('div');tmp.innerHTML=bbl;
+        const node=tmp.firstElementChild;if(!node)return;
+        if(change.type==='added'){
+          const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);
+          if(!ex)mb.appendChild(node);
+        }else if(change.type==='modified'){
+          const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);
+          if(ex)ex.replaceWith(node);else mb.appendChild(node);
+        }
+        if(m.senderUid!==CU.uid&&!m.seen)change.doc.ref.update({seen:true}).catch(()=>{});
+      });
+      mb.scrollTop=mb.scrollHeight;
+      // Show load-more button if we hit the limit
+      let loadMoreBtn=mb.querySelector('#loadMoreMsgs');
+      if(sn.docs.length>=lim){
+        if(!loadMoreBtn){
+          loadMoreBtn=document.createElement('div');
+          loadMoreBtn.id='loadMoreMsgs';
+          loadMoreBtn.style.cssText='text-align:center;padding:8px;';
+          loadMoreBtn.innerHTML=`<button onclick="window._loadMoreMsgs&&window._loadMoreMsgs()" style="font-size:12px;color:var(--sub);background:var(--card);border:1px solid var(--brd);border-radius:16px;padding:6px 18px;cursor:pointer;">↑ Load more</button>`;
+          mb.insertBefore(loadMoreBtn,mb.firstChild);
+        }
+      }else if(loadMoreBtn){loadMoreBtn.remove();}
+    },e=>console.log(e));
+  };
+  window._loadMoreMsgs=()=>{_msgLimit+=30;_loadMsgs(_msgLimit);};
+  _loadMsgs(_msgLimit);
+
+  // Unified private presence listener: typing and recording share one realtime state.
+  window._typingUnsub=db.collection('chats').doc(cid).onSnapshot(sn=>renderPrivatePresence(sn.data()||{}));
+}
+function closeChat(){
+  if(curChat&&CU){clearTimeout(typDebounce);void clearPresenceState('private',getCID(CU.uid,curChat.uid));}
+  el('typebar').style.display='none';
+  el('chatW').style.display='none';
+  if(chatUnsub){chatUnsub();chatUnsub=null;}
+  if(window._typingUnsub){window._typingUnsub();window._typingUnsub=null;}
+  if(window._statusUnsub){window._statusUnsub();window._statusUnsub=null;}
+  if(isRec)cancelVoice();
+  curChat=null;replyMsg=null;
+  el('rplybar').style.display='none';
+  closeMediaPanel();closeStickers();clearSelection();
+}
+function onMsgInput(){
+  if(!curChat)return;
+  const hasText=el('mIn').value.trim().length>0;
+  // Update send button icon: send arrow when typing, mic when idle
+  const icon=el('sendIcon');
+  if(hasText){
+    icon.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+    el('sendB').style.background='var(--btnB)';
+  }else if(isRec){
+    // keep rec state
+  }else{
+    (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
+  }
+  const cid=getCID(CU.uid,curChat.uid);
+  clearTimeout(typDebounce);
+  if(hasText){
+    void setPresenceState('private',cid,'typing',true);
+    typDebounce=setTimeout(()=>void setPresenceState('private',cid,'typing',false),2000);
+  }else void setPresenceState('private',cid,'typing',false);
+}
+function onGMsgInput(){
+  if(!curGrp)return;
+  const hasText=el('gIn').value.trim().length>0;
+  const icon=el('gSendIcon');
+  if(hasText){
+    icon.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+  }else{
+    (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
+  }
+  const gid=curGrp.id;clearTimeout(gTypDebounce);
+  if(hasText){
+    void setPresenceState('group',gid,'typing',true);
+    gTypDebounce=setTimeout(()=>void setPresenceState('group',gid,'typing',false),2000);
+  }else void setPresenceState('group',gid,'typing',false);
+}
+function smartSend(){
+  if(isRec){stopAndSendVoice();return;}
+  if(vFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
+  const hasText=el('mIn').value.trim().length>0;
+  if(hasText){sendMsg();return;}
+  startVoice();
+}
+function smartGSend(){
+  if(gIsRec){stopAndSendGVoice();return;}
+  if(gVFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
+  const hasText=el('gIn').value.trim().length>0;
+  if(hasText){sendGMsg();return;}
+  startGVoice();
+}
+// Camera: open real device camera
+function openCamera(dest){
+  fType='image';
+  const fi=el(dest==='g'?'fGCam':'fCam');
+  fi.value='';fi.click();
+}
+function toggleCS(){const b=el('csBar');b.style.display=b.style.display==='none'?'block':'none';if(b.style.display==='block')el('csQ').focus();}
+function searchMsgs(q){el('msgB').querySelectorAll('.bw').forEach(b=>{b.style.display=!q||b.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';});}
+function startReply(id){
+  const bw=document.querySelector(`.bw[data-id="${id}"]`);if(!bw)return;
+  replyMsg={id,text:bw.querySelector('.bbl')?.textContent?.slice(0,60)||'',sender:bw.dataset.sender||''};
+  el('rplyT').textContent='↩ '+replyMsg.sender+': '+replyMsg.text;
+  el('rplybar').style.display='block';el('mIn').focus();
+}
+function cancelRply(){replyMsg=null;el('rplybar').style.display='none';}
+
+// MEDIA & STICKER PANELS
+function toggleMediaPanel(){const p=el('mediaPanel');p.style.display=p.style.display==='block'?'none':'block';closeStickers();}
+function closeMediaPanel(){el('mediaPanel').style.display='none';}
+function toggleGMediaPanel(){const p=el('gMediaPanel');p.style.display=p.style.display==='block'?'none':'block';}
+function closeGMediaPanel(){el('gMediaPanel').style.display='none';}
+let stickerOpen=false;
+function toggleKbSticker(){
+  const p=el('stickerPanel');
+  stickerOpen=!stickerOpen;
+  p.style.display=stickerOpen?'block':'none';
+  // Swap icon: keyboard when panel open (tap to close), face when closed (tap to open)
+  const icon=el('kbIcon');
+  if(icon){
+    if(stickerOpen){
+      icon.innerHTML='<path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 5H5v-2h2v2zm10 0H9v-2h8v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm-4 0h-2V8h2v2zm0 3h-2v-2h2v2z"/>';
+    }else{
+      icon.innerHTML='<path d="M34 4H14C8.477 4 4 8.477 4 14v20c0 5.523 4.477 10 10 10h20c5.523 0 10-4.477 10-10V14C44 8.477 39.523 4 34 4zm0 4c3.309 0 6 2.691 6 6v20c0 3.309-2.691 6-6 6H14c-3.309 0-6-2.691-6-6V14c0-3.309 2.691-6 6-6h20zM17 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 8c-3.5 0-6.5 2-8 5h16c-1.5-3-4.5-5-8-5z"/>';
+    }
+  }
+  closeMediaPanel();
+  if(stickerOpen)switchStickerTab('emoji');
+}
+function toggleStickers(){toggleKbSticker();}
+function closeStickers(){stickerOpen=false;el('stickerPanel').style.display='none';}
+let _stickerTab='emoji';
+function switchStickerTab(tab){
+  _stickerTab=tab;
+  ['emoji','stickers','flags','gif'].forEach(t=>{
+    const btn=el('stab_'+t);
+    if(btn){
+      btn.style.background=t===tab?'var(--btnB)':'var(--card)';
+      btn.style.color=t===tab?'#fff':'var(--sub)';
+    }
+  });
+  const grid=el('stickerGrid');grid.innerHTML='';
+  if(tab==='stickers'){
+    grid.innerHTML=`<div style="text-align:center;padding:20px 12px;color:var(--sub);font-size:13px;">
+      <svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:var(--sub);margin-bottom:8px;"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2h15A2.5 2.5 0 0 1 22 4.5v15a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 19.5v-15zm2.5-.5a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5h-15zM9 8.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm6 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-7.5 5h9a4.5 4.5 0 0 1-9 0z"/></svg>
+      <b style="display:block;margin-bottom:4px;">Stickers</b>
+      <p style="font-size:11px;opacity:.8;">Stickers sent to you will be saved here automatically.</p>
+    </div>`;
+    return;
+  }
+  if(tab==='gif'){
+    grid.innerHTML='<div style="padding:12px;text-align:center;color:var(--sub);font-size:13px;">GIF search coming soon!</div>';
+    return;
+  }
+  const items=tab==='flags'?FLAGS:STICKERS;
+  items.forEach(s=>{
+    const b=document.createElement('button');b.className='sticker-btn';b.textContent=s;
+    b.onclick=()=>insertEmoji(s);grid.appendChild(b);
+  });
+}
+function insertEmoji(emoji){
+  const inp=curGrp?el("gIn"):el("mIn");
+  if(!inp)return;
+  const pos=inp.selectionStart||inp.value.length;
+  inp.value=inp.value.slice(0,pos)+emoji+inp.value.slice(pos);
+  inp.setSelectionRange(pos+emoji.length,pos+emoji.length);
+  inp.focus();
+  curGrp?onGMsgInput():onMsgInput();
+}
+function sendSticker(sticker){
+  if(!curChat&&!curGrp)return;
+  const cid=curChat?getCID(CU.uid,curChat.uid):null;
+  const msg={type:'text',text:sticker,senderUid:CU.uid,senderName:MP?.name||'',time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  if(cid){
+    db.collection('chats').doc(cid).collection('messages').add(msg);
+    const _sd1={participants:[CU.uid,curChat.uid],lastMsg:sticker,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};_sd1['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);db.collection('chats').doc(cid).set(_sd1,{merge:true});
+  }else if(curGrp){
+    db.collection('groups').doc(curGrp.id).collection('messages').add({...msg,senderPhoto:myPho||''});
+  }
+  closeStickers();
+}
+
+function sendSpecial(type){
+  if(!curChat)return;
+  let text='';
+  if(type==='poll')text=prompt('Poll question:');
+  else if(type==='event')text=prompt('Event details:');
+  else if(type==='location')text=prompt('Location:');
+  else if(type==='link')text=prompt('Enter URL:');
+  if(!text)return;
+  const icons={poll:'📊',event:'📅',location:'📍',link:'🔗'};
+  const cid=getCID(CU.uid,curChat.uid);
+  db.collection('chats').doc(cid).collection('messages').add({
+    type:'text',text:`${icons[type]} ${text}`,senderUid:CU.uid,senderName:MP?.name||'',
+    time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  const _sd2={participants:[CU.uid,curChat.uid],lastMsg:icons[type]+' '+text,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};_sd2['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);db.collection('chats').doc(cid).set(_sd2,{merge:true});
+}
+
+async function sendMsg(){
+  const inp=el('mIn');if(!inp.value.trim()||!curChat)return;
+  const text=inp.value.trim();inp.value='';
+  // Reset send button icon to mic
+  const icon=el('sendIcon');
+  (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
+  const cid=getCID(CU.uid,curChat.uid);const t=now();
+  clearTimeout(typDebounce);void setPresenceState('private',cid,'typing',false);
+  const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  if(replyMsg)md.replyTo={text:replyMsg.text,senderName:replyMsg.sender};
+  replyMsg=null;el('rplybar').style.display='none';
+  try{
+    await db.collection('chats').doc(cid).collection('messages').add(md);
+    const upd={participants:[CU.uid,curChat.uid],lastMsg:text,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
+    upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
+    await db.collection('chats').doc(cid).set(upd,{merge:true});
+    // Register chatId and signal unread on receiver's user document so their inbox listener fires
+    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+    receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    db.collection('users').doc(curChat.uid).update(receiverUpd).catch(()=>{
+      db.collection('users').doc(curChat.uid).set(receiverUpd,{merge:true}).catch(()=>{});
+    });
+    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    // Message notification goes to Msgs tab only — NOT to alerts
+    // unread count handled by setupMsgBL
+  }catch(e){showToast('❌ '+e.message);}
+}
+
+// ── GROUP ──
+async function openGroup(postId,name){
+  if(!postId||postId==='undefined'){showToast('❌ Group not found');return;}
+  showOv(true);
+  try{
+    const gref=db.collection('groups').doc(postId);
+    const gs=await gref.get();
+    if(!gs.exists){showToast('❌ Group not found');showOv(false);return;}
+    if(!(gs.data().members||[]).includes(CU.uid))await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+    curGrp={id:postId,name};
+    el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
+    setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
+    if(grpUnsub){grpUnsub();grpUnsub=null;}
+    if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
+    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||{};const c=(data.members||[]).length;el('grpM').textContent=c+' member'+(c!==1?'s':'');renderGroupPresence(data);});
+    grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt').limitToLast(50).onSnapshot(sn=>{
+      const mb=el('grpB');
+      sn.docChanges().forEach(change=>{
+        if(change.type==='removed'){const ex=mb.querySelector(`.bw[data-id="${change.doc.id}"]`);if(ex)ex.remove();return;}
+        const m={id:change.doc.id,...change.doc.data()};
+        const bbl=buildBbl(m,true);if(!bbl)return;
+        const tmp=document.createElement('div');tmp.innerHTML=bbl;
+        const node=tmp.firstElementChild;if(!node)return;
+        if(change.type==='added'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(!ex)mb.appendChild(node);}
+        else if(change.type==='modified'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(ex)ex.replaceWith(node);else mb.appendChild(node);}
+      });
+      mb.scrollTop=mb.scrollHeight;
+    },e=>console.log(e));
+  }catch(e){showToast('❌ '+e.message);}
+  showOv(false);
+}
+function closeGroup(){
+  if(curGrp&&CU){clearTimeout(gTypDebounce);void clearPresenceState('group',curGrp.id);}
+  el('gTypebar').style.display='none';el('groupW').style.display='none';
+  if(grpUnsub){grpUnsub();grpUnsub=null;}if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
+  curGrp=null;closeGStickers();clearSelection();
+}
+async function sendGMsg(){
+  const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
+  const text=inp.value.trim();inp.value='';
+  clearTimeout(gTypDebounce);void setPresenceState('group',curGrp.id,'typing',false);
+  const gi=el('gSendIcon');if(gi)gi.innerHTML='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
+  try{await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});}
+  catch(e){showToast('❌ '+e.message);}
+}
+
+// ── BUILD BUBBLE ──
+let selectedMsgs=new Set(),selMode=false;
+function toggleSelectMsg(id,isGrp){
+  selMode=true;
+  const bw=document.querySelector(`.bw[data-id="${id}"]`);if(!bw)return;
+  const isSelf=bw.classList.contains('s');
+  const bbl=bw.querySelector('.bbl');
+  const btn=bw.querySelector('.selbtn');
+  if(selectedMsgs.has(id)){
+    selectedMsgs.delete(id);
+    bbl.style.outline='none';
+    bw.querySelector('.sel-chk')?.remove();
+    if(btn){btn.textContent='☐';btn.classList.remove('checked');}
+  }else{
+    selectedMsgs.add(id);
+    bbl.style.outline=`2px solid ${isSelf?'rgba(255,255,255,.6)':'#1565c0'}`;
+    if(btn){btn.textContent='☑';btn.classList.add('checked');}
+    if(!bw.querySelector('.sel-chk')){
+      const chk=document.createElement('div');
+      chk.className='sel-chk';
+      chk.textContent='✔';
+      chk.style.cssText=`position:absolute;top:-8px;${isSelf?'left:-8px':'right:-8px'};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;z-index:10;background:${isSelf?'#fff':'#1565c0'};color:${isSelf?'#1565c0':'#fff'};`;
+      bbl.style.position='relative';
+      bbl.appendChild(chk);
+    }
+  }
+  if(selectedMsgs.size>0){
+    let bar=document.getElementById('selBar');
+    if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
+    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#e74c3c;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">🗑️ Everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#e67e22;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">🙈 For Me</button><button onclick="clearSelection()" style="background:rgba(255,255,255,.15);color:#fff;border:none;padding:9px 12px;border-radius:20px;font-size:13px;cursor:pointer;">✕</button>`;
+  }else{clearSelection();}
+}
+function clearSelection(){
+  selectedMsgs.clear();selMode=false;
+  document.querySelectorAll('.bbl').forEach(b=>{b.style.outline='none';});
+  document.querySelectorAll('.sel-chk').forEach(c=>c.remove());
+  document.querySelectorAll('.selbtn').forEach(b=>{b.textContent='☐';b.classList.remove('checked');});
+  document.getElementById('selBar')?.remove();
+}
+async function deleteSelectedMsgs(isGrp,scope){
+  if(!scope){
+    // Fallback: show sheet
+    const count=selectedMsgs.size;
+    const sheet=document.createElement('div');sheet.id='delSheet';
+    sheet.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+    sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:18px;">
+      <p style="font-weight:bold;font-size:15px;text-align:center;margin-bottom:14px;">Delete ${count} message${count>1?'s':''}?</p>
+      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;border:1px solid rgba(30,136,229,.25);">Delete for Everyone</button>
+      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;border:1px solid rgba(30,136,229,.25);">Delete for Me</button>
+      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:14px;cursor:pointer;border:1px solid rgba(30,136,229,.15);">Cancel</button>
+    </div>`;
+    sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
+    document.body.appendChild(sheet);
+    return;
+  }
+  await execDelMsgs(scope,isGrp);
+}
+async function execDelMsgs(scope,isGrp){
+  el('delSheet')?.remove();
+  const ids=[...selectedMsgs];
+  // Immediately hide 'delete for me' bubbles from DOM so UI feels instant
+  if(scope==='me'){
+    ids.forEach(id=>{
+      const bw=document.querySelector(`.bw[data-id="${id}"]`);
+      if(bw)bw.remove();
+    });
+  }
+  for(const id of ids){
+    try{
+      let ref;
+      if(!isGrp&&curChat)ref=db.collection('chats').doc(getCID(CU.uid,curChat.uid)).collection('messages').doc(id);
+      else if(isGrp&&curGrp)ref=db.collection('groups').doc(curGrp.id).collection('messages').doc(id);
+      if(ref){
+        if(scope==='everyone')await ref.delete();
+        else await ref.update({['deletedFor.'+CU.uid]:true});
+      }
+    }catch(e){console.log(e);}
+  }
+  clearSelection();
+  showToast(scope==='everyone'?'🗑️ Deleted for everyone':'🗑️ Deleted for you');
+}
+function buildBbl(m,isGrp){
+  if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
+  const self=m.senderUid===CU?.uid,side=self?'s':'o';
+  const type=m.type||'text';
+  const nameTag=isGrp&&!self?`<div class="bname">${esc(m.senderName||'')}</div>`:'';
+  const repBtn=!isGrp?`<button class="mabtn ${self?'op':''}" ${!self?'style="background:rgba(0,0,0,.08);color:var(--txt);"':''} onclick="startReply('${m.id}')">↩</button>`:'';
+  const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
+  const receipt=self&&type==='text'?`<div class="receipt">${m.seen?'✓✓ Seen':'✓'}</div>`:'';
+  const rc=m.reactions||{},ec={};
+  Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
+  const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
+  let inner='';
+  if(type==='text'){
+    const urlReg=/(https?:\/\/[^\s]+)/g;
+    const rawText=m.text||'';
+    const urls=rawText.match(urlReg)||[];
+    let textHtml=esc(rawText).replace(/(https?:\/\/[^\s]+)/g,'');
+    textHtml=textHtml.trim();
+    let linkCards='';
+    urls.forEach(url=>{
+      let icon='🔗',label='Open Link';
+      if(url.includes('drive.google.com')){icon='📁';label='Google Drive';}
+      else if(url.includes('docs.google.com')){icon='📄';label='Google Docs';}
+      else if(url.includes('youtube.com')||url.includes('youtu.be')){icon='▶️';label='YouTube Video';}
+      else if(url.includes('dropbox.com')){icon='📦';label='Dropbox File';}
+      else if(url.includes('onedrive')||url.includes('1drv.ms')){icon='☁️';label='OneDrive File';}
+      else if(url.endsWith('.pdf')){icon='📕';label='PDF Document';}
+      else if(url.includes('github.com')){icon='💻';label='GitHub';}
+      linkCards+=`<a href="${url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.15);border-radius:10px;padding:8px 10px;margin-top:5px;text-decoration:none;color:inherit;"><span style="font-size:20px;">${icon}</span><div style="flex:1;overflow:hidden;"><div style="font-size:12px;font-weight:bold;">${label}</div><div style="font-size:10px;opacity:.7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(url)}</div></div><span style="font-size:14px;">↗</span></a>`;
+    });
+    const textPart=textHtml?'<div>'+textHtml+'</div>':'';
+    inner=`${nameTag}${rq}${textPart}${linkCards}${!isGrp?`<div class="mar">${repBtn}</div>`:''} ${rcHtml}${receipt}`;
+  }
+  else if(type==='image'){
+    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">Sending...</div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','image')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','img.jpg')">⬇</button></div>${rcHtml}${self?'<div class="receipt">'+( m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+  }
+  else if(type==='video'){
+    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">Sending...</div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','video.mp4')">⬇</button></div>${rcHtml}${self?'<div class="receipt">'+( m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+  }
+  else if(type==='audio'){
+    // Uploaded audio files use the same custom player as recorded voice notes.
+    // Native <audio controls> is inconsistently rendered in mobile WebViews and
+    // can leave the bubble without a visible play button.
+    const audioBg=isGrp?(self?'linear-gradient(135deg,#e67e22,#f39c12)':'rgba(230,126,34,.13)'):(self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)');
+    const audioAccent=isGrp?'#e67e22':'#2196f3';
+    const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
+    const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
+    const audioDur=m.dur||'0:00';
+    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+  }
+  else if(type==='voice'){
+    // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
+    // Private voice messages stay blue; group voice messages use orange.
+    const vBlue='#2196f3',vOrange='#e67e22';
+    const vBubbleBg=isGrp?(self?'linear-gradient(135deg,#e67e22,#f39c12)':'rgba(230,126,34,.13)'):(self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)');
+    const vWaveColor=self?'rgba(255,255,255,0.8)':(isGrp?vOrange:vBlue);
+    const vAccent=isGrp?vOrange:vBlue;
+    const vPlayedColor=isGrp?'#ffd7ad':'#4fc3f7';
+    // Waveform bars SVG
+    const waveSVG=`<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
+      ${[2,4,8,6,10,14,18,12,20,24,28,22,26,30,24,20,28,22,18,24,16,12,18,10,14,8,6,10,4,6].map((h,i)=>{
+        const x=2+i*4,bh=Math.max(4,h),y=(32-bh)/2;
+        return`<rect x="${x}" y="${y}" width="2.5" height="${bh}" rx="1.2" fill="${vWaveColor}" opacity="${0.5+h/60}"/>`;
+      }).join('')}
+    </svg>`;
+    // Voice receipts: ✓ = sent, ✓✓ = delivered/seen, blue ✓✓ = played
+    let voiceReceipt='';
+    if(self){
+      if(m.voicePlayed){voiceReceipt=`<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;}
+      else if(m.seen){voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.9);margin-left:4px;">✓✓</span>';}
+      else{voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
+    }
+    const durLabel=m.dur||'0:00';
+    const playBtnBg=self?'rgba(255,255,255,0.25)':vAccent;
+    const playBtnColor='#fff';
+    const playShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
+    if(m.status==='failed'){
+      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
+        <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Échec de l’envoi vocal</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Vérifiez la connexion puis réessayez.</div></div>
+      </div>${rcHtml}`;
+    }else if(!m.data){
+      // Still sending — show progress + "Sending..." + timer
+      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
+        <div style="flex:1;"><div class="vprog" style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:5px;"><div style="width:0%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;color:${self?'rgba(255,255,255,.8)':'var(--sub)'};">Sending...</span><span class="vdur">${durLabel}</span></div></div>
+      </div>${rcHtml}`;
+    }else{
+      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
+        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
+        <div style="flex:1;min-width:0;">
+          <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
+            ${waveSVG}
+            <div style="position:absolute;left:0;top:0;width:0%;height:100%;background:${isGrp?'rgba(230,126,34,.24)':'rgba(33,150,243,.2)'};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+            <span style="font-size:10px;color:${self?'rgba(255,255,255,.82)':vAccent};font-weight:600;">Voice message</span>
+            <div style="display:flex;align-items:center;gap:4px;"><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>${voiceReceipt}</div>
+          </div>
+        </div>
+      </div>${rcHtml}`;
+    }
+  }
+  else if(type==='doc'){const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';inner=`${nameTag}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;}
+  return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${m.time||''}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
+}
+// Long press (600ms) to enter selection mode
+let _lpTimer=null,_lpFired=false;
+function startLongPress(id,isGrp){
+  _lpFired=false;
+  _lpTimer=setTimeout(()=>{
+    _lpFired=true;
+    navigator.vibrate&&navigator.vibrate(50);
+    toggleSelectMsg(id,isGrp);
+  },600);
+}
+function moveLongPress(){clearTimeout(_lpTimer);_lpTimer=null;}
+function endLongPress(id,isGrp,e){
+  clearTimeout(_lpTimer);
+  if(_lpFired){e?.preventDefault();e?.stopPropagation();_lpFired=false;}
+}
+async function toggleReact(id,emoji,dest){
+  let ref;
+  if(dest==='p'&&curChat)ref=db.collection('chats').doc(getCID(CU.uid,curChat.uid)).collection('messages').doc(id);
+  else if(dest==='g'&&curGrp)ref=db.collection('groups').doc(curGrp.id).collection('messages').doc(id);
+  if(!ref)return;
+  const sn=await ref.get();const rc=sn.data()?.reactions||{};const ur=rc[CU.uid]||[];
+  rc[CU.uid]=ur.includes(emoji)?ur.filter(e=>e!==emoji):[...ur,emoji];
+  await ref.update({reactions:rc});
+}
+function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>🎵</h2><audio src="${src}" controls autoplay style="width:300px;"></audio></div>`:`<iframe src="${src}" style="width:100vw;height:100vh;border:none;"></iframe>`}</body></html>`);w.document.close();}
+function dlM(src,fname){const a=document.createElement('a');a.href=src;a.download=fname||'file';document.body.appendChild(a);a.click();setTimeout(()=>document.body.removeChild(a),200);}
+
+async function markVoicePlayed(msgId,senderUid){
+  if(!curChat||!CU)return;
+  try{
+    const cid=getCID(CU.uid,curChat.uid);
+    const msgRef=db.collection('chats').doc(cid).collection('messages').doc(msgId);
+    const snap=await msgRef.get();
+    if(!snap.exists)return;
+    const data=snap.data();
+    if(data.voicePlayed)return; // already marked
+    const realSenderUid=senderUid||data.senderUid;
+    if(!realSenderUid||realSenderUid===CU.uid)return; // don't notify self
+    await msgRef.update({voicePlayed:true});
+    // Show 🎧 blue ✓✓ heard badge on the message receipt
+    const vbub=document.getElementById('vp_'+msgId);
+    if(vbub){
+      // Remove old receipt spans and update
+      const oldReceipt=vbub.parentElement?.querySelector('span[data-vreceipt]');
+      if(oldReceipt)oldReceipt.remove();
+      const heardSpan=document.createElement('span');
+      heardSpan.setAttribute('data-vreceipt','1');
+      heardSpan.style.cssText='font-size:11px;color:#4fc3f7;margin-left:4px;font-weight:bold;';
+      heardSpan.textContent='✓✓';
+      vbub.appendChild(heardSpan);
+    }
+    // Notify sender via alerts
+    db.collection('notifications').add({toUid:realSenderUid,icon:'🎧',title:'Voice note heard',body:(MP?.name||'Someone')+' played your voice note',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+  }catch(e){console.log('markVoicePlayed:',e);}
+}
+
+// ── GOOGLE DRIVE PICKER ──
+function openGDrivePicker(dest){
+  const sheet=document.createElement('div');
+  sheet.id='driveSheet';
+  sheet.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  sheet.innerHTML=`
+    <div style="background:var(--card);width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:20px;">
+      <p style="font-weight:bold;font-size:15px;text-align:center;margin-bottom:6px;">📁 Share from Google Drive</p>
+      <p style="font-size:12px;color:var(--sub);text-align:center;margin-bottom:14px;">Open Google Drive → tap the 3 dots on your file → tap <b>Share</b> → copy the link → paste below.</p>
+      <textarea id="driveInp" placeholder="Paste Google Drive link here..." style="width:100%;height:80px;padding:10px;border:1px solid var(--brd);border-radius:10px;font-size:13px;background:var(--inp);color:var(--txt);resize:none;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="el('driveSheet').remove()" style="flex:1;padding:12px;border:none;background:var(--bg);color:var(--txt);border-radius:10px;font-size:14px;cursor:pointer;">Cancel</button>
+        <button onclick="sendDriveLink('${dest}')" style="flex:1;padding:12px;border:none;background:#1a73e8;color:#fff;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;">📤 Send</button>
+      </div>
+      <button onclick="window.open('https://drive.google.com','_blank')" style="width:100%;padding:11px;margin-top:8px;border:none;background:#e8f0fe;color:#1a73e8;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">🔗 Open Google Drive</button>
+    </div>`;
+  sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
+  document.body.appendChild(sheet);
+  setTimeout(()=>el('driveInp')?.focus(),300);
+}
+async function sendDriveLink(dest){
+  const link=(el('driveInp')?.value||'').trim();
+  if(!link){showToast('❌ Please paste a link first');return;}
+  if(!link.startsWith('http')){showToast('❌ Please paste a valid link');return;}
+  el('driveSheet')?.remove();
+  const t=now();
+  try{
+    if(dest==='p'&&curChat){
+      const cid=getCID(CU.uid,curChat.uid);
+      await db.collection('chats').doc(cid).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const upd={participants:[CU.uid,curChat.uid],lastMsg:'__gdrive__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
+      upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
+      await db.collection('chats').doc(cid).set(upd,{merge:true});
+    }else if(dest==='g'&&curGrp){
+      await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:t,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    }
+    showToast('📁 File shared!');
+  }catch(e){showToast('❌ '+e.message);}
+}
+
+// ── EMOJI REACTIONS (via long-press → react button in reaction bar) ──
+function showEP(id,dest,event){curEId=id;curED=dest;const ep=el('emojiP');ep.style.display='block';ep.style.left=Math.min(event.clientX,window.innerWidth-210)+'px';ep.style.top=Math.max(event.clientY-130,10)+'px';}
+async function pickEmoji(emoji){
+  el('emojiP').style.display='none';
+  // If used from keyboard panel: insert into input
+  const activeInput=document.activeElement;
+  if(activeInput&&(activeInput.id==='mIn'||activeInput.id==='gIn')){
+    const pos=activeInput.selectionStart||activeInput.value.length;
+    activeInput.value=activeInput.value.slice(0,pos)+emoji+activeInput.value.slice(pos);
+    activeInput.setSelectionRange(pos+emoji.length,pos+emoji.length);
+    activeInput===el('mIn')?onMsgInput():onGMsgInput();
+    return;
+  }
+  if(!curEId)return;
+  await toggleReact(curEId,emoji,curED);
+}
+
+// ── CAMERA ──
+let gStickerOpen=false;
+function toggleGKbSticker(){
+  const p=el('gStickerPanel');
+  gStickerOpen=!gStickerOpen;
+  p.style.display=gStickerOpen?'block':'none';
+  closeGMediaPanel();
+  if(gStickerOpen)switchGStickerTab('emoji');
+}
+function closeGStickers(){gStickerOpen=false;el('gStickerPanel').style.display='none';}
+function switchGStickerTab(tab){
+  ['emoji','stickers','flags','gif'].forEach(t=>{
+    const btn=el('gstab_'+t);
+    if(btn){btn.style.background=t===tab?'#e67e22':'var(--card)';btn.style.color=t===tab?'#fff':'var(--sub)';}
+  });
+  const grid=el('gStickerGrid');grid.innerHTML='';
+  if(tab==='stickers'){grid.innerHTML=`<div style="text-align:center;padding:20px 12px;color:var(--sub);font-size:13px;"><svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:var(--sub);margin-bottom:8px;"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2h15A2.5 2.5 0 0 1 22 4.5v15a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 19.5v-15zm2.5-.5a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5h-15zM9 8.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm6 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-7.5 5h9a4.5 4.5 0 0 1-9 0z"/></svg><b>Stickers</b><p style="font-size:11px;opacity:.8;">Stickers sent to you appear here.</p></div>`;return;}
+  if(tab==='gif'){grid.innerHTML='<div style="padding:12px;text-align:center;color:var(--sub);font-size:13px;">GIF search coming soon!</div>';return;}
+  const items=tab==='flags'?FLAGS:STICKERS;
+  items.forEach(s=>{
+    const b=document.createElement('button');b.className='sticker-btn';b.textContent=s;
+    b.onclick=()=>sendSticker(s);grid.appendChild(b);
+  });
+}
+
+// ── FILES ──
+function pickF(accept,type,dest){fType=type;fDest=dest;const fi=el(dest==='g'?'fGrp':'fPrv');fi.accept=accept;fi.value='';fi.click();}
+async function handleF(e,dest){
+  const file=e.target.files[0];if(!file)return;
+  if(fType==='image'){showImgPreview(file,dest);return;}
+  // Size limits
+  if(fType==='video'&&file.size>200*1024*1024){showToast('⚠️ Video too large. Max 200MB.');return;}
+  if(fType==='audio'&&file.size>50*1024*1024){showToast('⚠️ Audio too large. Max 50MB.');return;}
+  if(fType==='doc'&&file.size>50*1024*1024){showToast('⚠️ Document too large. Max 50MB.');return;}
+  const t=now();
+  const ext=file.name.split('.').pop().toLowerCase();
+  const localType=fType==='video'?'video':fType==='audio'?'audio':'doc';
+  const rtype=fType==='video'?'video':fType==='audio'?'video':fType==='doc'?'raw':'auto';
+  const _typeLabel=fType==='video'?'__video__':fType==='audio'?'__audio__':'__doc__:'+file.name;
+  // ✅ INSTANT: Build message with sending status immediately
+  let m={senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  if(fType==='video')m={...m,type:'video',data:''};
+  else if(fType==='audio')m={...m,type:'audio',data:''};
+  else m={...m,type:'doc',data:'',name:file.name,ext};
+  try{
+    let msgRef;
+    if(dest==='g'&&curGrp){
+      msgRef=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
+    }else if(dest==='p'&&curChat){
+      const cid=getCID(CU.uid,curChat.uid);
+      msgRef=await db.collection('chats').doc(cid).collection('messages').add(m);
+      const _upd={participants:[CU.uid,curChat.uid],lastMsg:_typeLabel,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
+      _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
+      await db.collection('chats').doc(cid).set(_upd,{merge:true});
+      const _fRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+      _fRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+      db.collection('users').doc(curChat.uid).update(_fRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_fRecvUpd,{merge:true}).catch(()=>{});});
+    }
+    // ✅ BACKGROUND: Upload file without blocking UI
+    if(msgRef){
+      const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
+      fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${rtype}/upload`,{method:'POST',body:fd})
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.secure_url){
+            msgRef.update({data:d.secure_url,status:'sent'});
+          }else{
+            msgRef.update({status:'failed'});
+            showToast('❌ Upload failed');
+          }
+        })
+        .catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
+    }
+  }catch(ex){showToast('❌ '+ex.message);}
+}
+let _previewFile=null,_previewDest=null;
+// Compress image client-side to avoid 10MB limit — max 1000px, quality 0.7
+function compressImage(file,maxW=1200,quality=0.75){
+  return new Promise(resolve=>{
+    const img=new Image(),blobUrl=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(blobUrl);
+      let w=img.width,h=img.height;
+      if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      cv.toBlob(blob=>resolve(new File([blob],'photo.jpg',{type:'image/jpeg'})),'image/jpeg',quality);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(blobUrl);resolve(file);};
+    img.src=blobUrl;
+  });
+}
+function showImgPreview(file,dest){
+  _previewFile=file;_previewDest=dest;
+  const url=URL.createObjectURL(file);
+  const modal=document.createElement('div');
+  modal.id='imgPreviewModal';
+  modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9990;display:flex;flex-direction:column;';
+  modal.innerHTML=`
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+      <img src="${url}" style="width:100%;height:100%;object-fit:contain;">
+    </div>
+    <div style="background:rgba(0,0,0,.85);padding:16px 20px;display:flex;gap:14px;justify-content:center;align-items:center;flex-shrink:0;">
+      <button onclick="cancelPreview()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:12px 28px;border-radius:24px;font-size:16px;cursor:pointer;font-weight:bold;">✕</button>
+      <button onclick="sendPreviewImg()" style="background:#27ae60;color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(39,174,96,.5);">✅ Send</button>
+    </div>`;
+  document.body.appendChild(modal);
+}
+async function sendPreviewImg(){
+  const modal=el('imgPreviewModal');if(modal)modal.remove();
+  if(!_previewFile)return;
+  // ✅ INSTANT: Show image message immediately with sending status
+  let fileToSend=_previewFile;
+  try{fileToSend=await compressImage(_previewFile);}catch(e){}
+  const t=now();
+  const m={type:'image',data:'',senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{
+    if(_previewDest==='g'&&curGrp){
+      const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
+      // ✅ BACKGROUND UPLOAD
+      uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
+    }else if(_previewDest==='p'&&curChat){
+      const cid=getCID(CU.uid,curChat.uid);
+      const ref=await db.collection('chats').doc(cid).collection('messages').add(m);
+      // ✅ BACKGROUND UPLOAD
+      uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
+      const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
+      _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
+      await db.collection('chats').doc(cid).set(_upd,{merge:true});
+      const _pRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};_pRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+      db.collection('users').doc(curChat.uid).update(_pRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_pRecvUpd,{merge:true}).catch(()=>{});});
+    }
+  }catch(ex){showToast('❌ '+ex.message);}
+  _previewFile=null;_previewDest=null;
+}
+function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewFile=null;_previewDest=null;}
+
+// ── VOICE (Private) ──
+// Flow: hold-swipe-up mic → vibrate → start recording (bar appears)
+//       release / tap send → stop recording → auto upload & send
+let lastHapticAt=0;
+function pulseHaptic(pattern=55,target){
+  let didVibrate=false;
+  const nowMs=Date.now();
+  const allowDevicePulse=nowMs-lastHapticAt>80;
+  if(allowDevicePulse)lastHapticAt=nowMs;
+  try{
+    if(allowDevicePulse&&typeof navigator!=='undefined'&&typeof navigator.vibrate==='function'){
+      const normalized=Array.isArray(pattern)
+        ? pattern.map(v=>Math.max(0,Number(v)||0))
+        : Math.max(0,Number(pattern)||0);
+      const result=navigator.vibrate(normalized);
+      didVibrate=result!==false;
+      // A few Android Chromium builds accept only a scalar duration even though
+      // the API advertises vibration patterns. Retry once with a short pulse.
+      if(result===false&&Array.isArray(normalized))didVibrate=navigator.vibrate(55)!==false;
+    }
+  }catch(e){}
+  // Some Android browsers disable vibration in WebView/PWA contexts; keep a visible
+  // press acknowledgement so the gesture is still clear to the user.
+  if(target){
+    target.classList.remove('haptic-pulse');
+    void target.offsetWidth;
+    target.classList.add('haptic-pulse');
+    setTimeout(()=>target.classList.remove('haptic-pulse'),260);
+  }
+  return didVibrate;
+}
+function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
+async function startVoice(fromGesture=false){
+  if(vFinalizing||isRec)return;
+  if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
+  try{
+    // Pointer gestures pulse before calling this async function. Keep a fallback
+    // pulse for the normal click/text-button path.
+    if(!fromGesture)pulseHaptic(55,el('sendB'));
+    const s=await getVoiceStream();
+    bindRecorderSafety(s,'private');
+    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
+    mr=new MediaRecorder(s,opts);vCh=[];
+    mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);resetRecorderUi('private');showToast('🎙️ Erreur du microphone. Réessayez.');};
+    mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
+    mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
+    if(curChat&&CU)void setPresenceState('private',getCID(CU.uid,curChat.uid),'recording',true);
+    void keepVoiceScreenOn();
+    el('sendB').classList.remove('voice-pending');
+    // The direct pre-await pulse above is the reliable start feedback.
+    // Button → blue recording state
+    el('sendB').classList.add('rec');el('sendB').style.background='#1976d2';
+    el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+    el('vbar').style.display='flex';
+    drawBars('vWave',()=>isRec,'#1976d2');
+    const refreshVoiceTimer=()=>{vSec=Math.max(0,Math.floor((Date.now()-vStartAt)/1000));const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
+    refreshVoiceTimer();
+    vInt=setInterval(refreshVoiceTimer,250);
+  }catch(err){
+    isRec=false;vStartAt=0;
+    if(curChat&&CU)void setPresenceState('private',getCID(CU.uid,curChat.uid),'recording',false);
+    el('sendB').classList.remove('voice-pending','rec','voice-locked');
+    void releaseVoiceScreen();
+    const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
+    showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
+  }
+}
+function collectRecorderChunks(recorder, initialChunks){
+  return new Promise(resolve=>{
+    const chunks=Array.isArray(initialChunks)?initialChunks.slice():[];
+    let settled=false;
+    let timeout=null;
+    const finish=()=>{
+      if(settled)return;
+      settled=true;
+      if(timeout)clearTimeout(timeout);
+      recorder.removeEventListener('dataavailable',onData);
+      recorder.removeEventListener('stop',onStop);
+      resolve(chunks);
+    };
+    const onData=e=>{if(e.data&&e.data.size>0)chunks.push(e.data);};
+    const onStop=()=>finish();
+    recorder.addEventListener('dataavailable',onData);
+    recorder.addEventListener('stop',onStop,{once:true});
+    // Some mobile WebViews do not deliver the stop event reliably; never leave the UI locked.
+    timeout=setTimeout(finish,1800);
+    try{
+      if(recorder.state==='recording'){
+        recorder.stop();
+      }else finish();
+    }catch(e){finish();}
+  });
+}
+async function stopAndSendVoice(){
+  const recorder=mr;
+  const chat=curChat;
+  if(!recorder||!isRec||vFinalizing)return;
+  vFinalizing=true;vSending=true;
+  // Flip the UI out of recording mode before awaiting MediaRecorder events. This makes
+  // the second tap deterministic on Android and guarantees REC cannot run forever.
+  isRec=false;
+  if(chat&&CU)void setPresenceState('private',getCID(CU.uid,chat.uid),'recording',false);
+  clearInterval(vInt);vInt=null;stopWave('vWave');
+  const elapsed=Date.now()-(vStartAt||Date.now());
+  const dur=Math.max(vSec,Math.floor(Math.max(0,elapsed)/1000));
+  // Android may deliver pointerup before MediaRecorder has emitted its first
+  // dataavailable event. Let the recorder run briefly before stopping it.
+  if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
+  el('sendB').classList.remove('rec','voice-pending');el('sendB').style.background='var(--btnB)';
+  setMicIcon('sendIcon');
+  el('vbar').style.display='none';el('vTimer').textContent='0:00';
+  let chunks=[];
+  try{chunks=await collectRecorderChunks(recorder,vCh);}catch(e){console.error('Voice finalize error:',e);}
+  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  void releaseVoiceScreen();
+  recorder.ondataavailable=null;
+  recorder.onstop=null;
+  vCh=[];vSec=0;mr=null;vStartAt=0;vFinalizing=false;
+  if(!chunks.length||!chat){vSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
+  const file=voiceFileFromChunks(chunks);
+  const mm=Math.floor(dur/60),ss=dur%60;
+  const cid=getCID(CU.uid,chat.uid);
+  const t=now();
+  let msgRef=null,uploadCommitted=false;
+  try{
+    msgRef=await db.collection('chats').doc(cid).collection('messages').add({
+      type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
+      senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
+      status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    let url=await uploadCloud(file,'audio');
+    let voiceFallbackError='';
+    if(!url){
+      try{
+        const storageUrl=await uploadVoiceToFirebase(file);
+        if(storageUrl){
+          await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
+          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
+        }
+      }catch(storageErr){
+        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
+        console.warn('Firebase voice fallback failed:',storageErr);
+      }
+    }
+    if(!url){
+      // Keep very short voice notes usable even if both remote upload paths fail.
+      const inlineUrl=await readVoiceAsDataUrl(file);
+      if(inlineUrl){
+        try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){voiceFallbackError=fallbackErr?.message||'Inline voice fallback failed';console.warn('Inline voice fallback failed:',fallbackErr);}
+      }
+    }
+    if(!url){
+      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      await msgRef.update({status:'failed',error:failure}).catch(()=>{});
+      vSending=false;
+      showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
+      return;
+    }
+    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
+    const _vUpd={participants:[CU.uid,chat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
+    _vUpd['unread.'+chat.uid]=firebase.firestore.FieldValue.increment(1);
+    await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
+    const _vRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+    _vRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    db.collection('users').doc(chat.uid).update(_vRecvUpd).catch(()=>{
+      db.collection('users').doc(chat.uid).set(_vRecvUpd,{merge:true}).catch(()=>{});
+    });
+  }catch(err){
+    console.error('Voice send error:',err);
+    if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Voice send failed'}).catch(()=>{});
+    showToast('⚠️ Envoi vocal impossible. Réessayez.');
+  }
+  vSending=false;
+}
+function cancelVoice(){
+    if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
+  isRec=false;
+  if(curChat&&CU)void setPresenceState('private',getCID(CU.uid,curChat.uid),'recording',false);
+  stopWave('vWave');
+  void releaseVoiceScreen();
+vCh=[];vSec=0;clearInterval(vInt);
+  el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
+  setMicIcon('sendIcon');
+  el('vbar').style.display='none';el('vTimer').textContent='0:00';
+}
+// Keep old processVoice/stopVoice/showVoiceReady stubs so smartSend still compiles
+function stopVoice(){stopAndSendVoice();}
+function processVoice(){}
+function showVoiceReady(){}
+function cancelVoiceReady(){}
+// ── VOICE (Group) ──
+function toggleGVoice(){gIsRec?stopAndSendGVoice():startGVoice();}
+async function startGVoice(fromGesture=false){
+  if(gVFinalizing||gIsRec)return;
+  if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
+  try{
+    // Pointer gestures pulse before calling this async function. Keep a fallback
+    // pulse for the normal click/text-button path.
+    if(!fromGesture)pulseHaptic(55,el('gSendB'));
+    const s=await getVoiceStream();
+    bindRecorderSafety(s,'group');
+    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
+    gmr=new MediaRecorder(s,opts);gvCh=[];
+    gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);resetRecorderUi('group');showToast('🎙️ Erreur du microphone. Réessayez.');};
+    gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
+    gmr.start(200);gIsRec=true;gvSec=0;gVStartAt=Date.now();
+    if(curGrp&&CU)void setPresenceState('group',curGrp.id,'recording',true);
+    void keepVoiceScreenOn();
+    el('gSendB').classList.remove('voice-pending');
+    // The direct pre-await pulse above is the reliable start feedback.
+    el('gSendB').classList.add('rec');el('gSendB').style.background='#e67e22';
+    el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+    el('gvbar').style.display='flex';
+    el('gRecIndicator')?.classList.add('recPulse');
+    drawBars('gvWave',()=>gIsRec,'#e67e22');
+    const refreshGroupVoiceTimer=()=>{gvSec=Math.max(0,Math.floor((Date.now()-gVStartAt)/1000));const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
+    refreshGroupVoiceTimer();
+    gvInt=setInterval(refreshGroupVoiceTimer,250);
+  }catch(err){
+    gIsRec=false;gVStartAt=0;
+    if(curGrp&&CU)void setPresenceState('group',curGrp.id,'recording',false);
+    el('gSendB').classList.remove('voice-pending','rec','voice-locked');
+    void releaseVoiceScreen();
+    const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
+    showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
+  }
+}
+async function stopAndSendGVoice(){
+  const recorder=gmr;
+  const group=curGrp;
+  if(!recorder||!gIsRec||gVFinalizing)return;
+  gVFinalizing=true;gVoiceSending=true;
+  gIsRec=false;
+  if(group&&CU)void setPresenceState('group',group.id,'recording',false);
+  clearInterval(gvInt);gvInt=null;stopWave('gvWave');
+  const elapsed=Date.now()-(gVStartAt||Date.now());
+  const dur=Math.max(gvSec,Math.floor(Math.max(0,elapsed)/1000));
+  if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
+  el('gSendB').classList.remove('rec','voice-pending');el('gSendB').style.background='#e67e22';
+  setMicIcon('gSendIcon');
+  el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
+  let chunks=[];
+  try{chunks=await collectRecorderChunks(recorder,gvCh);}catch(e){console.error('Group voice finalize error:',e);}
+  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  void releaseVoiceScreen();
+  recorder.ondataavailable=null;
+  recorder.onstop=null;
+  gvCh=[];gvSec=0;gmr=null;gVStartAt=0;gVFinalizing=false;
+  if(!chunks.length||!group){gVoiceSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
+  const file=voiceFileFromChunks(chunks);
+  const mm=Math.floor(dur/60),ss=dur%60;
+  const t=now();
+  let gvRef=null,uploadCommitted=false;
+  try{
+    gvRef=await db.collection('groups').doc(group.id).collection('messages').add({
+      type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
+      senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
+      time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    let url=await uploadCloud(file,'audio');
+    let voiceFallbackError='';
+    if(!url){
+      try{
+        const storageUrl=await uploadVoiceToFirebase(file);
+        if(storageUrl){
+          await gvRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
+          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
+        }
+      }catch(storageErr){
+        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
+        console.warn('Firebase group voice fallback failed:',storageErr);
+      }
+    }
+    if(!url){
+      const inlineUrl=await readVoiceAsDataUrl(file);
+      if(inlineUrl){
+        try{await gvRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){voiceFallbackError=fallbackErr?.message||'Inline voice fallback failed';console.warn('Group inline voice fallback failed:',fallbackErr);}
+      }
+    }
+    if(!url){
+      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      await gvRef.update({status:'failed',error:failure}).catch(()=>{});
+      gVoiceSending=false;
+      showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
+      return;
+    }
+    if(!uploadCommitted){await gvRef.update({data:url,status:'sent'});uploadCommitted=true;}
+  }catch(err){
+    console.error('Group voice send error:',err);
+    if(gvRef&&!uploadCommitted)await gvRef.update({status:'failed',error:err?.message||'Group voice send failed'}).catch(()=>{});
+    showToast('⚠️ Envoi vocal impossible. Réessayez.');
+  }
+  gVoiceSending=false;
+}
+function cancelGVoice(){
+    if(gmr&&gIsRec){try{gmr.ondataavailable=null;gmr.onstop=null;gmr.stop();}catch(e){}try{gmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
+  gIsRec=false;
+  if(curGrp&&CU)void setPresenceState('group',curGrp.id,'recording',false);
+  stopWave('gvWave');
+  void releaseVoiceScreen();
+gvCh=[];gvSec=0;clearInterval(gvInt);
+  el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
+  setMicIcon('gSendIcon');
+  el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
+  el('gRecIndicator')?.classList.remove('recPulse');
+}
+// ── WHATSAPP-STYLE HOLD / SWIPE-UP TO RECORD ──
+// Hold the mic to start, swipe up to lock, release without stopping, then tap to send.
+function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
+  const btn=el(btnId);if(!btn||btn.dataset.voiceGestureBound)return;
+  btn.dataset.voiceGestureBound='1';
+  btn.style.touchAction='none';
+  const inputId=btnId==='gSendB'?'gIn':'mIn';
+  // Keep haptic feedback on the earliest Android touch event as well as the
+  // Pointer Events path. The debounce prevents a double pulse on Chrome.
+  btn.addEventListener('touchstart',e=>{
+    if(e.touches?.length===1&&!v(inputId).trim())vibrate(70);
+  },{passive:true});
+  const barId=btnId==='gSendB'?'gvbar':'vbar';
+  const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
+  const vibrate=pattern=>pulseHaptic(pattern,btn);
+  const hint=()=>el(barId)?.querySelector('[data-voice-hint]');
+  const setHint=text=>{const h=hint();if(h)h.textContent=text;};
+  const resetState=()=>{
+    state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
+    btn.classList.remove('voice-locked','voice-pending');
+    btn.title='Hold and slide up to record';
+    setHint('Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer');
+  };
+  const releaseCapture=()=>{try{if(state.pointerId!==null)btn.releasePointerCapture(state.pointerId);}catch(e){}state.pointerId=null;};
+  btn.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    // Preserve normal send behavior while the text field contains a message.
+    if(v(inputId).trim())return;
+    e.preventDefault();
+    // Hide the Android keyboard before the permission prompt or recording starts.
+    if(document.activeElement?.id===inputId)document.activeElement.blur();
+    state.suppressClick=true;
+    state.startX=e.clientX;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
+    btn.classList.add('voice-pending');
+    try{btn.setPointerCapture(e.pointerId);}catch(err){}
+    // A locked recording is completed by the next tap, not by a second start.
+    if(btn.classList.contains('rec')&&state.locked){
+      vibrate(35);
+      Promise.resolve(stopFn()).finally(resetState);
+      return;
+    }
+    // Fire the device vibration directly in pointerdown, before getUserMedia()
+    // can yield to a permission prompt or another asynchronous browser task.
+    vibrate(55);
+    state.pending=true;
+    Promise.resolve(startFn(true)).then(()=>{
+      state.pending=false;
+      // Permission prompts and getUserMedia can resolve after the finger is
+      // released. Do not stop a recorder that never reached the rec state.
+      if(!btn.classList.contains('rec')){resetState();return;}
+      if(state.released&&!state.locked&&!state.cancelled)stopFn();
+    }).catch(()=>{state.pending=false;resetState();});
+  },{passive:false});
+  btn.addEventListener('pointermove',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();
+    const up=state.startY-e.clientY,left=e.clientX-state.startX;
+    if(!state.locked&&left<-85){
+      state.cancelled=true;state.active=false;vibrate([25,25]);cancelFn();releaseCapture();resetState();return;
+    }
+    if(!state.locked&&up>70){
+      // Queue the lock even if getUserMedia is still pending. This prevents a
+      // fast Android swipe from being lost during the permission/startup gap.
+      state.locked=true;state.active=false;btn.classList.remove('voice-pending');btn.classList.add('voice-locked');btn.title='Tap to send voice message';
+      setHint('🔒 locked · tap mic to send');vibrate([35,55,35]);releaseCapture();
+    }
+  },{passive:false});
+  btn.addEventListener('pointerup',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();state.active=false;state.released=true;releaseCapture();
+    if(state.cancelled)return;
+    if(state.locked)return;
+    if(state.pending)return;
+    if(btn.classList.contains('rec')){vibrate(35);Promise.resolve(stopFn()).finally(resetState);}else resetState();
+  },{passive:false});
+  btn.addEventListener('pointercancel',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();state.active=false;state.cancelled=true;vibrate([20,20]);releaseCapture();cancelFn();resetState();
+  },{passive:false});
+  // Suppress the synthetic click generated after touch gestures; text sends still use onclick.
+  btn.addEventListener('click',e=>{
+    if(state.suppressClick){e.preventDefault();e.stopPropagation();state.suppressClick=false;}
+  },true);
+}
+// Stubs for smartGSend compatibility
+function stopGVoice(){stopAndSendGVoice();}
+function processGVoice(){}
+function showGVoiceReady(){}
+function cancelGVoiceReady(){}
+const VOICE_PLAY_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>';
+const VOICE_PAUSE_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
+function setVoiceButtonIcon(btn,playing){if(btn)btn.innerHTML=playing?VOICE_PAUSE_ICON:VOICE_PLAY_ICON;}
+function resetVoicePlayer(){
+  const player=voicePlayer,oldId=voicePlayerId;
+  voicePlayerToken++;
+  voicePlayer=null;voicePlayerId=null;
+  if(player){
+    try{player.pause();}catch(e){}
+    player.onloadedmetadata=null;player.ontimeupdate=null;player.onended=null;player.onerror=null;player.onplay=null;player.onpause=null;
+    try{player.removeAttribute('src');player.load();}catch(e){}
+  }
+  if(oldId){
+    setVoiceButtonIcon(document.querySelector(`#vp_${oldId} .vpbtn`),false);
+    const fill=el('vfill_'+oldId);if(fill)fill.style.width='0%';
+  }
+}
+function stopOtherVoicePlayers(exceptId){if(voicePlayer&&String(voicePlayerId)!==String(exceptId))resetVoicePlayer();}
+function toggleVP(id,src){
+  const bubble=el('vp_'+id),btn=bubble?.querySelector('.vpbtn'),resolvedSrc=src||btn?.dataset?.voiceSrc||bubble?.dataset?.voiceSrc||'';
+  if(!resolvedSrc){showToast('⚠️ Cet audio est indisponible.');return;}
+  try{
+    if(voicePlayer&&String(voicePlayerId)===String(id)){
+      if(!voicePlayer.paused){voicePlayer.pause();setVoiceButtonIcon(btn,false);return;}
+      if(voicePlayer.ended)voicePlayer.currentTime=0;
+    }else{
+      stopOtherVoicePlayers(id);
+      const a=new Audio();a.preload='metadata';a.playsInline=true;a.src=resolvedSrc;
+      voicePlayer=a;voicePlayerId=String(id);
+      const token=voicePlayerToken;
+      const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
+      const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id),currentButton=()=>document.querySelector(`#vp_${id} .vpbtn`);
+      a.onloadedmetadata=()=>{if(token!==voicePlayerToken)return;const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
+      a.ontimeupdate=()=>{if(token!==voicePlayerToken)return;const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
+      a.onended=()=>{if(token!==voicePlayerToken)return;a.currentTime=0;const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(currentButton(),false);};
+      a.onpause=()=>{if(token===voicePlayerToken&&!a.ended)setVoiceButtonIcon(currentButton(),false);};
+      a.onerror=()=>{if(token!==voicePlayerToken)return;resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');};
+      a.onplay=()=>{if(token!==voicePlayerToken)return;if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
+    }
+    const player=voicePlayer,playPromise=player?.play();
+    setVoiceButtonIcon(btn,true);
+    if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{if(player===voicePlayer){resetVoicePlayer();showToast('⚠️ Lecture impossible. Appuyez de nouveau sur lecture.');}});
+  }catch(e){resetVoicePlayer();showToast('⚠️ Lecture audio interrompue.');}
+}
+function seekVP(e,id){const bar=el('vbar_'+id),player=voicePlayer;if(!bar||!player||String(voicePlayerId)!==String(id)||!Number.isFinite(player.duration)||player.duration<=0)return;const ratio=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/Math.max(1,bar.offsetWidth)));try{player.currentTime=ratio*player.duration;}catch(e){}}
+// ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
+function stopWave(canvasId){
+  const timer=waveTimers[canvasId];
+  if(timer){clearTimeout(timer);delete waveTimers[canvasId];}
+}
+function drawBars(canvasId,isRecFn,color='#1976d2'){
+  const cv=el(canvasId);if(!cv)return;
+  stopWave(canvasId);
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const barCount=28,barW=Math.floor(W/barCount)-1,gap=1;
+  // Keep the recorder preview intentionally light on Android: 12.5 paints/second.
+  let heights=Array.from({length:barCount},()=>Math.random()*0.5+0.1);
+  let targets=heights.slice();
+  const tick=()=>{
+    if(!isRecFn()){
+      delete waveTimers[canvasId];
+      ctx.clearRect(0,0,W,H);
+      return;
+    }
+    targets=targets.map((_,i)=>{
+      const base=0.15+Math.abs(Math.sin(Date.now()*0.003+i*0.7))*0.6;
+      const noise=(Math.random()-0.5)*0.25;
+      return Math.min(1,Math.max(0.08,base+noise));
+    });
+    heights=heights.map((h,i)=>h+(targets[i]-h)*0.25);
+    ctx.clearRect(0,0,W,H);
+    heights.forEach((h,i)=>{
+      const bh=Math.max(4,Math.floor(h*H));
+      const x=i*(barW+gap);
+      const y=(H-bh)/2;
+      ctx.fillStyle=color;
+      const r=Math.min(barW/2,3);
+      ctx.beginPath();
+      ctx.roundRect?ctx.roundRect(x,y,barW,bh,r):ctx.rect(x,y,barW,bh);
+      ctx.fill();
+    });
+    waveTimers[canvasId]=setTimeout(tick,80);
+  };
+  tick();
+}
+// Keep old drawWave as alias
+function drawWave(canvasId,isRecFn){drawBars(canvasId,isRecFn);}
+
+// ── INBOX ──
+let inboxUnsub=null;
+let inboxChatsUnsub=null;
+let _cachedInboxDocs=null; // last fetched chat docs
+
+function setupInbox(){
+  if(inboxUnsub)inboxUnsub();
+  if(inboxChatsUnsub){inboxChatsUnsub();inboxChatsUnsub=null;}
+  _cachedInboxDocs=null;
+  let _watchingIds=[];
+  // Cache user-doc unread map in memory — updated by the user-doc listener in real time
+  window._inboxUnreadMap={};
+
+  const startChatListener=(chatIds)=>{
+    const sorted=[...chatIds].sort().join(',');
+    const prev=[..._watchingIds].sort().join(',');
+    if(sorted===prev&&inboxChatsUnsub)return;
+    _watchingIds=chatIds.slice();
+    if(inboxChatsUnsub){inboxChatsUnsub();inboxChatsUnsub=null;}
+    if(!chatIds.length)return;
+    const watchIds=chatIds.slice(0,30);
+    inboxChatsUnsub=db.collection('chats').where(firebase.firestore.FieldPath.documentId(),'in',watchIds).onSnapshot(sn=>{
+      if(!_cachedInboxDocs){
+        _cachedInboxDocs=sn.docs.slice();
+      }else{
+        sn.docChanges().forEach(change=>{
+          const idx=_cachedInboxDocs.findIndex(d=>d.id===change.doc.id);
+          if(change.type==='removed'){if(idx>=0)_cachedInboxDocs.splice(idx,1);}
+          else if(idx>=0){_cachedInboxDocs[idx]=change.doc;}
+          else{_cachedInboxDocs.push(change.doc);}
+        });
+      }
+      renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
+    },e=>console.log('inboxChats:',e));
+  };
+
+  inboxUnsub=db.collection('users').doc(CU.uid).onSnapshot(snap=>{
+    const data=snap.data()||{};
+    const chatIds=data.chatIds||[];
+    // Keep unread map in memory so renderInbox never needs to fetch it
+    window._inboxUnreadMap=data.unread||{};
+    // Nav badge
+    let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+(b||0),0);
+    const nb=el('msgB2');
+    if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
+    if(t>0&&!curChat)showToast('💬 '+t+' unread message'+(t>1?'s':''));
+    if(!chatIds.length){
+      const f=el('inboxL');
+      if(f)f.innerHTML="<p style='text-align:center;color:#888;padding:20px;'>No conversations yet.</p>";
+      _cachedInboxDocs=null;_watchingIds=[];
+      if(inboxChatsUnsub){inboxChatsUnsub();inboxChatsUnsub=null;}
+      return;
+    }
+    // Re-render inbox immediately with updated unread map when user doc changes
+    if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
+    startChatListener(chatIds);
+  },e=>{showToast('❌ Inbox error: '+e.message);});
+}
+
+function renderInbox(q="",sn=null){
+  const _execRender=async(snapshot)=>{
+    const f=el('inboxL');
+    const seenUid={};
+    const docList=Array.isArray(snapshot)?snapshot:(snapshot.docs||[]);
+    docList.forEach(d=>{
+      const ouid=(d.data().participants||[]).find(id=>id!==CU.uid);
+      if(!ouid)return;
+      const canonical=getCID(CU.uid,ouid);
+      // Always prefer the canonical chat doc; among non-canonical, keep the one with most recent activity
+      const existing=seenUid[ouid];
+      if(!existing){seenUid[ouid]=d;}
+      else if(d.id===canonical){seenUid[ouid]=d;}  // canonical always wins
+      else if(existing.id!==canonical){
+        // neither is canonical — keep the one with more recent lastTs
+        const ta=d.data().lastTs?.seconds||0;
+        const tb=existing.data().lastTs?.seconds||0;
+        if(ta>tb)seenUid[ouid]=d;
+      }
+    });
+    let entries=Object.values(seenUid);
+    entries.sort((a,b)=>{
+      const ta=a.data().lastTs?.seconds||0;
+      const tb=b.data().lastTs?.seconds||0;
+      return tb-ta;
+    });
+    if(q)entries=entries.filter(d=>{
+      const ouid=(d.data().participants||[]).find(id=>id!==CU.uid);
+      const o=allUsers.find(u=>u.uid===ouid);
+      return(o?.name||'').toLowerCase().includes(q.toLowerCase());
+    });
+    if(!entries.length){f.innerHTML="<p style='text-align:center;color:#888;padding:20px;'>No conversations yet.</p>";return;}
+    // Fetch only users genuinely missing from cache
+    const missingUids=entries.map(d=>(d.data().participants||[]).find(id=>id!==CU.uid)).filter(uid=>uid&&!allUsers.find(u=>u.uid===uid));
+    if(missingUids.length){
+      const fetched=await Promise.all(missingUids.map(uid=>db.collection('users').doc(uid).get().catch(()=>null)));
+      fetched.forEach(snap=>{if(snap&&snap.exists){const d=snap.data();if(d&&!allUsers.find(u=>u.uid===d.uid))allUsers.push(d);}});
+    }
+    f.innerHTML='';
+    // Use in-memory unread map — NO extra Firestore fetch needed
+    const _userUnreadMap=window._inboxUnreadMap||{};
+    const _overrides=window._unreadOverride||{};
+    entries.forEach(d=>{
+      const data=d.data(),ouid=(data.participants||[]).find(id=>id!==CU.uid);
+      const o=allUsers.find(u=>u.uid===ouid)||{name:'User',status:'Offline',photo:'',country:'',uni:''};
+      const cid=d.id;
+      const st=getStatusInfo(o.status,o.lastSeen);
+      // Override wins — set to 0 the moment chat is opened, cleared once Firestore confirms
+      const unread=(_overrides[cid]===0)?0:Math.max((data.unread||{})[CU.uid]||0,_userUnreadMap[cid]||0);
+      // Render lastMsg with SVG icon for media types
+      const _rawMsg=data.lastMsg||'';
+      let _msgHtml;
+      if(_rawMsg==='__photo__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Photo`;
+      else if(_rawMsg==='__video__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>Video`;
+      else if(_rawMsg==='__audio__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>Audio`;
+      else if(_rawMsg==='__voice__'){
+        // Show duration from chat data if stored
+        const _vDur=data.lastVoiceDur||'';
+        const _vSeen=(data.unread||{})[CU.uid]===0||unread===0;
+        const _vTick=_vSeen?'<span style="color:#4fc3f7;font-size:11px;margin-left:2px;font-weight:bold;">✓✓</span>':'<span style="font-size:11px;opacity:.6;margin-left:2px;">✓</span>';
+        _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}${_vTick}`;
+      }
+      else if(_rawMsg==='__gdrive__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>File`;
+      else if(_rawMsg.startsWith('__doc__:'))_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>${esc(_rawMsg.slice(8))||'Document'}`;
+      else _msgHtml=esc(_rawMsg||'Tap to chat');
+      const av=o.photo?`<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:'👤';
+      f.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--brd);cursor:pointer;${unread>0?'background:rgba(10,60,109,.04);':''}" onclick="openChat('${e2(o.name||'User')}','${ouid||''}')">
+        <div style="position:relative;flex-shrink:0;width:50px;height:50px;">
+          <div style="width:50px;height:50px;border-radius:50%;overflow:hidden;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--btnB);">${av}</div>
+          <div style="position:absolute;bottom:1px;right:1px;width:13px;height:13px;border-radius:50%;border:2px solid var(--card);background:${st.cls==='online'?'#2ECC71':st.cls==='busy'?'#e74c3c':'#95a5a6'};z-index:2;"></div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <b style="font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${unread>0?'color:var(--btnB);':''}">${esc(o.name||'User')}</b>
+          ${o.uni?`<p style="font-size:10px;color:var(--sub);margin:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏛️ ${esc(o.uni)}</p>`:''}
+          <p style="font-size:11px;color:${unread>0?'var(--txt)':'var(--sub)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${unread>0?'font-weight:bold;':''};display:flex;align-items:center;">${_msgHtml}</p>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+          ${unread>0
+            ?`<div style="background:#e74c3c;color:#fff;border-radius:10px;min-width:20px;height:20px;font-size:11px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;padding:0 5px;">${unread>9?'9+':unread}</div>`
+            :`<span style="font-size:10px;color:var(--sub);">${data.lastTime||''}</span>`}
+        </div>
+      </div>`;
+    });
+  };
+  if(sn){_execRender(sn);return;}
+  db.collection('chats').where('participants','array-contains',CU.uid).get().then(_execRender).catch(e=>console.log(e));
+}
+function reportUser(uid,name){
+  if(!uid)return;
+  const reason=prompt(`Report ${name}?\nPlease briefly describe the reason:`);
+  if(!reason)return;
+  db.collection('reports').add({reportedUid:uid,reportedName:name,reporterUid:CU.uid,reporterName:MP?.name||'',reason,createdAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(()=>showToast('🚩 Report submitted. Thank you.'))
+    .catch(()=>showToast('❌ Could not submit report'));
+}
+
+// ── NOTIFICATIONS (alerts only - no messages) ──
+function setupNotifL(){
+  if(notifUnsub)notifUnsub();
+  notifUnsub=db.collection('notifications').where('toUid','==',CU.uid).onSnapshot(sn=>{
+    const notifs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    const unread=notifs.filter(n=>!n.read).length;
+    const nb=el('notifB');nb.textContent=unread>9?'9+':unread;nb.style.display=unread>0?'inline-flex':'none';
+    const f=el('notifL');
+    if(!notifs.length){f.innerHTML="<p style='text-align:center;color:#888;'>No notifications</p>";return;}
+    f.innerHTML='';
+    notifs.forEach(n=>{
+      f.innerHTML+=`<div class="notif ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--brd);">
+        <span style="font-size:20px;flex-shrink:0;">${n.icon||'🔔'}</span>
+        <div style="flex:1;overflow:hidden;">
+          <b style="font-size:13px;display:block;">${esc(n.title||'')}</b>
+          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(n.body||'')}</p>
+        </div>
+        ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+      </div>`;
+    });
+  },e=>console.log('notif:',e));
+}
+function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
+function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>b.delete(d.ref));return b.commit();});}
+
+// ── HELPERS ──
+function el(id){return document.getElementById(id);}
+function v(id){return(el(id)?.value||'').trim();}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function e2(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function openPhoneSettings(){
+  // Try app-level settings URI schemes for mobile
+  const ua=navigator.userAgent;
+  if(/iPhone|iPad|iPod/.test(ua)){window.location.href='App-Prefs:root';}
+  else if(/Android/.test(ua)){window.location.href='intent:#Intent;action=android.settings.SETTINGS;end';}
+  else{showToast('⚙️ Open your device Settings app to change language, time, and other preferences.');}
+}
+function toggleDark(){dark=!dark;document.body.classList.toggle('dark',dark);}
+function showToast(msg){const t=el('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',4000);}
+function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+function showOv(v){el('ov').style.display=v?'flex':'none';}
+function tab(id){
+  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+  el('P'+id).style.display='block';
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  el('n'+id).classList.add('on');
+  if(id==='home'&&cachedPosts.length>0){
+    _feedShown=10;
+    renderHome(cachedPosts,_feedShown);
+    const b=el('feedB');if(b){b.style.display='none';b.textContent='';}
+  }
+  // If already on home and tapped again - refresh feed from Firestore
+  if(id==='home'&&el('Phome').style.display!=='none'&&arguments[1]==='refresh'){
+    db.collection('posts').orderBy('createdAt','desc').limit(30).get().then(sn=>{
+      cachedPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
+      _feedShown=10;
+      renderHome(cachedPosts,_feedShown);
+      showToast('✅ Feed refreshed');
+    }).catch(()=>{});
+  }
+  if(id==='find'){
+    if(allUsers.length>0)renderFind(el('findQ')?.value||'');
+    else db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>d.data());renderFind('');});
+  }
+  if(id==='msgs'){/* setupInbox handles real-time inbox updates */}
+  if(id==='alerts'){
+    db.collection('notifications').where('toUid','==',CU.uid).where('read','==',false).get()
+      .then(sn=>{const b=db.batch();sn.docs.forEach(d=>b.update(d.ref,{read:true}));return b.commit();}).catch(()=>{});
+  }
+}
+document.addEventListener('click',e=>{if(!e.target.closest('#emojiP')&&!e.target.closest('.mabtn'))el('emojiP').style.display='none';});
+
+function setupNavigation(){
+  const activate=item=>{
+    const id=item?.dataset?.tab;
+    if(!id)return;
+    const home=el('Phome');
+    if(id==='home'&&home&&home.style.display!=='none')tab('home','refresh');
+    else tab(id);
+  };
+  document.querySelectorAll('.ni[data-tab]').forEach(item=>{
+    item.addEventListener('click',()=>activate(item));
+    item.addEventListener('keydown',event=>{
+      if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(item);}
+    });
+  });
+  el('darkModeBtn')?.addEventListener('click',()=>toggleDark());
+  el('alertsBtn')?.addEventListener('click',()=>tab('alerts'));
+}
+function setupPWA(){
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.register('sw-v7.js?v=studylink-pwa-7',{scope:'./',updateViaCache:'none'}).then(reg=>{
+    reg.update().catch(()=>{});
+  }).catch(err=>console.warn('PWA service worker unavailable:',err));
+  let installEvent=null;
+  const banner=el('installBanner'),installBtn=el('installBtn'),dismiss=el('installDismiss');
+  const isStandalone=()=>Boolean(window.matchMedia?.('(display-mode: standalone)')?.matches||window.matchMedia?.('(display-mode: fullscreen)')?.matches||navigator.standalone===true);
+  const wasDismissed=()=>{try{return localStorage.getItem('studylinkInstallDismissed')==='1';}catch{return false;}};
+  const hide=()=>banner?.classList.remove('show');
+  const show=()=>{if(!isStandalone()&&!wasDismissed())banner?.classList.add('show');};
+  window.addEventListener('beforeinstallprompt',event=>{
+    event.preventDefault();installEvent=event;show();
+  });
+  window.setTimeout(show,900);
+  installBtn?.addEventListener('click',async()=>{
+    if(!installEvent){showToast('Pour une vraie application : ouvrez ⋮ → « Install and create shortcut » → « Install ». Ne choisissez pas « Create shortcut ».');return;}
+    const event=installEvent;installEvent=null;hide();
+    try{
+      await event.prompt();
+      const choice=await event.userChoice;
+      if(choice?.outcome==='accepted')showToast('StudyLink est en cours d’installation comme application.');
+    }catch(e){console.warn('Install prompt unavailable:',e);showToast('Utilisez le menu Chrome et choisissez « Install », pas « Create shortcut ».');}
+  });
+  dismiss?.addEventListener('click',()=>{try{localStorage.setItem('studylinkInstallDismissed','1');}catch{}hide();});
+  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
+}
+function bootstrapStudyLink(){
+  setupNavigation();
+  setupPWA();
+  const disconnectButton=el('disconnectBtn');
+  disconnectButton?.addEventListener('click',()=>{void doOut();});
+  // Countries
+  const uc=el('uC');COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;uc.appendChild(o);});
+  // Tags
+  const ts=el('tagSel');
+  SUBJECTS.forEach(s=>{
+    const b=document.createElement('button');b.className='tag';b.textContent=s;b.type='button';
+    b.onclick=()=>{selTags.includes(s)?selTags=selTags.filter(t=>t!==s):selTags.push(s);b.classList.toggle('sel');};
+    ts.appendChild(b);
+  });
+  el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartSend();});
+    el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartGSend();});
+}
+const startStudyLink=()=>{
+  if(window.__studylinkBooted)return;
+  window.__studylinkBooted=true;
+  bootstrapStudyLink();
+};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startStudyLink,{once:true});
+else startStudyLink();
