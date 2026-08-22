@@ -1,4 +1,4 @@
-fconst SUBJECTS=["Math","Algebra","Calculus","Statistics","Physics","Chemistry","Biology","CS","Python","JavaScript","TypeScript","Java","C++","C#","C","Rust","Go","Ruby","PHP","Swift","Kotlin","React","Vue","Angular","Node.js","HTML/CSS","SQL","MySQL","PostgreSQL","MongoDB","Firebase","Docker","Linux","Git","AWS","Cloud","AI/ML","Deep Learning","Data Science","Cybersecurity","Networks","English","French","Spanish","Arabic","Chinese","Portuguese","History","Economics","Law","Medicine","Engineering","Business","Psychology","Art","Music","Geography","Philosophy","Accounting","Marketing"];
+const SUBJECTS=["Math","Algebra","Calculus","Statistics","Physics","Chemistry","Biology","CS","Python","JavaScript","TypeScript","Java","C++","C#","C","Rust","Go","Ruby","PHP","Swift","Kotlin","React","Vue","Angular","Node.js","HTML/CSS","SQL","MySQL","PostgreSQL","MongoDB","Firebase","Docker","Linux","Git","AWS","Cloud","AI/ML","Deep Learning","Data Science","Cybersecurity","Networks","English","French","Spanish","Arabic","Chinese","Portuguese","History","Economics","Law","Medicine","Engineering","Business","Psychology","Art","Music","Geography","Philosophy","Accounting","Marketing"];
 const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahrain","Bangladesh","Belarus","Belgium","Belize","Benin","Bolivia","Bosnia","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cambodia","Cameroon","Canada","Cape Verde","Chad","Chile","China","Colombia","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominican Republic","DR Congo","Ecuador","Egypt","El Salvador","Eritrea","Estonia","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Guatemala","Guinea","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saudi Arabia","Senegal","Serbia","Sierra Leone","Singapore","Slovakia","Slovenia","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Sweden","Switzerland","Syria","Taiwan","Tanzania","Thailand","Togo","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
 const STICKERS=["😀","😁","😂","🤣","😃","😄","😅","😆","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤬","😱","😰","🤔","🙄","😏","🥺","🥹","🫡","🤗","😇","🤓","😴","🤤","🙈","🙉","🙊","🐶","🐱","🐼","🦊","🦁","🐯","🐸","🐧","🐦","🦄","🐉","🦋","🌟","⭐","🔥","💯","🎉","🎊","🏆","💪","👏","🙌","🤜","🤛","✌️","🤞","💡","📚","✏️","🖊️","🎓","🏫","💻","📱","🤖","🚀","🛸","🌈","☀️","🌙","⚡","❄️","🌊","🍕","🍔","🍟","🍣","🍜","🧁","🍰","☕","🧋","🎮","🎵","🎸","🎤","🏀","⚽","🏆","🥇","❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💝","💖","💫","✨","🌸","🌺","🌻","🌹"];
 const FLAGS=["🇦🇫","🇦🇱","🇩🇿","🇦🇩","🇦🇴","🇦🇷","🇦🇲","🇦🇺","🇦🇹","🇦🇿","🇧🇭","🇧🇩","🇧🇾","🇧🇪","🇧🇿","🇧🇯","🇧🇴","🇧🇦","🇧🇼","🇧🇷","🇧🇳","🇧🇬","🇧🇫","🇧🇮","🇰🇭","🇨🇲","🇨🇦","🇨🇻","🇹🇩","🇨🇱","🇨🇳","🇨🇴","🇨🇬","🇨🇷","🇭🇷","🇨🇺","🇨🇾","🇨🇿","🇩🇰","🇩🇯","🇩🇴","🇨🇩","🇪🇨","🇪🇬","🇸🇻","🇪🇷","🇪🇪","🇪🇹","🇫🇯","🇫🇮","🇫🇷","🇬🇦","🇬🇲","🇬🇪","🇩🇪","🇬🇭","🇬🇷","🇬🇹","🇬🇳","🇭🇹","🇭🇳","🇭🇺","🇮🇸","🇮🇳","🇮🇩","🇮🇷","🇮🇶","🇮🇪","🇮🇱","🇮🇹","🇨🇮","🇯🇲","🇯🇵","🇯🇴","🇰🇿","🇰🇪","🇽🇰","🇰🇼","🇰🇬","🇱🇦","🇱🇻","🇱🇧","🇱🇸","🇱🇷","🇱🇾","🇱🇹","🇱🇺","🇲🇬","🇲🇼","🇲🇾","🇲🇻","🇲🇱","🇲🇹","🇲🇷","🇲🇺","🇲🇽","🇲🇩","🇲🇳","🇲🇪","🇲🇦","🇲🇿","🇲🇲","🇳🇦","🇳🇵","🇳🇱","🇳🇿","🇳🇮","🇳🇪","🇳🇬","🇰🇵","🇲🇰","🇳🇴","🇴🇲","🇵🇰","🇵🇸","🇵🇦","🇵🇾","🇵🇪","🇵🇭","🇵🇱","🇵🇹","🇶🇦","🇷🇴","🇷🇺","🇷🇼","🇸🇦","🇸🇳","🇷🇸","🇸🇱","🇸🇬","🇸🇰","🇸🇮","🇸🇴","🇿🇦","🇰🇷","🇸🇸","🇪🇸","🇱🇰","🇸🇩","🇸🇪","🇨🇭","🇸🇾","🇹🇼","🇹🇿","🇹🇭","🇹🇬","🇹🇳","🇹🇷","🇹🇲","🇺🇬","🇺🇦","🇦🇪","🇬🇧","🇺🇸","🇺🇾","🇺🇿","🇻🇪","🇻🇳","🇾🇪","🇿🇲","🇿🇼"];
@@ -35,6 +35,7 @@ let voiceWakeLock=null;
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
 let voiceTouchSuppressUntil=0;
 let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null;
+let signOutInProgress=false,disconnectBound=false;
 const waveTimers=Object.create(null);
 let replyMsg=null,curEId=null,curED=null,typDebounce=null;
 
@@ -282,6 +283,8 @@ auth.onAuthStateChanged(async u=>{
     el('ov').style.display='none';
     tab('home');
   }else{
+    // Firebase can call this branch after a successful sign-out and later after a new login.
+    // Always release the click guard so Disconnect works on every session, not only the first one.
     resetLoggedOutUi();
   }
 });
@@ -402,7 +405,6 @@ async function notifyAllExcept(senderUid,icon,title,body){
   }catch(e){console.log(e);}
 }
 function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
-let signOutInProgress=false,disconnectBound=false;
 async function doOut(){
   if(signOutInProgress)return;
   if(!window.confirm('Disconnect?'))return;
@@ -2186,7 +2188,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#emojiP')&&!e.target
 
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  navigator.serviceWorker.register('sw.js?v=studylink-pwa-4',{scope:'./'}).then(reg=>{
+  navigator.serviceWorker.register('sw-v4.js?v=studylink-pwa-4',{scope:'./'}).then(reg=>{
     reg.update().catch(()=>{});
   }).catch(err=>console.warn('PWA service worker unavailable:',err));
   let installEvent=null;
