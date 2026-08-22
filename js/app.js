@@ -2205,23 +2205,30 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  navigator.serviceWorker.register('sw-v5.js?v=studylink-pwa-5',{scope:'./'}).then(reg=>{
+  navigator.serviceWorker.register('sw-v6.js?v=studylink-pwa-6',{scope:'./',updateViaCache:'none'}).then(reg=>{
     reg.update().catch(()=>{});
   }).catch(err=>console.warn('PWA service worker unavailable:',err));
   let installEvent=null;
   const banner=el('installBanner'),installBtn=el('installBtn'),dismiss=el('installDismiss');
+  const isStandalone=()=>Boolean(window.matchMedia?.('(display-mode: standalone)')?.matches||window.matchMedia?.('(display-mode: fullscreen)')?.matches||navigator.standalone===true);
+  const wasDismissed=()=>{try{return localStorage.getItem('studylinkInstallDismissed')==='1';}catch{return false;}};
   const hide=()=>banner?.classList.remove('show');
+  const show=()=>{if(!isStandalone()&&!wasDismissed())banner?.classList.add('show');};
   window.addEventListener('beforeinstallprompt',event=>{
-    event.preventDefault();installEvent=event;
-    if(!localStorage.getItem('studylinkInstallDismissed'))banner?.classList.add('show');
+    event.preventDefault();installEvent=event;show();
   });
+  window.setTimeout(show,900);
   installBtn?.addEventListener('click',async()=>{
-    if(!installEvent){showToast('Dans Chrome, ouvrez ⋮ → « Install and create shortcut » → « Install ».');return;}
+    if(!installEvent){showToast('Pour une vraie application : ouvrez ⋮ → « Install and create shortcut » → « Install ». Ne choisissez pas « Create shortcut ».');return;}
     const event=installEvent;installEvent=null;hide();
-    try{await event.prompt();await event.userChoice;}catch(e){console.warn('Install prompt unavailable:',e);}
+    try{
+      await event.prompt();
+      const choice=await event.userChoice;
+      if(choice?.outcome==='accepted')showToast('StudyLink est en cours d’installation comme application.');
+    }catch(e){console.warn('Install prompt unavailable:',e);showToast('Utilisez le menu Chrome et choisissez « Install », pas « Create shortcut ».');}
   });
-  dismiss?.addEventListener('click',()=>{localStorage.setItem('studylinkInstallDismissed','1');hide();});
-  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('✅ StudyLink est installé sur votre écran d’accueil.');});
+  dismiss?.addEventListener('click',()=>{try{localStorage.setItem('studylinkInstallDismissed','1');}catch{}hide();});
+  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
 }
 function bootstrapStudyLink(){
   setupNavigation();
