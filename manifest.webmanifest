@@ -1,26 +1,83 @@
 {
+
   "id": "./",
+
   "name": "StudyLink Pro",
+
   "short_name": "StudyLink",
-  "description": "Connect, Learn, Grow.",
+
+  "description": "StudyLink — Connect, Learn, Grow.",
+
+  "lang": "en",
+
+  "dir": "ltr",
+
   "start_url": "./?source=pwa",
+
   "scope": "./",
+
   "display": "standalone",
+
+  "display_override": ["standalone", "minimal-ui"],
+
   "orientation": "portrait",
+
   "background_color": "#E5EEF9",
+
   "theme_color": "#021841",
+
+  "prefer_related_applications": false,
+
   "icons": [
+
     {
-      "src": "icons/studylink-192.png?v=studylink-pwa-3",
+
+      "src": "icons/studylink-192.png?v=studylink-pwa-4",
+
       "sizes": "192x192",
+
       "type": "image/png",
-      "purpose": "any maskable"
+
+      "purpose": "any"
+
     },
+
     {
-      "src": "icons/studylink-512.png?v=studylink-pwa-3",
+
+      "src": "icons/studylink-512.png?v=studylink-pwa-4",
+
       "sizes": "512x512",
+
       "type": "image/png",
-      "purpose": "any maskable"
+
+      "purpose": "any"
+
+    },
+
+    {
+
+      "src": "icons/studylink-192.png?v=studylink-pwa-4",
+
+      "sizes": "192x192",
+
+      "type": "image/png",
+
+      "purpose": "maskable"
+
+    },
+
+    {
+
+      "src": "icons/studylink-512.png?v=studylink-pwa-4",
+
+      "sizes": "512x512",
+
+      "type": "image/png",
+
+      "purpose": "maskable"
+
     }
+
   ]
+
 }
