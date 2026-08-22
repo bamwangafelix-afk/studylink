@@ -164,7 +164,7 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-5/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
-  assert.doesNotMatch(css, /data:image\/png;base64,/);
+  assert.match(css, /#auth\{[^}]*background:url\("data:image\/png;base64,/);
 });
 
 test('cancels recorder waveforms and keeps PWA bootstrap reliable after DOM readiness', () => {
@@ -214,4 +214,12 @@ test('Disconnect cannot be blocked by an undeclared cleanup listener or slow pre
   assert.match(source, /}else\{\n    \/\/ Firebase can call this branch/);
   assert.match(source, /resetLoggedOutUi\(\)/);
   assert.match(source, /cleanupAuthListeners\(\)/);
+});
+
+
+test('restores the login background and gives the top wordmark a clearer mobile size', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /#auth\{[^}]*background:url\("data:image\/png;base64,/);
+  assert.match(html, /font-size:18px;font-weight:bold;color:#fff/);
 });
