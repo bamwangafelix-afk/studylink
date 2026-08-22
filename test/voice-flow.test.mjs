@@ -46,8 +46,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script defer src="js\/app-v7\.js\?v=studylink-pwa-7"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-7">/);
+  assert.match(html, /<script defer src="js\/app-v8\.js\?v=studylink-pwa-8"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-8">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -144,16 +144,16 @@ test('recovers cleanly if Android ends the microphone track or MediaRecorder fai
 test('ships an installable PWA shell with the supplied StudyLink icon', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
-  const worker = await readFile(new URL('../sw-v7.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sw-v8.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-7"/);
-  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-7/);
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-8"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-8/);
   assert.match(html, /id="installBanner"/);
   assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /id="disconnectBtn"/);
   assert.doesNotMatch(html, /onclick="doOut\(\)"/);
-  assert.match(source, /navigator\.serviceWorker\.register\('sw-v7.js\?v=studylink-pwa-7'/);
+  assert.match(source, /navigator\.serviceWorker\.register\('sw-v8.js\?v=studylink-pwa-8'/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /appinstalled/);
   assert.match(source, /updateViaCache:'none'/);
@@ -162,9 +162,9 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
   assert.match(manifest, /"prefer_related_applications": false/);
-  assert.match(worker, /studylink-shell-v7/);
-  assert.match(manifest, /"start_url": "\.\/\?source=pwa-7"/);
-  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-7/);
+  assert.match(worker, /studylink-shell-v8/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-8"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-8/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
   assert.match(css, /#auth\{[^}]*background:linear-gradient\(135deg,rgba\(243,247,252,\.95\),rgba\(229,238,249,\.98\)\),url\("\.\.\/icons\/studylink-512\.png"\)/);
