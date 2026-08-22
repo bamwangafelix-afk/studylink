@@ -91,6 +91,35 @@ async function releaseVoiceScreen(){
   const lock=voiceWakeLock;voiceWakeLock=null;
   try{await lock?.release?.();}catch(e){}
 }
+function resetRecorderUi(kind){
+  const group=kind==='group';
+  const button=el(group?'gSendB':'sendB');
+  const icon=group?'gSendIcon':'sendIcon';
+  const bar=el(group?'gvbar':'vbar');
+  const timer=el(group?'gvTimer':'vTimer');
+  const recIndicator=el('gRecIndicator');
+  if(group){gIsRec=false;gVStartAt=0;clearInterval(gvInt);gvInt=null;gVoiceSending=false;gVFinalizing=false;}
+  else{isRec=false;vStartAt=0;clearInterval(vInt);vInt=null;vSending=false;vFinalizing=false;}
+  try{(group?gmr:mr)?.stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
+  if(group)gmr=null;else mr=null;
+  button?.classList.remove('voice-pending','rec','voice-locked');
+  if(button)button.style.background=group?'#e67e22':'var(--btnB)';
+  setMicIcon(icon);
+  if(bar)bar.style.display='none';
+  if(timer)timer.textContent='0:00';
+  recIndicator?.classList.remove('recPulse');
+}
+function bindRecorderSafety(stream,kind){
+  const track=stream?.getAudioTracks?.()[0];
+  if(track)track.addEventListener('ended',()=>{
+    const active=kind==='group'?gIsRec:isRec;
+    if(!active)return;
+    console.warn(kind+' voice track ended unexpectedly');
+    resetRecorderUi(kind);
+    showToast('🎙️ Android a interrompu le microphone. Vérifiez Chrome puis réessayez.');
+  },{once:true});
+  return track;
+}
 async function getVoiceStream(){
   let permission='prompt';
   try{
@@ -1466,9 +1495,10 @@ async function startVoice(fromGesture=false){
     // pulse for the normal click/text-button path.
     if(!fromGesture)pulseHaptic(55,el('sendB'));
     const s=await getVoiceStream();
+    bindRecorderSafety(s,'private');
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     mr=new MediaRecorder(s,opts);vCh=[];
-    mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
+    mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);resetRecorderUi('private');showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
     void keepVoiceScreenOn();
@@ -1619,9 +1649,10 @@ async function startGVoice(fromGesture=false){
     // pulse for the normal click/text-button path.
     if(!fromGesture)pulseHaptic(55,el('gSendB'));
     const s=await getVoiceStream();
+    bindRecorderSafety(s,'group');
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     gmr=new MediaRecorder(s,opts);gvCh=[];
-    gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);showToast('🎙️ Erreur du microphone. Réessayez.');};
+    gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);resetRecorderUi('group');showToast('🎙️ Erreur du microphone. Réessayez.');};
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;gVStartAt=Date.now();
     void keepVoiceScreenOn();
@@ -1630,6 +1661,7 @@ async function startGVoice(fromGesture=false){
     el('gSendB').classList.add('rec');el('gSendB').style.background='#e67e22';
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
+    el('gRecIndicator')?.classList.add('recPulse');
     drawBars('gvWave',()=>gIsRec,'#e67e22');
     const refreshGroupVoiceTimer=()=>{gvSec=Math.max(0,Math.floor((Date.now()-gVStartAt)/1000));const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
     refreshGroupVoiceTimer();
@@ -1715,6 +1747,7 @@ gvCh=[];gvSec=0;clearInterval(gvInt);
   el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
+  el('gRecIndicator')?.classList.remove('recPulse');
 }
 // ── WHATSAPP-STYLE HOLD / SWIPE-UP TO RECORD ──
 // Hold the mic to start, swipe up to lock, release without stopping, then tap to send.
@@ -2115,7 +2148,28 @@ function tab(id){
 }
 document.addEventListener('click',e=>{if(!e.target.closest('#emojiP')&&!e.target.closest('.mabtn'))el('emojiP').style.display='none';});
 
+function setupPWA(){
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.register('sw.js?v=studylink-pwa-1',{scope:'./'}).then(reg=>{
+    reg.update().catch(()=>{});
+  }).catch(err=>console.warn('PWA service worker unavailable:',err));
+  let installEvent=null;
+  const banner=el('installBanner'),installBtn=el('installBtn'),dismiss=el('installDismiss');
+  const hide=()=>banner?.classList.remove('show');
+  window.addEventListener('beforeinstallprompt',event=>{
+    event.preventDefault();installEvent=event;
+    if(!localStorage.getItem('studylinkInstallDismissed'))banner?.classList.add('show');
+  });
+  installBtn?.addEventListener('click',async()=>{
+    if(!installEvent){showToast('Ouvrez le menu ⋮ de Chrome puis choisissez « Ajouter à l’écran d’accueil ».');return;}
+    const event=installEvent;installEvent=null;hide();
+    try{await event.prompt();await event.userChoice;}catch(e){console.warn('Install prompt unavailable:',e);}
+  });
+  dismiss?.addEventListener('click',()=>{localStorage.setItem('studylinkInstallDismissed','1');hide();});
+  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('✅ StudyLink est installé sur votre écran d’accueil.');});
+}
 window.onload=()=>{
+  setupPWA();
   // Countries
   const uc=el('uC');COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;uc.appendChild(o);});
   // Tags
