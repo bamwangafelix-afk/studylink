@@ -227,6 +227,25 @@ function compressImg(file){
 }
 
 // ── AUTH ──
+function cleanupAuthListeners(){
+  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
+  if(typeof inboxUnsub==='function')try{inboxUnsub();}catch(e){}
+  if(typeof inboxChatsUnsub==='function')try{inboxChatsUnsub();}catch(e){}
+  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;
+  if(typeof inboxUnsub==='function')inboxUnsub=null;
+  if(typeof inboxChatsUnsub==='function')inboxChatsUnsub=null;
+  if(typeof _cachedInboxDocs!=='undefined')_cachedInboxDocs=null;
+}
+function resetLoggedOutUi(){
+  signOutInProgress=false;
+  cleanupAuthListeners();
+  CU=null;MP=null;
+  el('auth').style.display='flex';
+  el('ov').style.display='none';
+  showLogin();
+  const button=el('disconnectBtn');
+  if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent='Disconnect';}
+}
 // Show spinner while waiting for auth state - prevents flash of login screen
 el('ov').style.display='flex';
 auth.onAuthStateChanged(async u=>{
@@ -263,18 +282,7 @@ auth.onAuthStateChanged(async u=>{
     el('ov').style.display='none';
     tab('home');
   }else{
-    signOutInProgress=false;
-    if(notifUnsub)try{notifUnsub();}catch(e){}
-    if(msgBUnsub)try{msgBUnsub();}catch(e){}
-    if(chatUnsub)try{chatUnsub();}catch(e){}
-    if(grpUnsub)try{grpUnsub();}catch(e){}
-    if(typeof inboxUnsub==='function')try{inboxUnsub();}catch(e){}
-    if(typeof inboxChatsUnsub==='function')try{inboxChatsUnsub();}catch(e){}
-    _cachedInboxDocs=null;
-    CU=null;MP=null;
-    el('auth').style.display='flex';
-    el('ov').style.display='none';
-    showLogin();
+    resetLoggedOutUi();
   }
 });
 
@@ -394,19 +402,22 @@ async function notifyAllExcept(senderUid,icon,title,body){
   }catch(e){console.log(e);}
 }
 function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
-let signOutInProgress=false;
+let signOutInProgress=false,disconnectBound=false;
 async function doOut(){
-  if(signOutInProgress||!confirm('Disconnect?'))return;
+  if(signOutInProgress)return;
+  if(!window.confirm('Disconnect?'))return;
   signOutInProgress=true;
-  const button=document.querySelector('#Pme .btn.g');
+  const button=el('disconnectBtn')||document.querySelector('#Pme .btn.g');
   if(button){button.disabled=true;button.setAttribute('aria-busy','true');button.textContent='Disconnecting...';}
   try{
+    // Presence is best-effort and must never block authentication sign-out.
     await Promise.race([setPresence('Offline'),new Promise(resolve=>setTimeout(resolve,1500))]);
   }catch(e){}
-  try{if(typeof inboxUnsub==='function')inboxUnsub();}catch(e){}
-  try{if(typeof inboxChatsUnsub==='function')inboxChatsUnsub();}catch(e){}
-  try{await auth.signOut();}
-  catch(e){
+  try{
+    await auth.signOut();
+    // Do not wait for the auth observer: Firebase sign-out is complete locally.
+    resetLoggedOutUi();
+  }catch(e){
     signOutInProgress=false;
     if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent='Disconnect';}
     showToast('❌ Unable to disconnect. Please try again.');
@@ -2175,7 +2186,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#emojiP')&&!e.target
 
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  navigator.serviceWorker.register('sw.js?v=studylink-pwa-2',{scope:'./'}).then(reg=>{
+  navigator.serviceWorker.register('sw.js?v=studylink-pwa-4',{scope:'./'}).then(reg=>{
     reg.update().catch(()=>{});
   }).catch(err=>console.warn('PWA service worker unavailable:',err));
   let installEvent=null;
@@ -2195,6 +2206,8 @@ function setupPWA(){
 }
 function bootstrapStudyLink(){
   setupPWA();
+  const disconnectButton=el('disconnectBtn');
+  disconnectButton?.addEventListener('click',()=>{void doOut();});
   // Countries
   const uc=el('uC');COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;uc.appendChild(o);});
   // Tags
