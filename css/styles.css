@@ -90,6 +90,7 @@ body.dark .sbadge.offline{background:#1a1a1a;}
 #rplybar span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88%;}
 #rplybar button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--sub);}
 #typebar,#gTypebar{display:none;padding:5px 14px;font-size:11px;color:var(--sub);font-style:italic;background:color-mix(in srgb,var(--card) 92%,var(--btnB) 8%);border-top:1px solid var(--brd);min-height:24px;}
+.inbox-presence{display:block;margin-top:3px;color:var(--btnB);font-size:11px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* BUBBLES */
 .bw{margin-bottom:8px;display:flex;align-items:flex-end;gap:2px;}
 .bw.s{text-align:right;flex-direction:row-reverse;}
