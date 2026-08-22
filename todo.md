@@ -46,3 +46,4 @@
 - [x] Diagnose and fix missing account discovery/user-list loading in the Messages page.
 - [ ] Verify that private/group typing and recording indicators remain integrated in the Messages page after the fix.
 - [x] Advance the PWA asset version so installed and cached clients receive the corrected runtime instead of stale pwa-7 JavaScript.
+- [x] Fix the Android startup path that remains indefinitely on Loading and restore a clear authenticated or logged-out state.
