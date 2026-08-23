@@ -158,7 +158,7 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .pcard-av .avatar{width:66px;height:66px;font-size:24px;border-color:rgba(255,255,255,.5);}
 .pcard-av .odot{width:15px;height:15px;bottom:1px;right:1px;border:2px solid #fff;}
 /* AUTH */
-#auth{position:fixed;top:0;left:0;width:100%;height:100%;background-color:#f7f8fa;background-image:url("../icons/studylink-login-pattern.png?v=studylink-pwa-10");background-repeat:repeat;background-size:512px 512px;color:#021841;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
+#auth{position:fixed;top:0;left:0;width:100%;height:100%;background-color:#eef5fb;background-image:radial-gradient(circle at 10% 16%,rgba(24,119,210,.22) 0 9%,transparent 9.5%),radial-gradient(circle at 90% 80%,rgba(0,150,136,.18) 0 12%,transparent 12.5%),linear-gradient(135deg,transparent 0 58%,rgba(24,119,210,.09) 58% 67%,transparent 67%),linear-gradient(35deg,rgba(255,255,255,.92) 0 42%,transparent 42% 100%);background-repeat:no-repeat;background-size:auto,auto,100% 100%,100% 100%;color:#021841;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
 #auth h1{color:#021841;font-size:26px;margin-bottom:4px;}
 #auth>p{color:#405a78;margin-bottom:18px;font-size:14px;}
 .af{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;}
