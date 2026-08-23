@@ -46,8 +46,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script defer src="js\/app-v9\.js\?v=studylink-pwa-9"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-9">/);
+  assert.match(html, /<script defer src="js\/app-v10\.js\?v=studylink-pwa-10"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-10">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -144,16 +144,16 @@ test('recovers cleanly if Android ends the microphone track or MediaRecorder fai
 test('ships an installable PWA shell with the supplied StudyLink icon', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
-  const worker = await readFile(new URL('../sw-v9.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sw-v10.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-9"/);
-  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-9/);
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-10"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-10/);
   assert.match(html, /id="installBanner"/);
   assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /id="disconnectBtn"/);
   assert.doesNotMatch(html, /onclick="doOut\(\)"/);
-  assert.match(source, /navigator\.serviceWorker\.register\('sw-v9.js\?v=studylink-pwa-9'/);
+  assert.match(source, /navigator\.serviceWorker\.register\('sw-v10.js\?v=studylink-pwa-10'/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /appinstalled/);
   assert.match(source, /updateViaCache:'none'/);
@@ -162,12 +162,12 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
   assert.match(manifest, /"prefer_related_applications": false/);
-  assert.match(worker, /studylink-shell-v9/);
-  assert.match(manifest, /"start_url": "\.\/\?source=pwa-9"/);
-  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-9/);
+  assert.match(worker, /studylink-shell-v10/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-10"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-10/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
-  assert.match(css, /#auth\{[^}]*background:linear-gradient\(135deg,rgba\(243,247,252,\.95\),rgba\(229,238,249,\.98\)\),url\("\.\.\/icons\/studylink-512\.png"\)/);
+  assert.match(css, /#auth\{[^}]*background-image:url\("\.\.\/icons\/studylink-login-pattern\.png\?v=studylink-pwa-10"\)/);
 });
 
 test('cancels recorder waveforms and keeps PWA bootstrap reliable after DOM readiness', () => {
@@ -224,6 +224,7 @@ test('ships realtime typing and recording presence for private and group chats',
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(source, /function setPresenceState\(kind,id,state,active\)/);
+  assert.match(source, /where\('participants','array-contains',CU\.uid\)\.onSnapshot/);
   assert.match(source, /presence\.\$\{CU\.uid\}\.\$\{state\}/);
   assert.match(source, /function clearPresenceState\(kind,id\)/);
   assert.match(source, /is recording\.\.\./);
@@ -240,7 +241,7 @@ test('ships realtime typing and recording presence for private and group chats',
 test('restores the login background and gives the top wordmark a clearer mobile size', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /#auth\{[^}]*background:linear-gradient\(135deg,rgba\(243,247,252,\.95\),rgba\(229,238,249,\.98\)\),url\("\.\.\/icons\/studylink-512\.png"\)/);
+  assert.match(css, /#auth\{[^}]*background-image:url\("\.\.\/icons\/studylink-login-pattern\.png\?v=studylink-pwa-10"\)/);
   assert.match(html, /font-size:26px;font-weight:bold;color:#fff/);
 });
 
