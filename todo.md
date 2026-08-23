@@ -44,6 +44,30 @@
 
 - [x] Diagnose and fix blocked navigation menus in the published StudyLink build.
 - [x] Diagnose and fix missing account discovery/user-list loading in the Messages page.
-- [ ] Verify that private/group typing and recording indicators remain integrated in the Messages page after the fix.
+- [x] Verify that private/group typing and recording indicators remain integrated in the Messages page after the fix.
 - [x] Advance the PWA asset version so installed and cached clients receive the corrected runtime instead of stale pwa-7 JavaScript.
 - [x] Fix the Android startup path that remains indefinitely on Loading and restore a clear authenticated or logged-out state.
+- [x] Make private and group typing/recording presence reliable in the open conversation and visible in the Messages user list.
+- [x] Replace icon-based presence copy with professional name-only status text and add regression coverage for both display surfaces.
+- [x] Advance the PWA release from pwa-8 to pwa-9 so cached clients receive the new list-level presence renderer.
+- [x] Synchronize the pwa-9 shell, runtime, service worker, stylesheet, and regression suite to the bamwangafelix-afk/studylink main branch.
+- [x] Verify GitHub Pages serves the pwa-9 shell and assets and that the startup overlay is hidden on the logged-out live view.
+- [ ] Perform a physical two-account validation of typing and recording labels in the Messages list and open private/group chats.
+- [x] Diagnose why the published pwa-9 presence indicators are not visible or updating for the user.
+- [x] Replace the StudyLink login background with the supplied repeated SL-logo pattern and version the asset for cache eviction.
+- [x] Add or strengthen regression coverage for the corrected presence behavior and login background.
+- [x] Publish and verify the corrected release on GitHub Pages.
+- [x] Correct the live pwa-10 asset path mismatch: `js/app-v10.js` and the login-pattern image currently return 404 from GitHub Pages.
+- [x] Re-verify that the published shell, runtime, stylesheet, image, and service worker all return HTTP 200 before final user testing.
+- [x] Trace and fix one-way typing presence so both accounts publish and receive the status symmetrically.
+- [x] Repair `is recording...` presence updates for private and group conversations, including cleanup on stop, send, cancel, and failure.
+- [x] Prepare a Vector-style login background preview while retaining the current SL-pattern asset as rollback reference.
+- [ ] Add regression coverage, publish the corrected release, and verify the two-account flow.
+- [x] Migrate stale pwa-9/pwa-10 service-worker controllers to pwa-12 so the repaired runtime cannot remain hidden behind old cached code.
+- [x] Strengthen presence heartbeat and recorder start/stop cleanup for symmetric private and group updates.
+- [x] Publish pwa-12 and verify the Vector login background plus asset and runtime responses.
+- [x] Compare the supplied white and dark SL-logo backgrounds, choose the more professional option, replace the current Vector login background, and publish a cache-busted visual update.
+- [ ] Replace the pwa-13 dark patterned login background with the supplied full STUDYLINK artwork (`1000337905.png`).
+- [ ] Preserve the previous dark patterned background as a rollback asset and version the PWA cache for the new artwork.
+- [ ] Run regression/live checks and publish the new login background to GitHub Pages.
+- [ ] Replace the pwa-14 login background with the user-selected second artwork `login_mockup_recolored2.png` and republish the verified release.
