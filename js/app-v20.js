@@ -26,6 +26,18 @@ const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
+
+// ── STATUSES ──
+const STATUS_TTL_MS=24*60*60*1000;
+const CATS={
+  dispo:{emoji:'🟢',label:'Disponible'},
+  revision:{emoji:'📚',label:'En révision'},
+  aide:{emoji:'🙋',label:"Besoin d'aide"},
+  session:{emoji:'🎯',label:'Session en cours'},
+  pause:{emoji:'☕',label:'Pause'},
+  objectif:{emoji:'✅',label:'Objectif atteint'}
+};
+let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false;
 let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vFinalizing=false,vStartAt=0;
 let gVStartAt=0;
@@ -593,6 +605,7 @@ async function savePro(){
 function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
     allUsers=sn.docs.map(d=>d.data());
+    renderStatusBar();
     // Only re-render Find if it's currently visible
     if(el('Pfind')&&el('Pfind').style.display!=='none'){
       renderFind(el('findQ')?.value||'');
@@ -727,6 +740,149 @@ function renderHome(posts,limit){
   if(hasMore||posts.length===30){
     f.innerHTML+=`<button onclick="loadMorePosts()" style="display:block;width:100%;padding:14px;margin-top:4px;border:none;border-radius:14px;background:var(--btnB);color:#fff;font-size:15px;font-weight:bold;cursor:pointer;letter-spacing:.3px;">Load more</button>`;
   }
+}
+
+// ── STATUS BAR (render) ──
+function activeStatusOf(u){
+  return u&&u.statusPost&&u.statusPost.expiresAt>Date.now()?u.statusPost:null;
+}
+function renderStatusBar(){
+  const bar=el('statusScroll');if(!bar||!CU)return;
+  const mine=allUsers.find(u=>u.uid===CU.uid);
+  const myStatus=activeStatusOf(mine);
+  let html=`<div class="stItem" onclick="openStatusCreate()">
+    <div class="stRing ring-add"><div class="stAvatar">+</div></div>
+    <div class="stLabel">Statut</div>
+  </div>`;
+  if(myStatus){
+    const av=myStatus.photo?`<img class="stThumb" src="${myStatus.photo}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
+    html+=`<div class="stItem" onclick="viewStatus('${CU.uid}')">
+      <div class="stRing ring-${myStatus.category}">${av}</div>
+      <div class="stLabel">Toi</div>
+    </div>`;
+  }
+  const others=allUsers.filter(u=>u.uid!==CU.uid&&activeStatusOf(u)).sort((a,b)=>(b.statusPost.createdAt||0)-(a.statusPost.createdAt||0));
+  others.forEach(u=>{
+    const sp=u.statusPost;
+    const av=sp.photo?`<img class="stThumb" src="${sp.photo}">`:(u.photo?`<img src="${u.photo}">`:`<div class="stFallback">${esc((u.name||'?')[0]||'?').toUpperCase()}</div>`);
+    html+=`<div class="stItem" onclick="viewStatus('${u.uid}')">
+      <div class="stRing ring-${sp.category}">${av}</div>
+      <div class="stLabel">${esc(u.name||'?')}</div>
+    </div>`;
+  });
+  bar.innerHTML=html;
+}
+
+// ── STATUS CREATE ──
+function openStatusCreate(){
+  if(!MP?.name)return showToast('❌ Complete your profile first');
+  selStatusCat=null;selStatusSubject=null;statusPhotoUrl=null;
+  el('stMsg').value='';el('stCharCount').textContent='0 / 100';
+  el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';
+  const grid=el('stCatGrid');
+  grid.innerHTML=Object.keys(CATS).map(k=>{
+    const c=CATS[k];
+    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${c.label}</div></div>`;
+  }).join('');
+  const subjWrap=el('stSubjSel');
+  subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
+  updateStatusPreview();
+  el('statusCreate').style.display='flex';
+}
+function closeStatusCreate(){el('statusCreate').style.display='none';}
+function selectStatusCat(k){
+  selStatusCat=k;
+  document.querySelectorAll('.stCatCard').forEach(c=>c.classList.remove('sel'));
+  el('stCat_'+k).classList.add('sel');
+  updateStatusPreview();
+}
+function toggleStatusSubject(s){
+  selStatusSubject=selStatusSubject===s?null:s;
+  document.querySelectorAll('#stSubjSel .tag').forEach(b=>b.classList.remove('sel'));
+  if(selStatusSubject){const btn=el('stSubj_'+s.replace(/[^a-zA-Z0-9]/g,''));if(btn)btn.classList.add('sel');}
+  updateStatusPreview();
+}
+async function handleStatusPhoto(e){
+  const file=e.target.files?.[0];if(!file)return;
+  statusUploading=true;
+  el('stPhotoEmpty').innerHTML='<div style="font-size:13px;color:var(--sub);">Envoi en cours...</div>';
+  const url=await uploadCloud(file,'image');
+  statusUploading=false;
+  if(!url){el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';return;}
+  statusPhotoUrl=url;
+  el('stPhotoPreview').src=url;
+  el('stPhotoPreviewWrap').style.display='block';
+  el('stPhotoEmpty').style.display='none';
+  updateStatusPreview();
+}
+function removeStatusPhoto(){
+  statusPhotoUrl=null;
+  el('stPhotoPreviewWrap').style.display='none';
+  el('stPhotoEmpty').style.display='block';
+  el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';
+  updateStatusPreview();
+}
+function updateStatusPreview(){
+  const p=el('stPreview');if(!p)return;
+  const msg=v('stMsg')||'…';
+  if(!selStatusCat){p.innerHTML='<span style="font-size:12px;color:var(--sub);">Choisis une catégorie pour voir l\'aperçu</span>';return;}
+  const c=CATS[selStatusCat];
+  const av=statusPhotoUrl?`<img class="stThumb" src="${statusPhotoUrl}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
+  p.innerHTML=`<div class="stRing ring-${selStatusCat}" style="width:52px;height:52px;flex-shrink:0;">${av}</div>
+    <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${c.emoji} ${c.label}${selStatusSubject?' · '+esc(selStatusSubject):''}</div>`;
+}
+async function publishStatus(){
+  if(!MP?.name)return showToast('❌ Complete your profile first');
+  if(statusUploading)return showToast('❌ Photo en cours d\'envoi, patiente');
+  if(!selStatusCat)return showToast('❌ Choisis une catégorie');
+  const msg=v('stMsg');
+  if(!msg)return showToast('❌ Écris un message');
+  const payload={category:selStatusCat,message:msg,subject:selStatusSubject||null,photo:statusPhotoUrl||null,createdAt:Date.now(),expiresAt:Date.now()+STATUS_TTL_MS};
+  el('ov').style.display='flex';
+  try{
+    await db.collection('users').doc(CU.uid).update({statusPost:payload});
+    showToast('✅ Statut publié');
+    closeStatusCreate();
+  }catch(e){showToast('❌ '+(e.message||'Erreur'));}
+  el('ov').style.display='none';
+}
+
+// ── STATUS VIEW ──
+let curStatusUid=null;
+function viewStatus(uid){
+  const u=allUsers.find(x=>x.uid===uid);
+  const sp=activeStatusOf(u);
+  if(!sp)return showToast('❌ Statut expiré');
+  curStatusUid=uid;
+  const c=CATS[sp.category]||CATS.dispo;
+  el('stVAvatar').innerHTML=u.photo?`<img src="${u.photo}">`:esc((u.name||'?')[0]||'?').toUpperCase();
+  el('stVName').textContent=uid===CU.uid?'Toi':(u.name||'?');
+  const mins=Math.max(1,Math.round((Date.now()-sp.createdAt)/60000));
+  const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
+  const left=Math.max(0,Math.round((sp.expiresAt-Date.now())/3600000));
+  el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
+  el('stVBadge').textContent=`${c.emoji} ${c.label}`;
+  el('stVMsg').textContent=sp.message;
+  if(sp.subject){el('stVSubject').style.display='inline-block';el('stVSubject').textContent='📖 '+sp.subject;}
+  else{el('stVSubject').style.display='none';}
+  const view=el('statusView');
+  if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='cover';view.style.backgroundPosition='center';}
+  else{
+    const grad={dispo:'#27ae60,#1e8a4c',revision:'#2563eb,#16357a',aide:'#f5730a,#c2570a',session:'#7b2ff7,#4b1f99',pause:'#8a93ab,#5c6478',objectif:'#f5b301,#a67c00'}[sp.category]||'#16357a,#0d1b4c';
+    view.style.backgroundImage=`linear-gradient(160deg,${grad})`;
+    view.style.backgroundSize='';view.style.backgroundPosition='';
+  }
+  el('stVReplyInput').value='';
+  el('statusView').style.display='flex';
+}
+function closeStatusView(){el('statusView').style.display='none';curStatusUid=null;}
+function replyToStatus(){
+  if(!curStatusUid)return;
+  const text=v('stVReplyInput');
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  closeStatusView();
+  openChat(u?.name||'',curStatusUid);
+  if(text)setTimeout(()=>{const i=el('mIn');if(i){i.value=text;onMsgInput&&onMsgInput();}},150);
 }
 
 // ── FIND ──
@@ -2275,6 +2431,7 @@ function tab(id){
     renderHome(cachedPosts,_feedShown);
     const b=el('feedB');if(b){b.style.display='none';b.textContent='';}
   }
+  if(id==='home')renderStatusBar();
   // If already on home and tapped again - refresh feed from Firestore
   if(id==='home'&&el('Phome').style.display!=='none'&&arguments[1]==='refresh'){
     db.collection('posts').orderBy('createdAt','desc').limit(30).get().then(sn=>{
