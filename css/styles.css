@@ -253,7 +253,16 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .stVMenu button.danger{color:#ff453a;}
 .stVSeenList{display:none;position:absolute;bottom:0;left:0;right:0;background:#1c1c1e;border-radius:16px 16px 0 0;max-height:55%;overflow-y:auto;z-index:15;padding:14px 0 10px;}
 .stVSeenHdr{padding:0 16px 10px;font-weight:800;color:#fff;font-size:14px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:6px;}
-.stVSeenRow{display:flex;align-items:center;gap:10px;padding:8px 16px;}
+.stVSeenRow{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;}
 .stVSeenAv{width:36px;height:36px;border-radius:50%;background:#3a3a3c;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;object-fit:cover;}
 .stVSeenAv img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
 .stVSeenName{color:#fff;font-size:14px;font-weight:600;}
+
+/* ── STATUS RING (everywhere a profile picture appears) ── */
+.ring-outline-dispo{box-shadow:0 0 0 3px #2ecc71;}
+.ring-outline-revision{box-shadow:0 0 0 3px #2563eb;}
+.ring-outline-aide{box-shadow:0 0 0 3px #f5730a;}
+.ring-outline-session{box-shadow:0 0 0 3px #7b2ff7;}
+.ring-outline-pause{box-shadow:0 0 0 3px #8a93ab;}
+.ring-outline-objectif{box-shadow:0 0 0 3px #f5b301;}
+.ring-outline-photo{box-shadow:0 0 0 3px #6b7db3;}
