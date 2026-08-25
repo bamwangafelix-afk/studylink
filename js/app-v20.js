@@ -29,6 +29,7 @@ let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,
 
 // ── STATUSES ──
 const STATUS_TTL_MS=24*60*60*1000;
+const STATUS_VIEW_MS=6000;
 const CATS={
   dispo:{emoji:'🟢',label:'Disponible'},
   revision:{emoji:'📚',label:'En révision'},
@@ -37,7 +38,8 @@ const CATS={
   pause:{emoji:'☕',label:'Pause'},
   objectif:{emoji:'✅',label:'Objectif atteint'}
 };
-let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null;
+let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
+let statusAutoCloseTimer=null;
 let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vFinalizing=false,vStartAt=0;
 let gVStartAt=0;
@@ -778,11 +780,14 @@ function renderStatusBar(){
 }
 
 // ── STATUS CREATE ──
-function openStatusCreate(){
+function openStatusCreate(draftPhoto){
   if(!MP?.name)return showToast('❌ Complete your profile first');
-  selStatusCat=null;selStatusSubject=null;statusPhotoUrl=null;selStatusGroup=null;
+  selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
+  if(draftPhoto){statusPhotoUrl=draftPhoto;}
+  else{statusPhotoUrl=null;forwardedFromDraft=null;}
   el('stMsg').value='';el('stCharCount').textContent='0 / 100';
-  el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';
+  if(statusPhotoUrl){el('stPhotoPreview').src=statusPhotoUrl;el('stPhotoPreviewWrap').style.display='block';el('stPhotoEmpty').style.display='none';}
+  else{el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';}
   const grid=el('stCatGrid');
   grid.innerHTML=Object.keys(CATS).map(k=>{
     const c=CATS[k];
@@ -826,6 +831,7 @@ async function handleStatusPhoto(e){
   statusUploading=false;
   if(!url){el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';return;}
   statusPhotoUrl=url;
+  forwardedFromDraft=null;
   el('stPhotoPreview').src=url;
   el('stPhotoPreviewWrap').style.display='block';
   el('stPhotoEmpty').style.display='none';
@@ -833,6 +839,7 @@ async function handleStatusPhoto(e){
 }
 function removeStatusPhoto(){
   statusPhotoUrl=null;
+  forwardedFromDraft=null;
   el('stPhotoPreviewWrap').style.display='none';
   el('stPhotoEmpty').style.display='block';
   el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';
@@ -856,11 +863,12 @@ async function publishStatus(){
     if(!selStatusCat)return showToast('❌ Choisis une catégorie');
     if(!msg)return showToast('❌ Écris un message');
   }
-  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:Date.now(),expiresAt:Date.now()+STATUS_TTL_MS};
+  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:Date.now(),expiresAt:Date.now()+STATUS_TTL_MS};
   el('ov').style.display='flex';
   try{
     await db.collection('users').doc(CU.uid).update({statusPost:payload});
     showToast('✅ Statut publié');
+    forwardedFromDraft=null;
     closeStatusCreate();
   }catch(e){showToast('❌ '+(e.message||'Erreur'));}
   el('ov').style.display='none';
@@ -899,6 +907,14 @@ function viewStatus(uid){
   }
   el('stVReplyInput').value='';
   el('statusView').style.display='flex';
+  // progress bar: reset then animate to full over STATUS_VIEW_MS, auto-close at end
+  clearTimeout(statusAutoCloseTimer);
+  const fill=document.querySelector('#stVProgress .stVProgFill');
+  fill.style.transition='none';fill.style.width='0%';
+  void fill.offsetWidth; // force reflow
+  fill.style.transition=`width ${STATUS_VIEW_MS}ms linear`;
+  requestAnimationFrame(()=>{fill.style.width='100%';});
+  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)closeStatusView();},STATUS_VIEW_MS);
   // mark as seen (only if viewing someone else's) → ring turns gray after this
   if(uid!==CU.uid&&!(sp.viewedBy||[]).includes(CU.uid)){
     const viewedBy=[...(sp.viewedBy||[]),CU.uid];
@@ -907,24 +923,33 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(){el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
+function closeStatusView(){clearTimeout(statusAutoCloseTimer);el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
+  clearTimeout(statusAutoCloseTimer);
   const isMine=curStatusUid===CU.uid;
-  menu.innerHTML=isMine?`
-    <button onclick="showSeenBy()">👁 Vu par</button>
-    <button onclick="forwardStatus()">↪ Transférer</button>
-    <button onclick="saveStatusMedia()">💾 Enregistrer</button>
-    <button class="danger" onclick="deleteStatus()">🗑 Supprimer</button>
-  `:`
-    <button onclick="forwardStatus()">↪ Transférer</button>
-    <button onclick="replyToStatus()">💬 Message</button>
-    <button onclick="viewStatusProfile()">👤 Voir profil</button>
-    <button onclick="toggleStatusNotif()">🔔 Notifications</button>
-    <button onclick="hideStatusUser()">🚫 Masquer</button>
-    <button class="danger" onclick="reportStatus()">⚠️ Signaler</button>
-  `;
+  if(isMine){
+    const mine=allUsers.find(u=>u.uid===CU.uid);
+    const sp=activeStatusOf(mine);
+    const isForward=!!sp?.forwardedFrom;
+    menu.innerHTML=`
+      <button onclick="showSeenBy()">👁 Vu par</button>
+      ${isForward?`<button onclick="showForwardSource()">↪ Transféré de ${esc(sp.forwardedFrom.name)}</button>`:''}
+      <button onclick="shareStatus()">📤 Partager</button>
+      <button onclick="saveStatusMedia()">💾 Enregistrer</button>
+      <button class="danger" onclick="deleteStatus()">🗑 Supprimer</button>
+    `;
+  }else{
+    menu.innerHTML=`
+      <button onclick="forwardStatus()">↪ Transférer</button>
+      <button onclick="replyToStatus()">💬 Message</button>
+      <button onclick="viewStatusProfile()">👤 Voir profil</button>
+      <button onclick="toggleStatusNotif()">🔔 Notifications</button>
+      <button onclick="hideStatusUser()">🚫 Masquer</button>
+      <button class="danger" onclick="reportStatus()">⚠️ Signaler</button>
+    `;
+  }
   menu.style.display='block';
 }
 function showSeenBy(){
@@ -945,7 +970,32 @@ function showSeenBy(){
   }
   list.style.display='block';
 }
-function forwardStatus(){showToast('↪ Transfert bientôt disponible');el('stVMenu').style.display='none';}
+function forwardStatus(){
+  el('stVMenu').style.display='none';
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sp=activeStatusOf(u);
+  if(!sp)return;
+  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur'};
+  const draftPhoto=sp.photo||null;
+  closeStatusView();
+  openStatusCreate(draftPhoto);
+}
+function shareStatus(){
+  el('stVMenu').style.display='none';
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sp=activeStatusOf(u);
+  if(!sp)return;
+  const text=`${u?.name||'Quelqu\'un'} sur StudyLink: ${sp.message||'a partagé une photo'}`;
+  if(navigator.share){navigator.share({title:'StudyLink',text}).catch(()=>{});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(text).then(()=>showToast('📋 Copié, prêt à partager')).catch(()=>showToast('❌ Impossible de copier'));}
+  else showToast('📤 Partage non supporté sur cet appareil');
+}
+function showForwardSource(){
+  el('stVMenu').style.display='none';
+  const mine=allUsers.find(u=>u.uid===CU.uid);
+  const sp=activeStatusOf(mine);
+  if(sp?.forwardedFrom)showToast(`↪ Transféré depuis le statut de ${sp.forwardedFrom.name}`);
+}
 function saveStatusMedia(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
