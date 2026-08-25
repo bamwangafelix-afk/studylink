@@ -265,7 +265,7 @@
 </div>
 
 <!-- STATUS VIEW -->
-<div class="stView" id="statusView">
+<div class="stView" id="statusView" onpointerdown="statusPressStart(event)" onpointerup="statusPressEnd(event)" onpointercancel="statusPressEnd(event)">
   <div class="stVProgress" id="stVProgress"><div class="stVProgFill"></div></div>
   <div class="stVTop">
     <div class="stVAvatar" id="stVAvatar"></div>
@@ -282,7 +282,7 @@
     <div class="stVBadge" id="stVBadge"></div>
     <div class="stVMsg" id="stVMsg"></div>
     <div class="stVSubject" id="stVSubject" style="display:none;"></div>
-    <button id="stVJoinGroupBtn" onclick="joinStatusGroup()" style="display:none;margin-top:18px;background:#fff;color:#16357a;border:none;padding:11px 22px;border-radius:22px;font-weight:800;font-size:14px;cursor:pointer;">🤝 Rejoindre le groupe</button>
+    <button id="stVJoinGroupBtn" onclick="joinStatusGroup()" style="display:none;margin-top:18px;background:#fff;color:#16357a;border:none;padding:11px 22px;border-radius:22px;font-weight:800;font-size:14px;cursor:pointer;">Rejoindre le groupe</button>
   </div>
   <div class="stVBottom">
     <input class="stVReplyInput" id="stVReplyInput" placeholder="Répondre..." onkeydown="if(event.key==='Enter')replyToStatus()">
