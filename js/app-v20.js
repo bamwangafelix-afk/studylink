@@ -40,6 +40,7 @@ const CATS={
 };
 let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
 let statusAutoCloseTimer=null;
+let statusRemainingMs=STATUS_VIEW_MS;
 let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vFinalizing=false,vStartAt=0;
 let gVStartAt=0;
@@ -606,11 +607,18 @@ async function savePro(){
 // ── USERS ──
 function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
-    allUsers=sn.docs.map(d=>d.data());
+    allUsers=sn.docs.map(d=>d.data({serverTimestamps:'estimate'}));
     renderStatusBar();
     // Only re-render Find if it's currently visible
     if(el('Pfind')&&el('Pfind').style.display!=='none'){
       renderFind(el('findQ')?.value||'');
+    }
+    // Keep status rings current on Home feed and Messages list too
+    if(el('Phome')&&el('Phome').style.display!=='none'&&cachedPosts.length>0){
+      renderHome(cachedPosts,_feedShown);
+    }
+    if(el('Pmsgs')&&el('Pmsgs').style.display!=='none'&&typeof renderInbox==='function'){
+      renderInbox(el('inboxQ')?.value||'');
     }
     // Update online dots on feed without full re-render
     sn.docChanges().forEach(change=>{
@@ -721,7 +729,7 @@ function renderHome(posts,limit){
     const intent=p.user?.intent||liveUser?.intent||'';
     f.innerHTML+=`<div class="card ${isG?'grp':''}">
       <div style="display:flex;gap:10px;margin-bottom:8px;">
-        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
           <b style="color:var(--btnB);font-size:14px;">${esc(p.user?.name||'?')}${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}</b>
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(p.user?.country||'')} ${p.user?.country||'—'} | 🏛️ ${p.user?.uni||'—'}</p>
@@ -745,8 +753,19 @@ function renderHome(posts,limit){
 }
 
 // ── STATUS BAR (render) ──
+function statusMillis(ts){
+  if(!ts)return null;
+  if(typeof ts==='number')return ts;
+  if(typeof ts.toMillis==='function')return ts.toMillis();
+  if(typeof ts.seconds==='number')return ts.seconds*1000;
+  return null;
+}
 function activeStatusOf(u){
-  return u&&u.statusPost&&u.statusPost.expiresAt>Date.now()?u.statusPost:null;
+  if(!u||!u.statusPost)return null;
+  const createdMs=statusMillis(u.statusPost.createdAt);
+  if(!createdMs)return null; // still syncing with server, not ready yet
+  if(Date.now()-createdMs>STATUS_TTL_MS)return null;
+  return u.statusPost;
 }
 function renderStatusBar(){
   const bar=el('statusScroll');if(!bar||!CU)return;
@@ -765,7 +784,7 @@ function renderStatusBar(){
       <div class="stLabel">Toi</div>
     </div>`;
   }
-  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)).sort((a,b)=>(b.statusPost.createdAt||0)-(a.statusPost.createdAt||0));
+  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
   others.forEach(u=>{
     const sp=u.statusPost;
     const seen=(sp.viewedBy||[]).includes(CU.uid);
@@ -863,7 +882,7 @@ async function publishStatus(){
     if(!selStatusCat)return showToast('❌ Choisis une catégorie');
     if(!msg)return showToast('❌ Écris un message');
   }
-  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:Date.now(),expiresAt:Date.now()+STATUS_TTL_MS};
+  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   el('ov').style.display='flex';
   try{
     await db.collection('users').doc(CU.uid).update({statusPost:payload});
@@ -886,9 +905,10 @@ function viewStatus(uid){
   const c=sp.category?CATS[sp.category]:null;
   el('stVAvatar').innerHTML=u.photo?`<img src="${u.photo}">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('stVName').textContent=uid===CU.uid?'Toi':(u.name||'?');
-  const mins=Math.max(1,Math.round((Date.now()-sp.createdAt)/60000));
+  const createdMs=statusMillis(sp.createdAt)||Date.now();
+  const mins=Math.max(1,Math.round((Date.now()-createdMs)/60000));
   const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
-  const left=Math.max(0,Math.round((sp.expiresAt-Date.now())/3600000));
+  const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
   el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
   if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${c.label}`;}
   else{el('stVBadge').style.display='none';}
@@ -896,7 +916,7 @@ function viewStatus(uid){
   else{el('stVMsg').style.display='none';}
   if(sp.subject){el('stVSubject').style.display='inline-block';el('stVSubject').textContent='📖 '+sp.subject;}
   else{el('stVSubject').style.display='none';}
-  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupBtn').textContent='🤝 Rejoindre '+sp.linkedGroupName;}
+  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupBtn').textContent='Rejoindre '+sp.linkedGroupName;}
   else{el('stVJoinGroupBtn').style.display='none';}
   const view=el('statusView');
   if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='cover';view.style.backgroundPosition='center';}
@@ -909,6 +929,7 @@ function viewStatus(uid){
   el('statusView').style.display='flex';
   // progress bar: reset then animate to full over STATUS_VIEW_MS, auto-close at end
   clearTimeout(statusAutoCloseTimer);
+  statusRemainingMs=STATUS_VIEW_MS;
   const fill=document.querySelector('#stVProgress .stVProgFill');
   fill.style.transition='none';fill.style.width='0%';
   void fill.offsetWidth; // force reflow
@@ -934,20 +955,20 @@ function toggleStatusMenu(){
     const sp=activeStatusOf(mine);
     const isForward=!!sp?.forwardedFrom;
     menu.innerHTML=`
-      <button onclick="showSeenBy()">👁 Vu par</button>
-      ${isForward?`<button onclick="showForwardSource()">↪ Transféré de ${esc(sp.forwardedFrom.name)}</button>`:''}
-      <button onclick="shareStatus()">📤 Partager</button>
-      <button onclick="saveStatusMedia()">💾 Enregistrer</button>
-      <button class="danger" onclick="deleteStatus()">🗑 Supprimer</button>
+      <button onclick="showSeenBy()">Vu par</button>
+      ${isForward?`<button onclick="showForwardSource()">Transféré</button>`:''}
+      <button onclick="shareStatus()">Partager</button>
+      <button onclick="saveStatusMedia()">Enregistrer</button>
+      <button class="danger" onclick="deleteStatus()">Supprimer</button>
     `;
   }else{
     menu.innerHTML=`
-      <button onclick="forwardStatus()">↪ Transférer</button>
-      <button onclick="replyToStatus()">💬 Message</button>
-      <button onclick="viewStatusProfile()">👤 Voir profil</button>
-      <button onclick="toggleStatusNotif()">🔔 Notifications</button>
-      <button onclick="hideStatusUser()">🚫 Masquer</button>
-      <button class="danger" onclick="reportStatus()">⚠️ Signaler</button>
+      <button onclick="forwardStatus()">Transférer</button>
+      <button onclick="replyToStatus()">Message</button>
+      <button onclick="viewStatusProfile()">Voir profil</button>
+      <button onclick="toggleStatusNotif()">Notifications</button>
+      <button onclick="hideStatusUser()">Masquer</button>
+      <button class="danger" onclick="reportStatus()">Signaler</button>
     `;
   }
   menu.style.display='block';
@@ -964,11 +985,16 @@ function showSeenBy(){
     const rows=seenUids.map(uid=>{
       const su=allUsers.find(x=>x.uid===uid);
       const av=su?.photo?`<img src="${su.photo}">`:esc((su?.name||'?')[0]||'?').toUpperCase();
-      return `<div class="stVSeenRow"><div class="stVSeenAv">${av}</div><div class="stVSeenName">${esc(su?.name||'Utilisateur')}</div></div>`;
+      return `<div class="stVSeenRow" onclick="openSeenProfile('${uid}')"><div class="stVSeenAv">${av}</div><div class="stVSeenName">${esc(su?.name||'Utilisateur')}</div></div>`;
     }).join('');
     list.innerHTML=`<div class="stVSeenHdr">Vu par ${seenUids.length}</div>${rows}`;
   }
   list.style.display='block';
+}
+function openSeenProfile(uid){
+  closeStatusView();
+  if(typeof openProfile==='function')openProfile(uid);
+  else showToast('Profil');
 }
 function forwardStatus(){
   el('stVMenu').style.display='none';
@@ -988,13 +1014,13 @@ function shareStatus(){
   const text=`${u?.name||'Quelqu\'un'} sur StudyLink: ${sp.message||'a partagé une photo'}`;
   if(navigator.share){navigator.share({title:'StudyLink',text}).catch(()=>{});}
   else if(navigator.clipboard){navigator.clipboard.writeText(text).then(()=>showToast('📋 Copié, prêt à partager')).catch(()=>showToast('❌ Impossible de copier'));}
-  else showToast('📤 Partage non supporté sur cet appareil');
+  else showToast('Partage non supporté sur cet appareil');
 }
 function showForwardSource(){
   el('stVMenu').style.display='none';
   const mine=allUsers.find(u=>u.uid===CU.uid);
   const sp=activeStatusOf(mine);
-  if(sp?.forwardedFrom)showToast(`↪ Transféré depuis le statut de ${sp.forwardedFrom.name}`);
+  if(sp?.forwardedFrom)showToast('Transféré depuis un autre statut');
 }
 function saveStatusMedia(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
@@ -1006,7 +1032,7 @@ function saveStatusMedia(){
 async function deleteStatus(){
   el('stVMenu').style.display='none';
   if(!confirm('Supprimer ton statut ?'))return;
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast('🗑 Statut supprimé');}
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast('Statut supprimé');}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
@@ -1020,7 +1046,7 @@ function toggleStatusNotif(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
   if(confirm(`Tu seras notifié quand ${u?.name||'cet utilisateur'} ajoute un nouveau statut.`)){
-    showToast('🔔 Notifications activées');
+    showToast('Notifications activées');
   }
 }
 function hideStatusUser(){
@@ -1030,13 +1056,13 @@ function hideStatusUser(){
     let hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
     if(!hidden.includes(curStatusUid))hidden.push(curStatusUid);
     localStorage.setItem('hiddenStatusUids',JSON.stringify(hidden));
-    closeStatusView();renderStatusBar();showToast('🚫 Masqué');
+    closeStatusView();renderStatusBar();showToast('Masqué');
   }
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
   if(confirm('Signaler ce statut pour contenu inapproprié ?')){
-    showToast('⚠️ Signalement envoyé');
+    showToast('Signalement envoyé');
   }
 }
 function replyToStatus(){
@@ -1049,6 +1075,36 @@ function replyToStatus(){
   if(text)setTimeout(()=>{const i=el('mIn');if(i){i.value=text;onMsgInput&&onMsgInput();}},150);
 }
 
+function statusPressStart(e){
+  if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
+  clearTimeout(statusAutoCloseTimer);
+  const fill=document.querySelector('#stVProgress .stVProgFill');
+  const track=fill.parentElement;
+  const trackWidth=track.offsetWidth||1;
+  const currentWidthPx=parseFloat(getComputedStyle(fill).width)||0;
+  const fraction=Math.min(1,currentWidthPx/trackWidth);
+  statusRemainingMs=Math.max(0,STATUS_VIEW_MS*(1-fraction));
+  fill.style.transition='none';
+  fill.style.width=(fraction*100)+'%';
+}
+function statusPressEnd(e){
+  if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
+  if(statusRemainingMs<=0){closeStatusView();return;}
+  const fill=document.querySelector('#stVProgress .stVProgFill');
+  void fill.offsetWidth;
+  fill.style.transition=`width ${statusRemainingMs}ms linear`;
+  requestAnimationFrame(()=>{fill.style.width='100%';});
+  const uidAtResume=curStatusUid;
+  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uidAtResume)closeStatusView();},statusRemainingMs);
+}
+function statusRingOutlineClass(uid){
+  if(!CU||!uid||uid===CU.uid)return '';
+  const u=allUsers.find(x=>x.uid===uid);
+  const sp=activeStatusOf(u);
+  if(!sp)return '';
+  if((sp.viewedBy||[]).includes(CU.uid))return '';
+  return sp.category?('ring-outline-'+sp.category):'ring-outline-photo';
+}
 function joinStatusGroup(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
@@ -1099,7 +1155,7 @@ function renderFind(q=""){
     f.innerHTML+=`<div class="card">
       ${!isSelf?`<button class="fav-btn" onclick="toggleFav('${u.uid}')">${isFav?'⭐':'☆'}</button>`:''}
       <div style="display:flex;gap:10px;margin-bottom:6px;">
-        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(u.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
           <b style="color:var(--btnB);font-size:14px;">${esc(u.name||'?')}${isSelf?' <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">You</span>':''}</b>
           ${u.bio?`<p style="font-size:11px;font-style:italic;color:var(--sub);margin:1px 0;">${esc(u.bio)}</p>`:''}
@@ -2526,7 +2582,7 @@ function renderInbox(q="",sn=null){
       const av=o.photo?`<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:'👤';
       f.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--brd);cursor:pointer;${unread>0?'background:rgba(10,60,109,.04);':''}" onclick="openChat('${e2(o.name||'User')}','${ouid||''}')">
         <div style="position:relative;flex-shrink:0;width:50px;height:50px;">
-          <div style="width:50px;height:50px;border-radius:50%;overflow:hidden;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--btnB);">${av}</div>
+          <div class="${statusRingOutlineClass(ouid)}" style="width:50px;height:50px;border-radius:50%;overflow:hidden;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--btnB);">${av}</div>
           <div style="position:absolute;bottom:1px;right:1px;width:13px;height:13px;border-radius:50%;border:2px solid var(--card);background:${st.cls==='online'?'#2ECC71':st.cls==='busy'?'#e74c3c':'#95a5a6'};z-index:2;"></div>
         </div>
         <div style="flex:1;min-width:0;">
