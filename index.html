@@ -244,13 +244,16 @@
     </div>
     <input type="file" id="fStatus" accept="image/*" style="display:none;" onchange="handleStatusPhoto(event)">
 
-    <p class="stSection">Catégorie</p>
+    <p class="stSection">Catégorie <span style="font-weight:400;text-transform:none;letter-spacing:0;">(obligatoire sauf si tu ajoutes une photo)</span></p>
     <div class="stCatGrid" id="stCatGrid"></div>
 
     <p class="stSection">Matière (optionnel)</p>
     <div id="stSubjSel" style="display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;max-height:110px;overflow-y:auto;"></div>
 
-    <p class="stSection">Message *</p>
+    <p class="stSection">Lier un groupe (optionnel)</p>
+    <div id="stGroupSel" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+    <p class="stSection">Message <span style="font-weight:400;text-transform:none;letter-spacing:0;">(obligatoire sauf si tu ajoutes une photo)</span></p>
     <textarea id="stMsg" rows="3" maxlength="100" placeholder="Dispo pour étudier maintenant, qui veut rejoindre ?" oninput="el('stCharCount').textContent=this.value.length+' / 100'"></textarea>
     <div id="stCharCount" style="text-align:right;font-size:11px;color:var(--sub);">0 / 100</div>
 
@@ -270,12 +273,16 @@
       <div style="color:#fff;font-weight:800;font-size:15px;" id="stVName"></div>
       <div style="color:rgba(255,255,255,.75);font-size:12px;" id="stVTime"></div>
     </div>
+    <button onclick="toggleStatusMenu()" style="color:#fff;background:none;border:none;font-size:20px;cursor:pointer;padding:4px 10px;">⋮</button>
     <button onclick="closeStatusView()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;padding:4px 8px;">✕</button>
   </div>
+  <div class="stVMenu" id="stVMenu"></div>
+  <div class="stVSeenList" id="stVSeenList"></div>
   <div class="stVMain" id="stVMain">
     <div class="stVBadge" id="stVBadge"></div>
     <div class="stVMsg" id="stVMsg"></div>
     <div class="stVSubject" id="stVSubject" style="display:none;"></div>
+    <button id="stVJoinGroupBtn" onclick="joinStatusGroup()" style="display:none;margin-top:18px;background:#fff;color:#16357a;border:none;padding:11px 22px;border-radius:22px;font-weight:800;font-size:14px;cursor:pointer;">🤝 Rejoindre le groupe</button>
   </div>
   <div class="stVBottom">
     <input class="stVReplyInput" id="stVReplyInput" placeholder="Répondre..." onkeydown="if(event.key==='Enter')replyToStatus()">
