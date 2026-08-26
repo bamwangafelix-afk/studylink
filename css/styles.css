@@ -332,7 +332,7 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 
 /* Final large, uncropped header logo treatment */
 .hdr-brand{height:58px;align-items:center;gap:8px;}
-.hdr-brand .hdr-logo-badge{display:flex;align-items:center;justify-content:center;width:58px;height:58px;flex:0 0 58px;border-radius:50%;border:2px solid rgba(255,255,255,.72);background:#fff;overflow:visible;transform:none;}
+.hdr-brand .hdr-logo-badge{display:flex;align-items:center;justify-content:center;width:58px;height:58px;flex:0 0 58px;border-radius:50%;border:2px solid rgba(255,255,255,.72);background:#000;overflow:visible;transform:none;}
 .hdr-brand .hdr-logo-badge .hdr-logo{display:block;width:56px!important;height:56px!important;max-width:none;padding:0;border:0;border-radius:0;background:transparent;object-fit:contain;transform:none;}
 .hdr-brand .hdr-wordmark{display:inline-flex;align-items:center;height:58px;transform:translateY(2px);line-height:1;}
 @media (max-width:520px){
