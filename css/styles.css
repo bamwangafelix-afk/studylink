@@ -329,3 +329,16 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .sccButton:active,.sccPublish:active{transform:scale(.97);}
 @media (min-width:700px){.status-color-companion{left:50%;right:auto;width:min(560px,calc(100vw - 32px));transform:translateX(-50%);}}
 @media (prefers-reduced-motion:reduce){.status-color-companion{transition:none;}.sccButton:active,.sccPublish:active{transform:none;}}
+
+/* Final large, uncropped header logo treatment */
+.hdr-brand{height:58px;align-items:center;gap:8px;}
+.hdr-brand .hdr-logo-badge{display:flex;align-items:center;justify-content:center;width:58px;height:58px;flex:0 0 58px;border-radius:50%;border:2px solid rgba(255,255,255,.72);background:#fff;overflow:visible;transform:none;}
+.hdr-brand .hdr-logo-badge .hdr-logo{display:block;width:56px!important;height:56px!important;max-width:none;padding:0;border:0;border-radius:0;background:transparent;object-fit:contain;transform:none;}
+.hdr-brand .hdr-wordmark{display:inline-flex;align-items:center;height:58px;transform:translateY(2px);line-height:1;}
+@media (max-width:520px){
+  .hdr{padding:9px 12px;}
+  .hdr-brand{height:58px;gap:7px;}
+  .hdr-brand .hdr-logo-badge{width:58px;height:58px;flex-basis:58px;}
+  .hdr-brand .hdr-logo-badge .hdr-logo{width:56px!important;height:56px!important;}
+  .hdr-brand .hdr-wordmark{transform:translateY(2px);}
+}
