@@ -290,6 +290,26 @@
   </div>
 </div>
 
+<!-- PROFILE VIEW -->
+<div class="cwin" id="profileView" style="z-index:280;">
+  <div class="chdr" style="align-items:center;">
+    <button onclick="closeProfileView()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;">←</button>
+    <div style="flex:1;text-align:center;font-weight:800;">Profil</div>
+    <div style="width:24px;"></div>
+  </div>
+  <div style="overflow-y:auto;flex:1;padding:24px 20px 40px;text-align:center;">
+    <div id="pvAvatar" style="width:110px;height:110px;border-radius:50%;margin:0 auto 14px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#6b7db3;overflow:hidden;"></div>
+    <div id="pvName" style="font-size:20px;font-weight:800;color:var(--btnB);"></div>
+    <div id="pvMeta" style="font-size:13px;color:var(--sub);margin:6px 0 2px;"></div>
+    <div id="pvMeta2" style="font-size:13px;color:var(--sub);margin-bottom:10px;"></div>
+    <div id="pvBio" style="font-size:14px;font-style:italic;color:var(--sub);margin-bottom:14px;"></div>
+    <div id="pvIntent" style="margin-bottom:10px;"></div>
+    <div id="pvLangs" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:10px;"></div>
+    <div id="pvSkills" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:20px;"></div>
+    <button id="pvMsgBtn" class="btn" style="width:100%;padding:13px;">Message</button>
+  </div>
+</div>
+
 <!-- PRIVATE CHAT -->
 <div class="cwin" id="chatW">
   <div class="chdr" style="background:var(--hdr);">
