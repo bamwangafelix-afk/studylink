@@ -553,6 +553,24 @@ async function loadPro(){
 }
 function showEF(){el('EF').style.display='block';el('EF').scrollIntoView({behavior:'smooth'});}
 function hideEF(){el('EF').style.display='none';}
+function openProfile(uid){
+  const u=allUsers.find(x=>x.uid===uid);
+  if(!u)return showToast('Profil introuvable');
+  el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
+  el('pvName').textContent=u.name||'Utilisateur';
+  el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
+  el('pvMeta2').textContent=`${u.course||'—'} ${u.year?'('+u.year+')':''}`;
+  el('pvBio').textContent=u.bio||'';
+  el('pvBio').style.display=u.bio?'block':'none';
+  el('pvIntent').innerHTML=getIntentBadge(u.intent||'');
+  el('pvLangs').innerHTML=(u.langs||[]).map(l=>`<span class="lang-chip">${esc(l)}</span>`).join('');
+  el('pvSkills').innerHTML=(u.skills||[]).map(s=>`<span class="tbadge" style="background:#fff3e0;color:#e65100;">${esc(s)}</span>`).join('');
+  const isSelf=uid===CU?.uid;
+  el('pvMsgBtn').style.display=isSelf?'none':'block';
+  el('pvMsgBtn').onclick=()=>{closeProfileView();openChat(u.name||'',uid);};
+  el('profileView').style.display='flex';
+}
+function closeProfileView(){el('profileView').style.display='none';}
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
