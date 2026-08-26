@@ -45,6 +45,7 @@ let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vFinalizing=false,vStartAt=0;
 let gVStartAt=0;
 let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false,gVFinalizing=false;
+let stmr=null,stIsRec=false,stvCh=[],stvSec=0,stvInt=null,stVoiceSending=false,stVFinalizing=false,stVStartAt=0,recStatusUid=null;
 let voiceWakeLock=null;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
@@ -144,10 +145,10 @@ function setupPresence(){
   window.addEventListener('beforeunload',e=>{
     setPresence('Offline');
     // Do not let an accidental navigation/reload destroy an active recording.
-    if(isRec||gIsRec){e.preventDefault();e.returnValue='';}
+    if(isRec||gIsRec||stIsRec){e.preventDefault();e.returnValue='';}
   });
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'&&(isRec||gIsRec))void keepVoiceScreenOn();
+    if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
   });
   window.addEventListener('focus',()=>setPresence('Online'));
   window.addEventListener('blur',()=>setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},3000));
@@ -162,7 +163,7 @@ async function keepVoiceScreenOn(){
   }catch(e){console.warn('Wake lock unavailable:',e?.message||e);}
 }
 async function releaseVoiceScreen(){
-  if(isRec||gIsRec)return;
+  if(isRec||gIsRec||stIsRec)return;
   const lock=voiceWakeLock;voiceWakeLock=null;
   try{await lock?.release?.();}catch(e){}
 }
@@ -944,6 +945,8 @@ function viewStatus(uid){
     view.style.backgroundSize='';view.style.backgroundPosition='';
   }
   el('stVReplyInput').value='';
+  onStatusReplyInput();
+  if(!stVFinalizing)resetStatusReplyButton();
   el('statusView').style.display='flex';
   // progress bar: reset then animate to full over STATUS_VIEW_MS, auto-close at end
   clearTimeout(statusAutoCloseTimer);
@@ -962,7 +965,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(){clearTimeout(statusAutoCloseTimer);el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
+function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1098,14 +1101,121 @@ async function sendQuickStatusReply(toUid,text){
     return true;
   }catch(e){showToast('Erreur: '+(e.message||''));return false;}
 }
+function resetStatusReplyButton(){
+  stIsRec=false;stVStartAt=0;clearInterval(stvInt);stvInt=null;stopWave('stVReplyWave');
+  try{stmr?.stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
+  stmr=null;stvCh=[];stvSec=0;stVoiceSending=false;stVFinalizing=false;recStatusUid=null;
+  const btn=el('stVReplyBtn');
+  btn?.classList.remove('voice-pending','rec','voice-locked');
+  if(btn)btn.style.background='rgba(255,255,255,.18)';
+  setMicIcon('stVReplyIcon');
+  const bar=el('stVReplyBar');if(bar)bar.style.display='none';
+  const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
+}
+function restartStatusReplyTimer(){
+  clearTimeout(statusAutoCloseTimer);
+  const uid=curStatusUid;
+  if(!uid||el('statusView')?.style.display==='none')return;
+  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)closeStatusView();},STATUS_VIEW_MS);
+}
+function onStatusReplyInput(){
+  if(stIsRec)return;
+  const inp=el('stVReplyInput'),hasText=!!inp?.value.trim();
+  if(hasText)setSendIcon('stVReplyIcon');
+  else setMicIcon('stVReplyIcon');
+}
+function smartStatusReply(){
+  if(stIsRec){stopAndSendStatusVoice();return;}
+  if(stVFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
+  if(el('stVReplyInput')?.value.trim()){sendStatusReply();return;}
+  startStatusVoice();
+}
+function bindStatusVoiceSafety(stream){
+  const track=stream?.getAudioTracks?.()[0];
+  if(track)track.addEventListener('ended',()=>{
+    if(!stIsRec)return;
+    resetStatusReplyButton();
+    showToast('🎙️ Android a interrompu le microphone. Vérifiez Chrome puis réessayez.');
+  },{once:true});
+  return track;
+}
+async function startStatusVoice(fromGesture=false){
+  if(stVFinalizing||stIsRec)return;
+  const toUid=curStatusUid;
+  if(!toUid||toUid===CU?.uid)return showToast('Tu ne peux pas répondre à ton propre statut');
+  if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone non supporté. Utilisez Chrome.');return;}
+  clearTimeout(statusAutoCloseTimer);
+  recStatusUid=toUid;
+  try{
+    if(!fromGesture)pulseHaptic(55,el('stVReplyBtn'));
+    const stream=await getVoiceStream();
+    if(el('statusView')?.style.display==='none'||curStatusUid!==toUid){try{stream.getTracks().forEach(track=>track.stop());}catch(e){}recStatusUid=null;return;}
+    bindStatusVoiceSafety(stream);
+    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
+    stmr=new MediaRecorder(stream,opts);stvCh=[];
+    stmr.onerror=e=>{console.error('Status voice recorder error:',e.error||e);resetStatusReplyButton();showToast('🎙️ Erreur du microphone. Réessayez.');};
+    stmr.ondataavailable=e=>{if(e.data?.size>0)stvCh.push(e.data);};
+    stmr.start(200);stIsRec=true;stvSec=0;stVStartAt=Date.now();
+    void keepVoiceScreenOn();
+    const btn=el('stVReplyBtn');btn?.classList.remove('voice-pending');btn?.classList.add('rec');
+    if(btn)btn.style.background='#1976d2';
+    setSendIcon('stVReplyIcon');
+    const bar=el('stVReplyBar');if(bar)bar.style.display='flex';
+    drawBars('stVReplyWave',()=>stIsRec,'#fff');
+    const refresh=()=>{stvSec=Math.max(0,Math.floor((Date.now()-stVStartAt)/1000));const mm=Math.floor(stvSec/60),ss=stvSec%60;const timer=el('stVReplyTimer');if(timer)timer.textContent=mm+':'+(ss<10?'0':'')+ss;};
+    refresh();stvInt=setInterval(refresh,250);
+  }catch(err){
+    resetStatusReplyButton();
+    const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
+    showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
+    restartStatusReplyTimer();
+  }
+}
+async function stopAndSendStatusVoice(){
+  const recorder=stmr,toUid=recStatusUid||curStatusUid;
+  if(!recorder||!stIsRec||stVFinalizing)return;
+  stVFinalizing=true;stVoiceSending=true;stIsRec=false;
+  clearTimeout(statusAutoCloseTimer);clearInterval(stvInt);stvInt=null;stopWave('stVReplyWave');
+  const elapsed=Date.now()-(stVStartAt||Date.now()),dur=Math.max(stvSec,Math.floor(Math.max(0,elapsed)/1000));
+  if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
+  const btn=el('stVReplyBtn');btn?.classList.remove('rec','voice-pending');if(btn)btn.style.background='rgba(255,255,255,.18)';setMicIcon('stVReplyIcon');
+  const bar=el('stVReplyBar');if(bar)bar.style.display='none';
+  const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
+  let chunks=[];try{chunks=await collectRecorderChunks(recorder,stvCh);}catch(e){console.error('Status voice finalize error:',e);}
+  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
+  void releaseVoiceScreen();recorder.ondataavailable=null;recorder.onstop=null;
+  stvCh=[];stvSec=0;stmr=null;stVStartAt=0;
+  if(!chunks.length||!toUid||toUid===CU?.uid){stVoiceSending=false;stVFinalizing=false;recStatusUid=null;showToast('⚠️ Rien n’a été enregistré.');restartStatusReplyTimer();return;}
+  const file=voiceFileFromChunks(chunks),mm=Math.floor(dur/60),ss=dur%60,cid=getCID(CU.uid,toUid),t=now();
+  let msgRef=null,uploadCommitted=false;
+  try{
+    msgRef=await db.collection('chats').doc(cid).collection('messages').add({type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    let url=await uploadCloud(file,'audio'),fallbackError='';
+    if(!url){try{const storageUrl=await uploadVoiceToFirebase(file);if(storageUrl){await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});url=storageUrl;uploadCommitted=true;}}catch(e){fallbackError=e?.message||'Firebase Storage upload failed';}}
+    if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
+    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
+    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
+    const upd={participants:[CU.uid,toUid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
+    await db.collection('chats').doc(cid).set(upd,{merge:true});
+    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    db.collection('users').doc(toUid).update(receiverUpd).catch(()=>{db.collection('users').doc(toUid).set(receiverUpd,{merge:true}).catch(()=>{});});
+    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    showToast('✅ Vocal envoyé');
+  }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.');}
+  stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();
+}
+function cancelStatusVoice(){
+  if(stmr&&stIsRec){try{stmr.ondataavailable=null;stmr.onstop=null;stmr.stop();}catch(e){}try{stmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
+  resetStatusReplyButton();restartStatusReplyTimer();
+}
 async function sendStatusReply(){
   const inp=el('stVReplyInput');
   const text=inp.value.trim();
   if(!text||!curStatusUid)return;
   if(curStatusUid===CU.uid)return showToast('Tu ne peux pas te répondre à toi-même');
-  inp.value='';
+  inp.value='';onStatusReplyInput();
   const ok=await sendQuickStatusReply(curStatusUid,text);
-  if(ok)showToast('Message envoyé');
+  if(ok){showToast('Message envoyé');restartStatusReplyTimer();}
 }
 function replyToStatus(){
   el('stVMenu').style.display='none';
@@ -2335,16 +2445,17 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   const btn=el(btnId);if(!btn||btn.dataset.voiceGestureBound)return;
   btn.dataset.voiceGestureBound='1';
   btn.style.touchAction='none';
-  const inputId=btnId==='gSendB'?'gIn':'mIn';
+  const isStatus=btnId==='stVReplyBtn';
+  const inputId=isStatus?'stVReplyInput':(btnId==='gSendB'?'gIn':'mIn');
   // Keep haptic feedback on the earliest Android touch event as well as the
   // Pointer Events path. The debounce prevents a double pulse on Chrome.
   btn.addEventListener('touchstart',e=>{
     if(e.touches?.length===1&&!v(inputId).trim())vibrate(70);
   },{passive:true});
-  const barId=btnId==='gSendB'?'gvbar':'vbar';
+  const barId=isStatus?'stVReplyBar':(btnId==='gSendB'?'gvbar':'vbar');
   const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
   const vibrate=pattern=>pulseHaptic(pattern,btn);
-  const hint=()=>el(barId)?.querySelector('[data-voice-hint]');
+  const hint=()=>el(barId)?.querySelector('[data-voice-hint],[data-status-voice-hint]');
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};
   const resetState=()=>{
     state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
@@ -2780,8 +2891,11 @@ function bootstrapStudyLink(){
     b.onclick=()=>{selTags.includes(s)?selTags=selTags.filter(t=>t!==s):selTags.push(s);b.classList.toggle('sel');};
     ts.appendChild(b);
   });
-  el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartSend();});
-    el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartGSend();});
+  el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartSend();}});
+  el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
+  el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
+  el('stVReplyInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartStatusReply();}});
+  setupVoiceSwipe('stVReplyBtn',startStatusVoice,stopAndSendStatusVoice,cancelStatusVoice);
 }
 const startStudyLink=()=>{
   if(window.__studylinkBooted)return;
