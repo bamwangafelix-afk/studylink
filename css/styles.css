@@ -3,7 +3,7 @@
 body.dark{--bg:#0f1923;--card:#1a2636;--txt:#f0f0f0;--sub:#aab;--brd:#2e3f52;--nav:#121e2d;--inp:#1a2636;--hdr:#0a1e35;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Segoe UI',sans-serif;background:var(--bg);padding-bottom:70px;color:var(--txt);}
-.hdr{background:var(--hdr);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;}.hdr-brand{display:flex;align-items:center;gap:8px;height:38px;}.hdr-brand .hdr-logo{display:block;height:34px;width:auto;object-fit:contain;transform:translateY(-2px);}.hdr-brand .hdr-wordmark{display:inline-flex;align-items:center;height:34px;transform:translateY(2px);}.hdr-brand .hdr-wordmark{line-height:1;}
+.hdr{background:var(--hdr);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;}.hdr-brand{display:flex;align-items:center;gap:8px;height:44px;}.hdr-brand .hdr-logo{display:block;width:42px!important;height:42px!important;padding:3px;object-fit:contain;border-radius:50%;border:2px solid rgba(255,255,255,.72);background:#fff;transform:translateY(0);}.hdr-brand .hdr-wordmark{display:inline-flex;align-items:center;height:36px;transform:translateY(4px);line-height:1;}
 .page{max-width:500px;margin:auto;padding:14px;display:none;}
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);position:relative;}
 .card.grp{border:2px solid var(--btnO);}
