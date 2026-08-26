@@ -317,3 +317,16 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 #statusView .stVReplyBtn.voice-pending{background:color-mix(in srgb,var(--status-accent) 78%,#000 22%);}
 #statusView .stVReplyBtn.voice-locked{background:var(--status-header);}
 #statusView .stVReplyBtn.voice-locked{background:color-mix(in srgb,var(--status-accent) 62%,#000 38%);}
+/* Color Companion: a StudyLink accessory bar positioned above the system keyboard. */
+.status-color-companion{display:none;position:fixed;left:10px;right:10px;bottom:calc(10px + var(--status-keyboard-offset,0px));z-index:5000;align-items:center;justify-content:space-between;gap:10px;min-height:42px;padding:6px 8px 6px 12px;border:1px solid var(--status-accent);border-radius:14px;background:var(--status-header);box-shadow:0 8px 24px rgba(0,0,0,.22);box-sizing:border-box;transition:bottom .18s ease,background .18s ease,border-color .18s ease;}
+.status-color-companion.is-visible{display:flex;}
+.sccIdentity{display:flex;align-items:center;gap:7px;min-width:0;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sccDot{width:9px;height:9px;flex:0 0 9px;border-radius:50%;background:var(--status-accent);box-shadow:0 0 0 3px rgba(255,255,255,.18);}
+.sccActions{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+.sccButton,.sccPublish{border:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.sccButton{width:32px;height:32px;padding:0;border-radius:10px;background:rgba(255,255,255,.16);color:#fff;font-size:17px;}
+.sccPublish{min-height:32px;padding:0 12px;border-radius:10px;background:var(--status-accent);color:var(--status-ink);font-size:12px;font-weight:800;}
+.sccButton:active,.sccPublish:active{transform:scale(.97);}
+.status-reply-companion{left:16px;right:16px;}
+@media (min-width:700px){.status-color-companion{left:50%;right:auto;width:min(560px,calc(100vw - 32px));transform:translateX(-50%);}.status-reply-companion{width:min(520px,calc(100vw - 32px));}}
+@media (prefers-reduced-motion:reduce){.status-color-companion{transition:none;}.sccButton:active,.sccPublish:active{transform:none;}}
