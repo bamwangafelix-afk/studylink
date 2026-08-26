@@ -38,6 +38,22 @@ const CATS={
   pause:{emoji:'☕',label:'Pause'},
   objectif:{emoji:'✅',label:'Objectif atteint'}
 };
+const STATUS_THEME_KEYS=['photo','text',...Object.keys(CATS)];
+function statusThemeFor(category,photo,message){
+  if(photo&&!category&&!message)return 'photo';
+  return category&&STATUS_THEME_KEYS.includes(category)?category:'text';
+}
+function applyStatusTheme(root,theme){
+  if(!root)return;
+  STATUS_THEME_KEYS.forEach(key=>root.classList.remove('status-theme-'+key));
+  const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
+  root.classList.add('status-theme-'+next);
+  root.dataset.statusTheme=next;
+}
+function updateStatusCreateTheme(){
+  const msg=el('stMsg')?.value?.trim()||'';
+  applyStatusTheme(el('statusCreate'),statusThemeFor(selStatusCat,statusPhotoUrl,msg));
+}
 let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
 let statusAutoCloseTimer=null;
 let statusRemainingMs=STATUS_VIEW_MS;
@@ -824,6 +840,7 @@ function openStatusCreate(draftPhoto){
   if(draftPhoto){statusPhotoUrl=draftPhoto;}
   else{statusPhotoUrl=null;forwardedFromDraft=null;}
   el('stMsg').value='';el('stCharCount').textContent='0 / 100';
+  updateStatusCreateTheme();
   if(statusPhotoUrl){el('stPhotoPreview').src=statusPhotoUrl;el('stPhotoPreviewWrap').style.display='block';el('stPhotoEmpty').style.display='none';}
   else{el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';}
   const grid=el('stCatGrid');
@@ -843,12 +860,13 @@ function openStatusCreate(draftPhoto){
   updateStatusPreview();
   el('statusCreate').style.display='flex';
 }
-function closeStatusCreate(){el('statusCreate').style.display='none';}
+function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');}
 function selectStatusCat(k){
   selStatusCat=k;
   document.querySelectorAll('.stCatCard').forEach(c=>c.classList.remove('sel'));
   el('stCat_'+k).classList.add('sel');
   updateStatusPreview();
+  updateStatusCreateTheme();
 }
 function toggleStatusSubject(s){
   selStatusSubject=selStatusSubject===s?null:s;
@@ -874,6 +892,7 @@ async function handleStatusPhoto(e){
   el('stPhotoPreviewWrap').style.display='block';
   el('stPhotoEmpty').style.display='none';
   updateStatusPreview();
+  updateStatusCreateTheme();
 }
 function removeStatusPhoto(){
   statusPhotoUrl=null;
@@ -882,6 +901,7 @@ function removeStatusPhoto(){
   el('stPhotoEmpty').style.display='block';
   el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';
   updateStatusPreview();
+  updateStatusCreateTheme();
 }
 function updateStatusPreview(){
   const p=el('stPreview');if(!p)return;
@@ -938,6 +958,7 @@ function viewStatus(uid){
   if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupBtn').textContent='Rejoindre '+sp.linkedGroupName;}
   else{el('stVJoinGroupBtn').style.display='none';}
   const view=el('statusView');
+  applyStatusTheme(view,statusThemeFor(sp.category,sp.photo,sp.message));
   if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='cover';view.style.backgroundPosition='center';}
   else{
     const grad={dispo:'#27ae60,#1e8a4c',revision:'#2563eb,#16357a',aide:'#f5730a,#c2570a',session:'#7b2ff7,#4b1f99',pause:'#8a93ab,#5c6478',objectif:'#f5b301,#a67c00'}[sp.category]||'#4a5a8f,#16357a';
@@ -2850,7 +2871,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v22.js?v=studylink-pwa-22',location.href).href;
+  const workerUrl=new URL('sw-v23.js?v=studylink-pwa-23',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
