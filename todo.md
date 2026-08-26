@@ -116,3 +116,8 @@
 - [x] Restore the exact user-provided StudyLink logo instead of the alternate cropped header asset.
 - [x] Enlarge the left circular badge and use contain-style fitting so the complete logo remains visible with balanced inner spacing.
 - [x] Run regression and visual checks for the uncropped large logo before publishing.
+
+- [ ] Replace the current StudyLink header logo with the exact black version provided by the user, preserving the full uncropped artwork and existing circular badge layout.
+- [x] Publish and verify the black-logo header update without regressing the publication-only Color Companion.
+
+- [x] Preserve the exact blue-and-green StudyLink mark while changing the logo image background from white to black so it matches the circular header badge.
