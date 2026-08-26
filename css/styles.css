@@ -328,5 +328,11 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .sccPublish{min-height:32px;padding:0 12px;border-radius:10px;background:var(--status-accent);color:var(--status-ink);font-size:12px;font-weight:800;}
 .sccButton:active,.sccPublish:active{transform:scale(.97);}
 .status-reply-companion{left:16px;right:16px;}
+/* Keep the real comment field above the fixed reply companion when Android opens its keyboard. */
+#statusView.status-reply-companion-open .stVBottom{padding-bottom:calc(22px + 58px + var(--status-keyboard-offset,0px));}
+#statusView.status-reply-companion-open .stVReplyRow{position:relative;z-index:2;}
+#statusView.status-reply-companion-open .status-reply-companion{z-index:4;}
+@media (max-width:699px){#statusView.status-reply-companion-open .stVReplyInput{min-height:46px;line-height:20px;}}
+
 @media (min-width:700px){.status-color-companion{left:50%;right:auto;width:min(560px,calc(100vw - 32px));transform:translateX(-50%);}.status-reply-companion{width:min(520px,calc(100vw - 32px));}}
 @media (prefers-reduced-motion:reduce){.status-color-companion{transition:none;}.sccButton:active,.sccPublish:active{transform:none;}}
