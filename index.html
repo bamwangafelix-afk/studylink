@@ -284,9 +284,20 @@
     <div class="stVSubject" id="stVSubject" style="display:none;"></div>
     <button id="stVJoinGroupBtn" onclick="joinStatusGroup()" style="display:none;margin-top:18px;background:#fff;color:#16357a;border:none;padding:11px 22px;border-radius:22px;font-weight:800;font-size:14px;cursor:pointer;">Rejoindre le groupe</button>
   </div>
-  <div class="stVBottom">
-    <input class="stVReplyInput" id="stVReplyInput" placeholder="Répondre..." onkeydown="if(event.key==='Enter')sendStatusReply()">
-    <button class="stVReplyBtn" onclick="sendStatusReply()"><svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
+  <div class="stVBottom" id="stVBottom">
+    <div id="stVReplyBar" class="stVReplyBar" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:18px;width:100%;box-sizing:border-box;">
+      <button type="button" onclick="cancelStatusVoice()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;" title="Annuler">✕</button>
+      <span style="font-size:11px;color:#fff;font-weight:700;white-space:nowrap;">● REC</span>
+      <span id="stVReplyTimer" style="font-size:13px;font-weight:bold;color:#fff;min-width:38px;">0:00</span>
+      <canvas id="stVReplyWave" width="150" height="28" style="flex:1;max-width:200px;"></canvas>
+      <span data-status-voice-hint style="font-size:10px;color:rgba(255,255,255,.88);white-space:nowrap;">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
+    </div>
+    <div class="stVReplyRow">
+      <input class="stVReplyInput" id="stVReplyInput" placeholder="Répondre..." oninput="onStatusReplyInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();smartStatusReply()}">
+      <button type="button" class="cin-action stVReplyBtn" id="stVReplyBtn" onclick="smartStatusReply()" title="Maintenez et glissez vers le haut pour enregistrer">
+        <svg id="stVReplyIcon" viewBox="0 0 48 48" width="26" height="26" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
   </div>
 </div>
 
