@@ -1128,7 +1128,7 @@ function resetStatusReplyButton(){
   stmr=null;stvCh=[];stvSec=0;stVoiceSending=false;stVFinalizing=false;recStatusUid=null;
   const btn=el('stVReplyBtn');
   btn?.classList.remove('voice-pending','rec','voice-locked');
-  if(btn)btn.style.background='rgba(255,255,255,.18)';
+  if(btn)btn.style.background='';
   setMicIcon('stVReplyIcon');
   const bar=el('stVReplyBar');if(bar)bar.style.display='none';
   const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
@@ -1179,7 +1179,7 @@ async function startStatusVoice(fromGesture=false){
     stmr.start(200);stIsRec=true;stvSec=0;stVStartAt=Date.now();
     void keepVoiceScreenOn();
     const btn=el('stVReplyBtn');btn?.classList.remove('voice-pending');btn?.classList.add('rec');
-    if(btn)btn.style.background='#1976d2';
+    if(btn)btn.style.background='';
     setSendIcon('stVReplyIcon');
     const bar=el('stVReplyBar');if(bar)bar.style.display='flex';
     drawBars('stVReplyWave',()=>stIsRec,'#fff');
@@ -1199,7 +1199,7 @@ async function stopAndSendStatusVoice(){
   clearTimeout(statusAutoCloseTimer);clearInterval(stvInt);stvInt=null;stopWave('stVReplyWave');
   const elapsed=Date.now()-(stVStartAt||Date.now()),dur=Math.max(stvSec,Math.floor(Math.max(0,elapsed)/1000));
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
-  const btn=el('stVReplyBtn');btn?.classList.remove('rec','voice-pending');if(btn)btn.style.background='rgba(255,255,255,.18)';setMicIcon('stVReplyIcon');
+  const btn=el('stVReplyBtn');btn?.classList.remove('rec','voice-pending');if(btn)btn.style.background='';setMicIcon('stVReplyIcon');
   const bar=el('stVReplyBar');if(bar)bar.style.display='none';
   const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
   let chunks=[];try{chunks=await collectRecorderChunks(recorder,stvCh);}catch(e){console.error('Status voice finalize error:',e);}
@@ -2871,7 +2871,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v23.js?v=studylink-pwa-23',location.href).href;
+  const workerUrl=new URL('sw-v24.js?v=studylink-pwa-24',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
