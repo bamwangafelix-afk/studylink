@@ -625,7 +625,7 @@ async function savePro(){
 // ── USERS ──
 function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
-    allUsers=sn.docs.map(d=>d.data({serverTimestamps:'estimate'}));
+    allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
     renderStatusBar();
     // Only re-render Find if it's currently visible
     if(el('Pfind')&&el('Pfind').style.display!=='none'){
@@ -1083,14 +1083,33 @@ function reportStatus(){
     showToast('Signalement envoyé');
   }
 }
+async function sendQuickStatusReply(toUid,text){
+  const cid=getCID(CU.uid,toUid);const t=now();
+  const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{
+    await db.collection('chats').doc(cid).collection('messages').add(md);
+    const upd={participants:[CU.uid,toUid],lastMsg:text,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
+    upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
+    await db.collection('chats').doc(cid).set(upd,{merge:true});
+    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+    receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    db.collection('users').doc(toUid).update(receiverUpd).catch(()=>{db.collection('users').doc(toUid).set(receiverUpd,{merge:true}).catch(()=>{});});
+    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    return true;
+  }catch(e){showToast('Erreur: '+(e.message||''));return false;}
+}
+async function sendStatusReply(){
+  const inp=el('stVReplyInput');
+  const text=inp.value.trim();
+  if(!text||!curStatusUid)return;
+  if(curStatusUid===CU.uid)return showToast('Tu ne peux pas te répondre à toi-même');
+  inp.value='';
+  const ok=await sendQuickStatusReply(curStatusUid,text);
+  if(ok)showToast('Message envoyé');
+}
 function replyToStatus(){
   el('stVMenu').style.display='none';
-  if(!curStatusUid)return;
-  const text=v('stVReplyInput');
-  const u=allUsers.find(x=>x.uid===curStatusUid);
-  closeStatusView();
-  openChat(u?.name||'',curStatusUid);
-  if(text)setTimeout(()=>{const i=el('mIn');if(i){i.value=text;onMsgInput&&onMsgInput();}},150);
+  sendStatusReply();
 }
 
 function statusPressStart(e){
@@ -1153,7 +1172,7 @@ function renderFind(q=""){
   const f=el('findL');
   if(!allUsers.length){
     f.innerHTML="<p style='text-align:center;color:#888;'>Loading students...</p>";
-    db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>d.data());renderFind(q);});
+    db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>({...d.data(),uid:d.id}));renderFind(q);});
     return;
   }
   let list=ftab==='fav'?allUsers.filter(u=>favs.has(u.uid)):[...allUsers];
@@ -2691,7 +2710,7 @@ function tab(id){
   }
   if(id==='find'){
     if(allUsers.length>0)renderFind(el('findQ')?.value||'');
-    else db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>d.data());renderFind('');});
+    else db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>({...d.data(),uid:d.id}));renderFind('');});
   }
   if(id==='msgs'){/* setupInbox handles real-time inbox updates */}
   if(id==='alerts'){
