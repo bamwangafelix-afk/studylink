@@ -49,11 +49,49 @@ function applyStatusTheme(root,theme){
   const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
   root.classList.add('status-theme-'+next);
   root.dataset.statusTheme=next;
+  if(root.id==='statusCreate'||root.id==='statusView')updateStatusCompanionTheme(next);
 }
 function updateStatusCreateTheme(){
   const msg=el('stMsg')?.value?.trim()||'';
   applyStatusTheme(el('statusCreate'),statusThemeFor(selStatusCat,statusPhotoUrl,msg));
+  updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,msg));
 }
+const STATUS_COMPANION_LABELS={photo:'Photo uniquement',text:'Message',dispo:'Disponible',revision:'Révision',aide:"Besoin d'aide",session:'Session en cours',pause:'Pause',objectif:'Objectif atteint'};
+function updateStatusCompanionTheme(theme){
+  const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
+  ['stColorCompanion','stReplyCompanion'].forEach(id=>{
+    const bar=el(id);if(!bar)return;
+    bar.dataset.statusTheme=next;
+    const label=bar.querySelector('[data-companion-label]')||bar.querySelector('#stCompanionLabel, #stReplyCompanionLabel');
+    const dot=bar.querySelector('[data-companion-dot]')||bar.querySelector('#stCompanionDot, #stReplyCompanionDot');
+    if(label)label.textContent=STATUS_COMPANION_LABELS[next]||'Message';
+    if(dot)dot.style.background='var(--status-accent)';
+  });
+}
+function syncStatusCompanionViewport(){
+  const vv=window.visualViewport;
+  const offset=vv?Math.max(0,window.innerHeight-vv.height-vv.offsetTop):0;
+  document.documentElement.style.setProperty('--status-keyboard-offset',Math.round(offset)+'px');
+}
+function showStatusCompanion(id){
+  const bar=el(id);if(!bar)return;
+  syncStatusCompanionViewport();
+  bar.classList.add('is-visible');
+}
+function showStatusColorCompanion(){showStatusCompanion('stColorCompanion');updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,v('stMsg')));}
+function showStatusReplyCompanion(){showStatusCompanion('stReplyCompanion');updateStatusCompanionTheme(el('statusView')?.dataset.statusTheme||'text');}
+function scheduleStatusCompanionHide(id){
+  setTimeout(()=>{const active=document.activeElement;if(active?.id==='stMsg'||active?.id==='stVReplyInput')return;el(id)?.classList.remove('is-visible');},180);
+}
+function insertStatusText(inputId,text){
+  const input=el(inputId);if(!input)return;
+  const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
+  input.value=input.value.slice(0,start)+text+input.value.slice(end);
+  input.selectionStart=input.selectionEnd=start+text.length;
+  input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();
+}
+function insertStatusCompanionEmoji(emoji){insertStatusText('stMsg',emoji);showStatusColorCompanion();}
+function insertStatusReplyEmoji(emoji){insertStatusText('stVReplyInput',emoji);showStatusReplyCompanion();}
 let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
 let statusAutoCloseTimer=null;
 let statusRemainingMs=STATUS_VIEW_MS;
@@ -1144,6 +1182,7 @@ function onStatusReplyInput(){
   const inp=el('stVReplyInput'),hasText=!!inp?.value.trim();
   if(hasText)setSendIcon('stVReplyIcon');
   else setMicIcon('stVReplyIcon');
+  if(document.activeElement===inp)showStatusReplyCompanion();
 }
 function smartStatusReply(){
   if(stIsRec){stopAndSendStatusVoice();return;}
@@ -2915,7 +2954,15 @@ function bootstrapStudyLink(){
   el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartSend();}});
   el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
   el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
+  el('stVReplyInput')?.addEventListener('focus',showStatusReplyCompanion);
+  el('stVReplyInput')?.addEventListener('blur',()=>scheduleStatusCompanionHide('stReplyCompanion'));
   el('stVReplyInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartStatusReply();}});
+  el('stMsg')?.addEventListener('focus',showStatusColorCompanion);
+  el('stMsg')?.addEventListener('blur',()=>scheduleStatusCompanionHide('stColorCompanion'));
+  window.visualViewport?.addEventListener('resize',syncStatusCompanionViewport);
+  window.visualViewport?.addEventListener('scroll',syncStatusCompanionViewport);
+  window.addEventListener('resize',syncStatusCompanionViewport);
+  syncStatusCompanionViewport();
   setupVoiceSwipe('stVReplyBtn',startStatusVoice,stopAndSendStatusVoice,cancelStatusVoice);
 }
 const startStudyLink=()=>{
