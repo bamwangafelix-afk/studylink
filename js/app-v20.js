@@ -77,11 +77,16 @@ function showStatusCompanion(id){
   const bar=el(id);if(!bar)return;
   syncStatusCompanionViewport();
   bar.classList.add('is-visible');
+  if(id==='stReplyCompanion')el('statusView')?.classList.add('status-reply-companion-open');
 }
 function showStatusColorCompanion(){showStatusCompanion('stColorCompanion');updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,v('stMsg')));}
 function showStatusReplyCompanion(){showStatusCompanion('stReplyCompanion');updateStatusCompanionTheme(el('statusView')?.dataset.statusTheme||'text');}
 function scheduleStatusCompanionHide(id){
-  setTimeout(()=>{const active=document.activeElement;if(active?.id==='stMsg'||active?.id==='stVReplyInput')return;el(id)?.classList.remove('is-visible');},180);
+  setTimeout(()=>{
+    const active=document.activeElement;if(active?.id==='stMsg'||active?.id==='stVReplyInput')return;
+    el(id)?.classList.remove('is-visible');
+    if(id==='stReplyCompanion')el('statusView')?.classList.remove('status-reply-companion-open');
+  },180);
 }
 function insertStatusText(inputId,text){
   const input=el(inputId);if(!input)return;
@@ -1024,7 +1029,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
+function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('statusView')?.classList.remove('status-reply-companion-open');el('stReplyCompanion')?.classList.remove('is-visible');el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
