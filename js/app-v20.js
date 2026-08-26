@@ -59,11 +59,11 @@ function updateStatusCreateTheme(){
 const STATUS_COMPANION_LABELS={photo:'Photo uniquement',text:'Message',dispo:'Disponible',revision:'Révision',aide:"Besoin d'aide",session:'Session en cours',pause:'Pause',objectif:'Objectif atteint'};
 function updateStatusCompanionTheme(theme){
   const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
-  ['stColorCompanion','stReplyCompanion'].forEach(id=>{
+  ['stColorCompanion'].forEach(id=>{
     const bar=el(id);if(!bar)return;
     bar.dataset.statusTheme=next;
-    const label=bar.querySelector('[data-companion-label]')||bar.querySelector('#stCompanionLabel, #stReplyCompanionLabel');
-    const dot=bar.querySelector('[data-companion-dot]')||bar.querySelector('#stCompanionDot, #stReplyCompanionDot');
+    const label=bar.querySelector('[data-companion-label]')||bar.querySelector('#stCompanionLabel');
+    const dot=bar.querySelector('[data-companion-dot]')||bar.querySelector('#stCompanionDot');
     if(label)label.textContent=STATUS_COMPANION_LABELS[next]||'Message';
     if(dot)dot.style.background='var(--status-accent)';
   });
@@ -77,15 +77,12 @@ function showStatusCompanion(id){
   const bar=el(id);if(!bar)return;
   syncStatusCompanionViewport();
   bar.classList.add('is-visible');
-  if(id==='stReplyCompanion')el('statusView')?.classList.add('status-reply-companion-open');
 }
 function showStatusColorCompanion(){showStatusCompanion('stColorCompanion');updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,v('stMsg')));}
-function showStatusReplyCompanion(){showStatusCompanion('stReplyCompanion');updateStatusCompanionTheme(el('statusView')?.dataset.statusTheme||'text');}
 function scheduleStatusCompanionHide(id){
   setTimeout(()=>{
-    const active=document.activeElement;if(active?.id==='stMsg'||active?.id==='stVReplyInput')return;
+    const active=document.activeElement;if(active?.id==='stMsg')return;
     el(id)?.classList.remove('is-visible');
-    if(id==='stReplyCompanion')el('statusView')?.classList.remove('status-reply-companion-open');
   },180);
 }
 function insertStatusText(inputId,text){
@@ -96,7 +93,6 @@ function insertStatusText(inputId,text){
   input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();
 }
 function insertStatusCompanionEmoji(emoji){insertStatusText('stMsg',emoji);showStatusColorCompanion();}
-function insertStatusReplyEmoji(emoji){insertStatusText('stVReplyInput',emoji);showStatusReplyCompanion();}
 let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
 let statusAutoCloseTimer=null;
 let statusRemainingMs=STATUS_VIEW_MS;
@@ -1029,7 +1025,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('statusView')?.classList.remove('status-reply-companion-open');el('stReplyCompanion')?.classList.remove('is-visible');el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
+function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1187,7 +1183,6 @@ function onStatusReplyInput(){
   const inp=el('stVReplyInput'),hasText=!!inp?.value.trim();
   if(hasText)setSendIcon('stVReplyIcon');
   else setMicIcon('stVReplyIcon');
-  if(document.activeElement===inp)showStatusReplyCompanion();
 }
 function smartStatusReply(){
   if(stIsRec){stopAndSendStatusVoice();return;}
@@ -2959,8 +2954,6 @@ function bootstrapStudyLink(){
   el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartSend();}});
   el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
   el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
-  el('stVReplyInput')?.addEventListener('focus',showStatusReplyCompanion);
-  el('stVReplyInput')?.addEventListener('blur',()=>scheduleStatusCompanionHide('stReplyCompanion'));
   el('stVReplyInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartStatusReply();}});
   el('stMsg')?.addEventListener('focus',showStatusColorCompanion);
   el('stMsg')?.addEventListener('blur',()=>scheduleStatusCompanionHide('stColorCompanion'));
