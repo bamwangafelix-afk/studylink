@@ -241,10 +241,21 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .stVBadge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);padding:8px 18px;border-radius:24px;color:#fff;font-weight:800;font-size:14px;margin-bottom:20px;}
 .stVMsg{color:#fff;font-size:21px;font-weight:700;line-height:1.4;text-shadow:0 2px 10px rgba(0,0,0,.25);}
 .stVSubject{margin-top:16px;background:rgba(255,255,255,.14);color:#fff;font-size:13px;font-weight:700;padding:6px 14px;border-radius:14px;}
-.stVBottom{display:flex;align-items:center;gap:10px;padding:14px 16px 22px;position:relative;z-index:3;margin-top:auto;flex-shrink:0;}
-.stVReplyInput{flex:1;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.4);border-radius:24px;padding:12px 16px;color:#fff;font-size:14px;}
+.stVBottom{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:14px 16px 22px;position:relative;z-index:3;margin-top:auto;flex-shrink:0;}
+.stVReplyRow{display:flex;align-items:center;gap:10px;width:100%;}
+.stVReplyInput{flex:1;min-width:0;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.4);border-radius:24px;padding:12px 16px;color:#fff;font-size:14px;outline:none;}
 .stVReplyInput::placeholder{color:rgba(255,255,255,.7);}
-.stVReplyBtn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);border:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;cursor:pointer;}
+.stVReplyBtn{width:50px;height:50px;min-width:50px;border-radius:50%;background:rgba(255,255,255,.18);border:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;cursor:pointer;touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+.stVReplyBtn svg{width:22px;height:22px;fill:#fff;}
+.stVReplyBtn.voice-pending{background:#1565c0;box-shadow:0 0 0 4px rgba(33,150,243,.22);}
+.stVReplyBtn.rec{background:#1976d2;animation:pulse 1s infinite;}
+.stVReplyBtn.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);transform:translateY(-2px);}
+.stVReplyBtn.haptic-pulse{animation:hapticPulse .26s ease-out;}
+.stVReplyBar{max-width:100%;}
+.stVReplyBar canvas{min-width:0;}
+@media (max-width:600px){
+  .stVReplyBar [data-status-voice-hint]{display:none;}
+}
 
 /* ── STATUS VIEW: menu + seen list ── */
 .stVMenu{display:none;position:absolute;top:52px;right:12px;background:#1c1c1e;border-radius:12px;padding:6px 0;z-index:20;min-width:190px;box-shadow:0 6px 20px rgba(0,0,0,.4);}
