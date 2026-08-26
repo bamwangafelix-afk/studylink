@@ -71,3 +71,48 @@
 - [ ] Preserve the previous dark patterned background as a rollback asset and version the PWA cache for the new artwork.
 - [ ] Run regression/live checks and publish the new login background to GitHub Pages.
 - [ ] Replace the pwa-14 login background with the user-selected second artwork `login_mockup_recolored2.png` and republish the verified release.
+
+## pwa-24 Statut category-color release
+
+- [x] Apply category-aware colors to the Statut text, voice, and send controls; keep photo-only publication gray.
+- [x] Add regression coverage for all six category colors and the photo-only fallback.
+- [x] Diagnose the live mismatch: `index.html` referenced pwa-24 while the loaded `js/app-v20.js` still registered pwa-23.
+- [x] Publish the pwa-24 service-worker registration in the actual `js/` runtime path used by GitHub Pages.
+- [ ] Complete physical mobile validation of every Statut category and photo-only mode on the user’s device.
+- [ ] If an installed app remains gray, clear its site data or uninstall/reinstall the old PWA before retesting.
+
+**Note:** The two remaining items require the user’s physical device/session; automated source, asset, and public-shell checks are covered separately.
+
+- [x] Add a category-synchronized Color Companion toolbar anchored above the real mobile keyboard for Statut text entry.
+- [x] Keep Color Companion gray for photo-only Statut publication and preserve the existing text/voice smart composer behavior.
+- [x] Add regression coverage and mobile visual verification for the Color Companion interactions.
+
+- [x] Fix the Statut comment field being covered or visually hidden when the Android keyboard and Color Companion open.
+- [x] Preserve the selected category color and quick publish/send behavior after the mobile comment-layout fix.
+- [x] Add regression coverage for visible comment text and keyboard-safe viewport positioning.
+
+- [x] Show the Color Companion only on the Statut publication page where quick publishing is available.
+- [x] Hide the Color Companion from Statut viewing and commenting pages while preserving the normal comment composer and voice reply controls.
+- [x] Add regression coverage for publication-only companion visibility and verify the mobile flows.
+
+- [x] Compare the user-provided index.html with the current StudyLink index and preserve all features added today.
+- [x] Merge any missing StudyLink functionality into the replacement index.html and validate the result.
+- [x] Upload studylink-header-logo.png into the repository icons/ directory and verify the live shell references it where appropriate.
+
+- [x] Align the supplied StudyLink header logo and wordmark vertically on mobile without changing their intended size or other features.
+- [x] Run regression and mobile visual checks for the header alignment refinement.
+
+- [x] Recheck the live mobile header because the previous logo-wordmark alignment change was not visibly reflected.
+- [x] Apply and publish a stronger, selector-specific vertical alignment fix for the header logo and StudyLink wordmark.
+- [x] Verify the final rendered header on mobile after cache invalidation.
+
+- [ ] Reduce the header logo slightly and frame it in a clean circular badge on mobile.
+- [ ] Lower the StudyLink wordmark and align it with the circular logo centerline without changing header actions.
+- [ ] Run regression and mobile visual checks for the refined circular header treatment.
+
+- [ ] Keep the StudyLink header logo large in the circular left badge instead of reducing it.
+- [ ] Re-align the wordmark against the larger circular logo and re-run mobile regression checks.
+
+- [x] Restore the exact user-provided StudyLink logo instead of the alternate cropped header asset.
+- [x] Enlarge the left circular badge and use contain-style fitting so the complete logo remains visible with balanced inner spacing.
+- [x] Run regression and visual checks for the uncropped large logo before publishing.
