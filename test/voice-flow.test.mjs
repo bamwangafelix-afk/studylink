@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
-const source = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('../js/app-v20.js', import.meta.url), 'utf8');
 const loginArtwork = await readFile(new URL('../icons/studylink-login-full-logo.png', import.meta.url));
 
 test('records the actual MediaRecorder MIME type in the uploaded filename', () => {
@@ -27,9 +27,10 @@ test('covers Android touchstart and pointer haptic paths', () => {
 });
 
 test('registers MediaRecorder error handlers for private and group voice', () => {
-  assert.equal((source.match(/recorder error:/g) || []).length, 2);
+  assert.equal((source.match(/recorder error:/g) || []).length, 3);
   assert.match(source, /mr\.onerror=/);
   assert.match(source, /gmr\.onerror=/);
+  assert.match(source, /stmr\.onerror=/);
 });
 
 test('does not stop a recorder before the Android startup window has elapsed', () => {
@@ -48,9 +49,26 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script defer src="js\/app-v15.js\?v=studylink-pwa-15"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-15">/);
+  assert.match(html, /<script defer src="js\/app-v20\.js\?v=studylink-pwa-24"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-24">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
+});
+
+test('uses the conversation-style smart composer for Statut text and voice replies', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+  assert.match(html, /id="stVReplyInput"[^>]*oninput="onStatusReplyInput\(\)"/);
+  assert.match(html, /class="cin-action stVReplyBtn" id="stVReplyBtn"/);
+  assert.match(html, /id="stVReplyBar"/);
+  assert.match(source, /function onStatusReplyInput\(\)/);
+  assert.match(source, /function smartStatusReply\(\)/);
+  assert.match(source, /if\(stIsRec\)\{stopAndSendStatusVoice\(\);return;\}/);
+  assert.match(source, /if\(el\('stVReplyInput'\)\?\.value\.trim\(\)\)\{sendStatusReply\(\);return;\}/);
+  assert.match(source, /function startStatusVoice\(fromGesture=false\)/);
+  assert.match(source, /function stopAndSendStatusVoice\(\)/);
+  assert.match(source, /setupVoiceSwipe\('stVReplyBtn',startStatusVoice,stopAndSendStatusVoice,cancelStatusVoice\)/);
+  assert.match(css, /#statusView \.stVReplyBtn\.rec\{background:var\(--status-accent\)/);
+  assert.doesNotMatch(source, /stVReplyBtn[^\n]*style\.background='(?:#1976d2|rgba\(255,255,255,\.18\))'/);
 });
 
 test('does not require a reload after microphone permission is granted', () => {
@@ -60,8 +78,9 @@ test('does not require a reload after microphone permission is granted', () => {
 });
 
 test('protects an active mobile recording from accidental navigation and screen sleep', () => {
-  assert.match(source, /if\(isRec\|\|gIsRec\)\{e\.preventDefault\(\);e\.returnValue='';\}/);
+  assert.match(source, /if\(isRec\|\|gIsRec\|\|stIsRec\)\{e\.preventDefault\(\);e\.returnValue='';\}/);
   assert.match(source, /navigator\.wakeLock\?\.request/);
+  assert.match(source, /\(isRec\|\|gIsRec\|\|stIsRec\)\)void keepVoiceScreenOn\(\)/);
   assert.match(source, /void keepVoiceScreenOn\(\)/);
   assert.match(source, /document\.activeElement\?\.id===inputId/);
 });
@@ -144,24 +163,24 @@ test('recovers cleanly if Android ends the microphone track or MediaRecorder fai
 });
 
 test('uses the selected second StudyLink login artwork at the expected mobile dimensions', () => {
-  assert.equal(loginArtwork.readUInt32BE(16), 1080);
-  assert.equal(loginArtwork.readUInt32BE(20), 1920);
-  assert.equal(createHash('sha256').update(loginArtwork).digest('hex'), '79dc952df7946b0304ec3fec9fca6322faced14f431d2cc508bf7cfbfb28c49a');
+  assert.equal(loginArtwork.readUInt32BE(16), 1440);
+  assert.equal(loginArtwork.readUInt32BE(20), 2560);
+  assert.equal(createHash('sha256').update(loginArtwork).digest('hex'), 'aad058591f0bc737c0d7317cd59229b115cae49b4ad8ecbcb42cbe54e1ab6983');
 });
 
 test('ships an installable PWA shell with the supplied StudyLink icon', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
-  const worker = await readFile(new URL('../sw-v15.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sw-v24.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-15"/);
-  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-15/);
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-24"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-24/);
   assert.match(html, /id="installBanner"/);
   assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /id="disconnectBtn"/);
   assert.doesNotMatch(html, /onclick="doOut\(\)"/);
-  assert.match(source, /const workerUrl=new URL\('sw-v15\.js\?v=studylink-pwa-15',location\.href\)\.href/);
+  assert.match(source, /const workerUrl=new URL\('sw-v24\.js\?v=studylink-pwa-24',location\.href\)\.href/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /appinstalled/);
   assert.match(source, /updateViaCache:'none'/);
@@ -170,12 +189,12 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
   assert.match(manifest, /"prefer_related_applications": false/);
-  assert.match(worker, /studylink-shell-v15/);
-  assert.match(manifest, /"start_url": "\.\/\?source=pwa-15"/);
-  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-15/);
+  assert.match(worker, /studylink-shell-v24/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-24"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-24/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
-  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-15'\)/);
+  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-24'\)/);
   assert.match(css, /background-size:cover;background-position:center/);
 });
 
@@ -254,10 +273,12 @@ test('ships realtime typing and recording presence for private and group chats',
 test('restores the login background and gives the top wordmark a clearer mobile size', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-15'\)/);
+  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-24'\)/);
   assert.match(css, /background-size:cover;background-position:center/);
-  assert.match(css, /@media \(max-width:600px\)\{#auth>p\{margin-bottom:74px;\}\}/);
-  assert.match(html, /<p id="asub" style="font-size:14px;font-style:italic;">Connect &bull; Learn &bull; Grow<\/p>/);
+  assert.match(css, /@media \(max-width:600px\)\{#auth>p\{margin-bottom:92px!important;\}#auth \.af\{transform:translateY\(18px\);\}\}/);
+  assert.match(html, /<p id="asub" style="color:#405a78;margin-bottom:18px;font-size:14px;font-style:italic;visibility:hidden;">Connect &bull; Learn &bull; Grow<\/p>/);
+  assert.match(html, /id="asub"[^>]*>Connect &bull; Learn &bull; Grow/);
+  assert.match(html, /StudyLink/);
   assert.match(html, /font-size:26px;font-weight:bold;color:#fff/);
 });
 
@@ -294,4 +315,59 @@ test('renders text-only typing and recording status in the Messages list and ope
   assert.match(source, /esc\(_presenceText\|\|''\)\|\|_msgHtml/);
   assert.match(html, /id="typebar"/);
   assert.match(html, /id="gTypebar"/);
+});
+
+test('themes the Statut keyboard and send controls by status content', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+  assert.match(source, /const STATUS_THEME_KEYS=\['photo','text',\.\.\.Object\.keys\(CATS\)\]/);
+  assert.match(source, /function statusThemeFor\(category,photo,message\)/);
+  assert.match(source, /if\(photo&&!category&&!message\)return 'photo'/);
+  assert.match(source, /applyStatusTheme\(el\('statusCreate'\),statusThemeFor\(selStatusCat,statusPhotoUrl,msg\)\)/);
+  assert.match(source, /applyStatusTheme\(view,statusThemeFor\(sp\.category,sp\.photo,sp\.message\)\)/);
+  assert.match(html, /oninput="el\('stCharCount'\)\.textContent=this\.value\.length\+' \/ 100';updateStatusCreateTheme\(\)"/);
+  assert.match(css, /#statusCreate\.status-theme-text,[\s\S]*#statusCreate\.status-theme-dispo/);
+  assert.match(css, /#statusCreate\.status-theme-photo,[\s\S]*--status-accent:#8a93a5/);
+  assert.match(css, /#statusCreate \.stPubBtn\{background:var\(--status-accent\)/);
+  assert.match(css, /#statusView \.stVReplyBtn:not\(\.rec\):not\(\.voice-pending\):not\(\.voice-locked\)\{background:var\(--status-accent\)/);
+});
+
+test('keeps each selected Statut category color on the keyboard and controls', async () => {
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+  const themes = {
+    text: '#2ecc71',
+    dispo: '#2ecc71',
+    revision: '#2563eb',
+    aide: '#f5730a',
+    session: '#7b2ff7',
+    pause: '#8a93ab',
+    objectif: '#f5b301',
+    photo: '#8a93a5',
+  };
+  for(const [theme,accent] of Object.entries(themes)){
+    assert.match(css, new RegExp(`status-theme-${theme}[\\s\\S]*--status-accent:${accent.replace('#','\\#')}`));
+  }
+  assert.match(css, /#statusView \.stVReplyBtn\.rec\{background:var\(--status-accent\)/);
+  assert.match(css, /#statusCreate \.stPubBtn\{background:var\(--status-accent\)/);
+});
+
+test('adds a category-synchronized Color Companion above the real mobile keyboard', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+  assert.match(html, /id="stColorCompanion"/);
+  assert.match(html, /id="stReplyCompanion"/);
+  assert.match(html, /insertStatusCompanionEmoji\('\✨'\)/);
+  assert.match(html, /onfocus="showStatusReplyCompanion\(\)"/);
+  assert.match(source, /function syncStatusCompanionViewport\(\)/);
+  assert.match(source, /window\.visualViewport\?\.addEventListener\('resize',syncStatusCompanionViewport\)/);
+  assert.match(source, /function insertStatusReplyEmoji\(emoji\)/);
+  assert.match(css, /\.status-color-companion\{display:none;position:fixed/);
+  assert.match(css, /bottom:calc\(10px \+ var\(--status-keyboard-offset,0px\)\)/);
+  assert.match(css, /\.status-color-companion\.is-visible\{display:flex;\}/);
+});
+
+test('keeps the companion identity synchronized with the photo-only fallback', () => {
+  assert.match(source, /STATUS_COMPANION_LABELS=\{photo:'Photo uniquement'/);
+  assert.match(source, /updateStatusCompanionTheme\(statusThemeFor\(selStatusCat,statusPhotoUrl,msg\)\)/);
+  assert.match(source, /if\(photo&&!category&&!message\)return 'photo'/);
 });
