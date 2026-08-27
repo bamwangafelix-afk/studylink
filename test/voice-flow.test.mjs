@@ -49,8 +49,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script defer src="js\/app-v20\.js\?v=studylink-pwa-24"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-24">/);
+  assert.match(html, /<script defer src="js\/app-v20\.js\?v=studylink-pwa-26"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-26">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -171,16 +171,16 @@ test('uses the selected second StudyLink login artwork at the expected mobile di
 test('ships an installable PWA shell with the supplied StudyLink icon', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
-  const worker = await readFile(new URL('../sw-v24.js', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sw-v26.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-24"/);
-  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-24/);
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-26"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-26/);
   assert.match(html, /id="installBanner"/);
   assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /id="disconnectBtn"/);
   assert.doesNotMatch(html, /onclick="doOut\(\)"/);
-  assert.match(source, /const workerUrl=new URL\('sw-v24\.js\?v=studylink-pwa-24',location\.href\)\.href/);
+  assert.match(source, /const workerUrl=new URL\('sw-v26\.js\?v=studylink-pwa-26',location\.href\)\.href/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /appinstalled/);
   assert.match(source, /updateViaCache:'none'/);
@@ -189,12 +189,12 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
   assert.match(manifest, /"prefer_related_applications": false/);
-  assert.match(worker, /studylink-shell-v24/);
-  assert.match(manifest, /"start_url": "\.\/\?source=pwa-24"/);
-  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-24/);
+  assert.match(worker, /studylink-shell-v26/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-26"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-26/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
-  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-24'\)/);
+  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-26'\)/);
   assert.match(css, /background-size:cover;background-position:center/);
 });
 
@@ -273,7 +273,7 @@ test('ships realtime typing and recording presence for private and group chats',
 test('restores the login background and gives the top wordmark a clearer mobile size', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-24'\)/);
+  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-26'\)/);
   assert.match(css, /background-size:cover;background-position:center/);
   assert.match(css, /@media \(max-width:600px\)\{#auth>p\{margin-bottom:92px!important;\}#auth \.af\{transform:translateY\(18px\);\}\}/);
   assert.match(html, /<p id="asub" style="color:#405a78;margin-bottom:18px;font-size:14px;font-style:italic;visibility:hidden;">Connect &bull; Learn &bull; Grow<\/p>/);
@@ -355,15 +355,16 @@ test('adds a category-synchronized Color Companion above the real mobile keyboar
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /id="stColorCompanion"/);
-  assert.match(html, /id="stReplyCompanion"/);
+  assert.doesNotMatch(html, /id="stReplyCompanion"/);
   assert.match(html, /insertStatusCompanionEmoji\('\✨'\)/);
-  assert.match(html, /onfocus="showStatusReplyCompanion\(\)"/);
+  assert.doesNotMatch(html, /showStatusReplyCompanion\(\)/);
   assert.match(source, /function syncStatusCompanionViewport\(\)/);
   assert.match(source, /window\.visualViewport\?\.addEventListener\('resize',syncStatusCompanionViewport\)/);
-  assert.match(source, /function insertStatusReplyEmoji\(emoji\)/);
   assert.match(css, /\.status-color-companion\{display:none;position:fixed/);
   assert.match(css, /bottom:calc\(10px \+ var\(--status-keyboard-offset,0px\)\)/);
   assert.match(css, /\.status-color-companion\.is-visible\{display:flex;\}/);
+  assert.doesNotMatch(css, /#statusView\.status-reply-companion-open \.stVBottom\{padding-bottom:calc\(22px \+ 58px \+ var\(--status-keyboard-offset,0px\)\);\}/);
+  assert.doesNotMatch(source, /showStatusReplyCompanion/);
 });
 
 test('keeps the companion identity synchronized with the photo-only fallback', () => {
