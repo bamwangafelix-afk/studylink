@@ -124,3 +124,5 @@
 
 - [x] Use the user-provided blue-green `1000351475.png` artwork as the StudyLink installed app icon.
 - [x] Update PWA icon assets, manifest metadata, and cache version, then publish and verify the new home-screen icon without regressing the Color Companion.
+
+- [x] Update static StudyLink regression expectations from pwa-24 to pwa-26 after the new app-icon release, then rerun the suite.
