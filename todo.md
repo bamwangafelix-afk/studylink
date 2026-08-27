@@ -121,3 +121,6 @@
 - [x] Publish and verify the black-logo header update without regressing the publication-only Color Companion.
 
 - [x] Preserve the exact blue-and-green StudyLink mark while changing the logo image background from white to black so it matches the circular header badge.
+
+- [x] Use the user-provided blue-green `1000351475.png` artwork as the StudyLink installed app icon.
+- [x] Update PWA icon assets, manifest metadata, and cache version, then publish and verify the new home-screen icon without regressing the Color Companion.
