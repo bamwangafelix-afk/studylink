@@ -31,29 +31,14 @@ let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,
 const STATUS_TTL_MS=24*60*60*1000;
 const STATUS_VIEW_MS=6000;
 const CATS={
-  dispo:{emoji:'🟢',label:'Disponible'},
-  revision:{emoji:'📚',label:'En révision'},
-  aide:{emoji:'🙋',label:"Besoin d'aide"},
-  session:{emoji:'🎯',label:'Session en cours'},
-  pause:{emoji:'☕',label:'Pause'},
-  objectif:{emoji:'✅',label:'Objectif atteint'}
+  dispo:{emoji:'🟢',key:'st_cat_dispo'},
+  revision:{emoji:'📚',key:'st_cat_revision'},
+  aide:{emoji:'🙋',key:'st_cat_aide'},
+  session:{emoji:'🎯',key:'st_cat_session'},
+  pause:{emoji:'☕',key:'st_cat_pause'},
+  objectif:{emoji:'✅',key:'st_cat_objectif'}
 };
-const STATUS_THEME_KEYS=['photo','text',...Object.keys(CATS)];
-function statusThemeFor(category,photo,message){
-  if(photo&&!category&&!message)return 'photo';
-  return category&&STATUS_THEME_KEYS.includes(category)?category:'text';
-}
-function applyStatusTheme(root,theme){
-  if(!root)return;
-  STATUS_THEME_KEYS.forEach(key=>root.classList.remove('status-theme-'+key));
-  const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
-  root.classList.add('status-theme-'+next);
-  root.dataset.statusTheme=next;
-}
-function updateStatusCreateTheme(){
-  const msg=el('stMsg')?.value?.trim()||'';
-  applyStatusTheme(el('statusCreate'),statusThemeFor(selStatusCat,statusPhotoUrl,msg));
-}
+function catLabel(k){return t(CATS[k]?.key||'');}
 let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
 let statusAutoCloseTimer=null;
 let statusRemainingMs=STATUS_VIEW_MS;
@@ -61,7 +46,6 @@ let fType=null,fDest='p';
 let mr=null,isRec=false,vCh=[],vSec=0,vInt=null,vSending=false,vFinalizing=false,vStartAt=0;
 let gVStartAt=0;
 let gmr=null,gIsRec=false,gvCh=[],gvSec=0,gvInt=null,gVoiceSending=false,gVFinalizing=false;
-let stmr=null,stIsRec=false,stvCh=[],stvSec=0,stvInt=null,stVoiceSending=false,stVFinalizing=false,stVStartAt=0,recStatusUid=null;
 let voiceWakeLock=null;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
@@ -161,10 +145,10 @@ function setupPresence(){
   window.addEventListener('beforeunload',e=>{
     setPresence('Offline');
     // Do not let an accidental navigation/reload destroy an active recording.
-    if(isRec||gIsRec||stIsRec){e.preventDefault();e.returnValue='';}
+    if(isRec||gIsRec){e.preventDefault();e.returnValue='';}
   });
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
+    if(document.visibilityState==='visible'&&(isRec||gIsRec))void keepVoiceScreenOn();
   });
   window.addEventListener('focus',()=>setPresence('Online'));
   window.addEventListener('blur',()=>setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},3000));
@@ -179,7 +163,7 @@ async function keepVoiceScreenOn(){
   }catch(e){console.warn('Wake lock unavailable:',e?.message||e);}
 }
 async function releaseVoiceScreen(){
-  if(isRec||gIsRec||stIsRec)return;
+  if(isRec||gIsRec)return;
   const lock=voiceWakeLock;voiceWakeLock=null;
   try{await lock?.release?.();}catch(e){}
 }
@@ -573,6 +557,7 @@ function hideEF(){el('EF').style.display='none';}
 function openProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
+  pushModalState();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
   el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
@@ -587,7 +572,7 @@ function openProfile(uid){
   el('pvMsgBtn').onclick=()=>{closeProfileView();openChat(u.name||'',uid);};
   el('profileView').style.display='flex';
 }
-function closeProfileView(){el('profileView').style.display='none';}
+function closeProfileView(){el('profileView').style.display='none';consumeModalState();}
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
@@ -809,14 +794,14 @@ function renderStatusBar(){
   const myStatus=activeStatusOf(mine);
   let html=`<div class="stItem" onclick="openStatusCreate()">
     <div class="stRing ring-add"><div class="stAvatar">+</div></div>
-    <div class="stLabel">Statut</div>
+    <div class="stLabel">${t('st_status')}</div>
   </div>`;
   if(myStatus){
     const av=myStatus.photo?`<img class="stThumb" src="${myStatus.photo}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
     const ringCls=myStatus.category?('ring-'+myStatus.category):'ring-photo';
     html+=`<div class="stItem" onclick="viewStatus('${CU.uid}')">
       <div class="stRing ${ringCls}">${av}</div>
-      <div class="stLabel">Toi</div>
+      <div class="stLabel">${t('st_you')}</div>
     </div>`;
   }
   const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
@@ -835,18 +820,18 @@ function renderStatusBar(){
 
 // ── STATUS CREATE ──
 function openStatusCreate(draftPhoto){
-  if(!MP?.name)return showToast('❌ Complete your profile first');
+  if(!MP?.name)return showToast(t('st_toast_complete_profile'));
+  pushModalState();
   selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
   if(draftPhoto){statusPhotoUrl=draftPhoto;}
   else{statusPhotoUrl=null;forwardedFromDraft=null;}
   el('stMsg').value='';el('stCharCount').textContent='0 / 100';
-  updateStatusCreateTheme();
   if(statusPhotoUrl){el('stPhotoPreview').src=statusPhotoUrl;el('stPhotoPreviewWrap').style.display='block';el('stPhotoEmpty').style.display='none';}
   else{el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';}
   const grid=el('stCatGrid');
   grid.innerHTML=Object.keys(CATS).map(k=>{
     const c=CATS[k];
-    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${c.label}</div></div>`;
+    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${catLabel(k)}</div></div>`;
   }).join('');
   const subjWrap=el('stSubjSel');
   subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
@@ -860,13 +845,12 @@ function openStatusCreate(draftPhoto){
   updateStatusPreview();
   el('statusCreate').style.display='flex';
 }
-function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');}
+function closeStatusCreate(){el('statusCreate').style.display='none';consumeModalState();}
 function selectStatusCat(k){
   selStatusCat=k;
   document.querySelectorAll('.stCatCard').forEach(c=>c.classList.remove('sel'));
   el('stCat_'+k).classList.add('sel');
   updateStatusPreview();
-  updateStatusCreateTheme();
 }
 function toggleStatusSubject(s){
   selStatusSubject=selStatusSubject===s?null:s;
@@ -892,7 +876,6 @@ async function handleStatusPhoto(e){
   el('stPhotoPreviewWrap').style.display='block';
   el('stPhotoEmpty').style.display='none';
   updateStatusPreview();
-  updateStatusCreateTheme();
 }
 function removeStatusPhoto(){
   statusPhotoUrl=null;
@@ -901,7 +884,6 @@ function removeStatusPhoto(){
   el('stPhotoEmpty').style.display='block';
   el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';
   updateStatusPreview();
-  updateStatusCreateTheme();
 }
 function updateStatusPreview(){
   const p=el('stPreview');if(!p)return;
@@ -909,23 +891,23 @@ function updateStatusPreview(){
   const c=selStatusCat?CATS[selStatusCat]:null;
   const av=statusPhotoUrl?`<img class="stThumb" src="${statusPhotoUrl}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
   const ringCls=selStatusCat?('ring-'+selStatusCat):'ring-photo';
-  const desc=c?(`${c.emoji} ${c.label}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
+  const desc=c?(`${c.emoji} ${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
   p.innerHTML=`<div class="stRing ${ringCls}" style="width:52px;height:52px;flex-shrink:0;">${av}</div>
     <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
 }
 async function publishStatus(){
-  if(!MP?.name)return showToast('❌ Complete your profile first');
+  if(!MP?.name)return showToast(t('st_toast_complete_profile'));
   if(statusUploading)return showToast('❌ Photo en cours d\'envoi, patiente');
   const msg=v('stMsg');
   if(!statusPhotoUrl){
-    if(!selStatusCat)return showToast('❌ Choisis une catégorie');
-    if(!msg)return showToast('❌ Écris un message');
+    if(!selStatusCat)return showToast(t('st_toast_choose_category'));
+    if(!msg)return showToast(t('st_toast_write_message'));
   }
   const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   el('ov').style.display='flex';
   try{
     await db.collection('users').doc(CU.uid).update({statusPost:payload});
-    showToast('✅ Statut publié');
+    showToast(t('st_toast_published'));
     forwardedFromDraft=null;
     closeStatusCreate();
   }catch(e){showToast('❌ '+(e.message||'Erreur'));}
@@ -937,28 +919,30 @@ let curStatusUid=null;
 function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
-  if(!sp)return showToast('❌ Statut expiré');
+  if(!sp)return showToast(t('st_toast_expired'));
+  pushModalState();
   curStatusUid=uid;
+  curChat={name:(uid===CU.uid?'Toi':(u.name||'')),uid:uid};
+  sendCtx='status';
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
   const c=sp.category?CATS[sp.category]:null;
   el('stVAvatar').innerHTML=u.photo?`<img src="${u.photo}">`:esc((u.name||'?')[0]||'?').toUpperCase();
-  el('stVName').textContent=uid===CU.uid?'Toi':(u.name||'?');
+  el('stVName').textContent=uid===CU.uid?t('st_you'):(u.name||'?');
   const createdMs=statusMillis(sp.createdAt)||Date.now();
   const mins=Math.max(1,Math.round((Date.now()-createdMs)/60000));
   const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
   el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
-  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${c.label}`;}
+  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${catLabel(sp.category)}`;}
   else{el('stVBadge').style.display='none';}
   if(sp.message){el('stVMsg').style.display='block';el('stVMsg').textContent=sp.message;}
   else{el('stVMsg').style.display='none';}
   if(sp.subject){el('stVSubject').style.display='inline-block';el('stVSubject').textContent='📖 '+sp.subject;}
   else{el('stVSubject').style.display='none';}
-  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupBtn').textContent='Rejoindre '+sp.linkedGroupName;}
+  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupBtn').textContent=t('st_join_prefix')+sp.linkedGroupName;}
   else{el('stVJoinGroupBtn').style.display='none';}
   const view=el('statusView');
-  applyStatusTheme(view,statusThemeFor(sp.category,sp.photo,sp.message));
   if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='cover';view.style.backgroundPosition='center';}
   else{
     const grad={dispo:'#27ae60,#1e8a4c',revision:'#2563eb,#16357a',aide:'#f5730a,#c2570a',session:'#7b2ff7,#4b1f99',pause:'#8a93ab,#5c6478',objectif:'#f5b301,#a67c00'}[sp.category]||'#4a5a8f,#16357a';
@@ -966,8 +950,6 @@ function viewStatus(uid){
     view.style.backgroundSize='';view.style.backgroundPosition='';
   }
   el('stVReplyInput').value='';
-  onStatusReplyInput();
-  if(!stVFinalizing)resetStatusReplyButton();
   el('statusView').style.display='flex';
   // progress bar: reset then animate to full over STATUS_VIEW_MS, auto-close at end
   clearTimeout(statusAutoCloseTimer);
@@ -986,7 +968,18 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
+function closeStatusView(){
+  clearTimeout(statusAutoCloseTimer);
+  if(isRec)cancelVoice();
+  if(curChat&&CU)void clearPresenceState('private',getCID(CU.uid,curChat.uid));
+  el('statusView').style.display='none';
+  el('stVMenu').style.display='none';
+  el('stVSeenList').style.display='none';
+  curStatusUid=null;
+  curChat=null;
+  sendCtx='chat';
+  consumeModalState();
+}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -997,20 +990,20 @@ function toggleStatusMenu(){
     const sp=activeStatusOf(mine);
     const isForward=!!sp?.forwardedFrom;
     menu.innerHTML=`
-      <button onclick="showSeenBy()">Vu par</button>
-      ${isForward?`<button onclick="showForwardSource()">Transféré</button>`:''}
-      <button onclick="shareStatus()">Partager</button>
-      <button onclick="saveStatusMedia()">Enregistrer</button>
-      <button class="danger" onclick="deleteStatus()">Supprimer</button>
+      <button onclick="showSeenBy()">${t('st_menu_seenby')}</button>
+      ${isForward?`<button onclick="showForwardSource()">${t('st_menu_forward')}</button>`:''}
+      <button onclick="shareStatus()">${t('st_menu_share')}</button>
+      <button onclick="saveStatusMedia()">${t('st_menu_save')}</button>
+      <button class="danger" onclick="deleteStatus()">${t('st_menu_delete')}</button>
     `;
   }else{
     menu.innerHTML=`
-      <button onclick="forwardStatus()">Transférer</button>
-      <button onclick="replyToStatus()">Message</button>
-      <button onclick="viewStatusProfile()">Voir profil</button>
-      <button onclick="toggleStatusNotif()">Notifications</button>
-      <button onclick="hideStatusUser()">Masquer</button>
-      <button class="danger" onclick="reportStatus()">Signaler</button>
+      <button onclick="forwardStatus()">${t('st_menu_forward')}</button>
+      <button onclick="replyToStatus()">${t('st_menu_message')}</button>
+      <button onclick="viewStatusProfile()">${t('st_menu_viewprofile')}</button>
+      <button onclick="toggleStatusNotif()">${t('st_menu_notif')}</button>
+      <button onclick="hideStatusUser()">${t('st_menu_hide')}</button>
+      <button class="danger" onclick="reportStatus()">${t('st_menu_report')}</button>
     `;
   }
   menu.style.display='block';
@@ -1074,7 +1067,7 @@ function saveStatusMedia(){
 async function deleteStatus(){
   el('stVMenu').style.display='none';
   if(!confirm('Supprimer ton statut ?'))return;
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast('Statut supprimé');}
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'));}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
@@ -1088,7 +1081,7 @@ function toggleStatusNotif(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
   if(confirm(`Tu seras notifié quand ${u?.name||'cet utilisateur'} ajoute un nouveau statut.`)){
-    showToast('Notifications activées');
+    showToast(t('st_toast_notif_on'));
   }
 }
 function hideStatusUser(){
@@ -1098,13 +1091,13 @@ function hideStatusUser(){
     let hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
     if(!hidden.includes(curStatusUid))hidden.push(curStatusUid);
     localStorage.setItem('hiddenStatusUids',JSON.stringify(hidden));
-    closeStatusView();renderStatusBar();showToast('Masqué');
+    closeStatusView();renderStatusBar();showToast(t('st_toast_hidden'));
   }
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
   if(confirm('Signaler ce statut pour contenu inapproprié ?')){
-    showToast('Signalement envoyé');
+    showToast(t('st_toast_reported'));
   }
 }
 async function sendQuickStatusReply(toUid,text){
@@ -1122,121 +1115,15 @@ async function sendQuickStatusReply(toUid,text){
     return true;
   }catch(e){showToast('Erreur: '+(e.message||''));return false;}
 }
-function resetStatusReplyButton(){
-  stIsRec=false;stVStartAt=0;clearInterval(stvInt);stvInt=null;stopWave('stVReplyWave');
-  try{stmr?.stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
-  stmr=null;stvCh=[];stvSec=0;stVoiceSending=false;stVFinalizing=false;recStatusUid=null;
-  const btn=el('stVReplyBtn');
-  btn?.classList.remove('voice-pending','rec','voice-locked');
-  if(btn)btn.style.background='';
-  setMicIcon('stVReplyIcon');
-  const bar=el('stVReplyBar');if(bar)bar.style.display='none';
-  const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
-}
-function restartStatusReplyTimer(){
-  clearTimeout(statusAutoCloseTimer);
-  const uid=curStatusUid;
-  if(!uid||el('statusView')?.style.display==='none')return;
-  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)closeStatusView();},STATUS_VIEW_MS);
-}
-function onStatusReplyInput(){
-  if(stIsRec)return;
-  const inp=el('stVReplyInput'),hasText=!!inp?.value.trim();
-  if(hasText)setSendIcon('stVReplyIcon');
-  else setMicIcon('stVReplyIcon');
-}
-function smartStatusReply(){
-  if(stIsRec){stopAndSendStatusVoice();return;}
-  if(stVFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
-  if(el('stVReplyInput')?.value.trim()){sendStatusReply();return;}
-  startStatusVoice();
-}
-function bindStatusVoiceSafety(stream){
-  const track=stream?.getAudioTracks?.()[0];
-  if(track)track.addEventListener('ended',()=>{
-    if(!stIsRec)return;
-    resetStatusReplyButton();
-    showToast('🎙️ Android a interrompu le microphone. Vérifiez Chrome puis réessayez.');
-  },{once:true});
-  return track;
-}
-async function startStatusVoice(fromGesture=false){
-  if(stVFinalizing||stIsRec)return;
-  const toUid=curStatusUid;
-  if(!toUid||toUid===CU?.uid)return showToast('Tu ne peux pas répondre à ton propre statut');
-  if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone non supporté. Utilisez Chrome.');return;}
-  clearTimeout(statusAutoCloseTimer);
-  recStatusUid=toUid;
-  try{
-    if(!fromGesture)pulseHaptic(55,el('stVReplyBtn'));
-    const stream=await getVoiceStream();
-    if(el('statusView')?.style.display==='none'||curStatusUid!==toUid){try{stream.getTracks().forEach(track=>track.stop());}catch(e){}recStatusUid=null;return;}
-    bindStatusVoiceSafety(stream);
-    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
-    stmr=new MediaRecorder(stream,opts);stvCh=[];
-    stmr.onerror=e=>{console.error('Status voice recorder error:',e.error||e);resetStatusReplyButton();showToast('🎙️ Erreur du microphone. Réessayez.');};
-    stmr.ondataavailable=e=>{if(e.data?.size>0)stvCh.push(e.data);};
-    stmr.start(200);stIsRec=true;stvSec=0;stVStartAt=Date.now();
-    void keepVoiceScreenOn();
-    const btn=el('stVReplyBtn');btn?.classList.remove('voice-pending');btn?.classList.add('rec');
-    if(btn)btn.style.background='';
-    setSendIcon('stVReplyIcon');
-    const bar=el('stVReplyBar');if(bar)bar.style.display='flex';
-    drawBars('stVReplyWave',()=>stIsRec,'#fff');
-    const refresh=()=>{stvSec=Math.max(0,Math.floor((Date.now()-stVStartAt)/1000));const mm=Math.floor(stvSec/60),ss=stvSec%60;const timer=el('stVReplyTimer');if(timer)timer.textContent=mm+':'+(ss<10?'0':'')+ss;};
-    refresh();stvInt=setInterval(refresh,250);
-  }catch(err){
-    resetStatusReplyButton();
-    const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
-    showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
-    restartStatusReplyTimer();
-  }
-}
-async function stopAndSendStatusVoice(){
-  const recorder=stmr,toUid=recStatusUid||curStatusUid;
-  if(!recorder||!stIsRec||stVFinalizing)return;
-  stVFinalizing=true;stVoiceSending=true;stIsRec=false;
-  clearTimeout(statusAutoCloseTimer);clearInterval(stvInt);stvInt=null;stopWave('stVReplyWave');
-  const elapsed=Date.now()-(stVStartAt||Date.now()),dur=Math.max(stvSec,Math.floor(Math.max(0,elapsed)/1000));
-  if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
-  const btn=el('stVReplyBtn');btn?.classList.remove('rec','voice-pending');if(btn)btn.style.background='';setMicIcon('stVReplyIcon');
-  const bar=el('stVReplyBar');if(bar)bar.style.display='none';
-  const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
-  let chunks=[];try{chunks=await collectRecorderChunks(recorder,stvCh);}catch(e){console.error('Status voice finalize error:',e);}
-  try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
-  void releaseVoiceScreen();recorder.ondataavailable=null;recorder.onstop=null;
-  stvCh=[];stvSec=0;stmr=null;stVStartAt=0;
-  if(!chunks.length||!toUid||toUid===CU?.uid){stVoiceSending=false;stVFinalizing=false;recStatusUid=null;showToast('⚠️ Rien n’a été enregistré.');restartStatusReplyTimer();return;}
-  const file=voiceFileFromChunks(chunks),mm=Math.floor(dur/60),ss=dur%60,cid=getCID(CU.uid,toUid),t=now();
-  let msgRef=null,uploadCommitted=false;
-  try{
-    msgRef=await db.collection('chats').doc(cid).collection('messages').add({type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    let url=await uploadCloud(file,'audio'),fallbackError='';
-    if(!url){try{const storageUrl=await uploadVoiceToFirebase(file);if(storageUrl){await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});url=storageUrl;uploadCommitted=true;}}catch(e){fallbackError=e?.message||'Firebase Storage upload failed';}}
-    if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
-    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
-    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
-    const upd={participants:[CU.uid,toUid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
-    await db.collection('chats').doc(cid).set(upd,{merge:true});
-    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-    db.collection('users').doc(toUid).update(receiverUpd).catch(()=>{db.collection('users').doc(toUid).set(receiverUpd,{merge:true}).catch(()=>{});});
-    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
-    showToast('✅ Vocal envoyé');
-  }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.');}
-  stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();
-}
-function cancelStatusVoice(){
-  if(stmr&&stIsRec){try{stmr.ondataavailable=null;stmr.onstop=null;stmr.stop();}catch(e){}try{stmr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
-  resetStatusReplyButton();restartStatusReplyTimer();
-}
 async function sendStatusReply(){
   const inp=el('stVReplyInput');
   const text=inp.value.trim();
   if(!text||!curStatusUid)return;
-  if(curStatusUid===CU.uid)return showToast('Tu ne peux pas te répondre à toi-même');
-  inp.value='';onStatusReplyInput();
+  if(curStatusUid===CU.uid)return showToast(t('st_toast_no_self_reply'));
+  inp.value='';
+  setMicIcon('sendIcon');
   const ok=await sendQuickStatusReply(curStatusUid,text);
-  if(ok){showToast('Message envoyé');restartStatusReplyTimer();}
+  if(ok)showToast(t('st_toast_msg_sent'));
 }
 function replyToStatus(){
   el('stVMenu').style.display='none';
@@ -1280,7 +1167,7 @@ function joinStatusGroup(){
   const gid=sp.linkedGroupId,gname=sp.linkedGroupName;
   closeStatusView();
   if(typeof openGroup==='function')openGroup(gid,gname);
-  else showToast('Groupe introuvable');
+  else showToast(t('st_toast_no_group'));
 }
 
 // ── FIND ──
@@ -1352,6 +1239,7 @@ function openChat(name,uid){
     if(found)uid=found.uid;else return showToast('❌ User not found. Try from Find tab.');
   }
   if(uid===CU?.uid)return showToast('❌ Cannot message yourself');
+  pushModalState();
   // Unsubscribe all old listeners
   if(chatUnsub){chatUnsub();chatUnsub=null;}
   if(window._typingUnsub){window._typingUnsub();window._typingUnsub=null;}
@@ -1470,6 +1358,7 @@ function closeChat(){
   curChat=null;replyMsg=null;
   el('rplybar').style.display='none';
   closeMediaPanel();closeStickers();clearSelection();
+  consumeModalState();
 }
 function onMsgInput(){
   if(!curChat)return;
@@ -1510,7 +1399,7 @@ function smartSend(){
   if(isRec){stopAndSendVoice();return;}
   if(vFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
   const hasText=el('mIn').value.trim().length>0;
-  if(hasText){sendMsg();return;}
+  if(hasText){sendCtx==='status'?sendStatusReply():sendMsg();return;}
   startVoice();
 }
 function smartGSend(){
@@ -1659,6 +1548,7 @@ async function sendMsg(){
 // ── GROUP ──
 async function openGroup(postId,name){
   if(!postId||postId==='undefined'){showToast('❌ Group not found');return;}
+  pushModalState();
   showOv(true);
   try{
     const gref=db.collection('groups').doc(postId);
@@ -1692,6 +1582,7 @@ function closeGroup(){
   el('gTypebar').style.display='none';el('groupW').style.display='none';
   if(grpUnsub){grpUnsub();grpUnsub=null;}if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
   curGrp=null;closeGStickers();clearSelection();
+  consumeModalState();
 }
 async function sendGMsg(){
   const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
@@ -2466,17 +2357,16 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   const btn=el(btnId);if(!btn||btn.dataset.voiceGestureBound)return;
   btn.dataset.voiceGestureBound='1';
   btn.style.touchAction='none';
-  const isStatus=btnId==='stVReplyBtn';
-  const inputId=isStatus?'stVReplyInput':(btnId==='gSendB'?'gIn':'mIn');
+  const inputId=btnId==='gSendB'?'gIn':'mIn';
   // Keep haptic feedback on the earliest Android touch event as well as the
   // Pointer Events path. The debounce prevents a double pulse on Chrome.
   btn.addEventListener('touchstart',e=>{
     if(e.touches?.length===1&&!v(inputId).trim())vibrate(70);
   },{passive:true});
-  const barId=isStatus?'stVReplyBar':(btnId==='gSendB'?'gvbar':'vbar');
+  const barId=btnId==='gSendB'?'gvbar':'vbar';
   const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
   const vibrate=pattern=>pulseHaptic(pattern,btn);
-  const hint=()=>el(barId)?.querySelector('[data-voice-hint],[data-status-voice-hint]');
+  const hint=()=>el(barId)?.querySelector('[data-voice-hint]');
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};
   const resetState=()=>{
     state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
@@ -2804,8 +2694,102 @@ function setupNotifL(){
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>b.delete(d.ref));return b.commit();});}
 
+// ── I18N ──
+const I18N={
+  fr:{
+    st_new_title:'Nouveau statut', st_publish:'Publier', st_photo_label:'Photo (optionnel)',
+    st_add_photo:'Ajouter une photo', st_photo_hint:'Notes, bureau de révision, selfie...',
+    st_category_label:'Catégorie', st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',
+    st_subject_label:'Matière (optionnel)', st_link_group_label:'Lier un groupe (optionnel)',
+    st_message_label:'Message', st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre ?',
+    st_preview_label:'Aperçu', st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
+    st_reply_placeholder:'Répondre...',
+    st_cat_dispo:'Disponible', st_cat_revision:'En révision', st_cat_aide:"Besoin d'aide",
+    st_cat_session:'Session en cours', st_cat_pause:'Pause', st_cat_objectif:'Objectif atteint',
+    st_menu_seenby:'Vu par', st_menu_share:'Partager', st_menu_save:'Enregistrer', st_menu_delete:'Supprimer',
+    st_menu_forward:'Transférer', st_menu_message:'Message', st_menu_viewprofile:'Voir profil',
+    st_menu_notif:'Notifications', st_menu_hide:'Masquer', st_menu_report:'Signaler',
+    st_toast_complete_profile:'❌ Complete your profile first', st_toast_choose_category:'❌ Choisis une catégorie',
+    st_toast_write_message:'❌ Écris un message', st_toast_published:'✅ Statut publié',
+    st_toast_expired:'❌ Statut expiré', st_toast_no_group:'Groupe introuvable',
+    st_toast_msg_sent:'Message envoyé', st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',
+    st_toast_deleted:'Statut supprimé', st_toast_notif_on:'Notifications activées',
+    st_toast_hidden:'Masqué', st_toast_reported:'Signalement envoyé',
+    st_you:'Toi', st_status:'Statut', st_join_prefix:'Rejoindre ',
+  },
+  en:{
+    st_new_title:'New status', st_publish:'Post', st_photo_label:'Photo (optional)',
+    st_add_photo:'Add a photo', st_photo_hint:'Notes, study desk, selfie...',
+    st_category_label:'Category', st_required_unless_photo:'(required unless you add a photo)',
+    st_subject_label:'Subject (optional)', st_link_group_label:'Link a group (optional)',
+    st_message_label:'Message', st_msg_placeholder:'Free to study now, who wants to join?',
+    st_preview_label:'Preview', st_expiry_note:'⏱ Your status disappears automatically after 24h',
+    st_reply_placeholder:'Reply...',
+    st_cat_dispo:'Available', st_cat_revision:'Studying', st_cat_aide:'Need help',
+    st_cat_session:'In session', st_cat_pause:'Break', st_cat_objectif:'Goal reached',
+    st_menu_seenby:'Seen by', st_menu_share:'Share', st_menu_save:'Save', st_menu_delete:'Delete',
+    st_menu_forward:'Forward', st_menu_message:'Message', st_menu_viewprofile:'View profile',
+    st_menu_notif:'Notifications', st_menu_hide:'Hide', st_menu_report:'Report',
+    st_toast_complete_profile:'❌ Complete your profile first', st_toast_choose_category:'❌ Choose a category',
+    st_toast_write_message:'❌ Write a message', st_toast_published:'✅ Status posted',
+    st_toast_expired:'❌ Status expired', st_toast_no_group:'Group not found',
+    st_toast_msg_sent:'Message sent', st_toast_no_self_reply:"You can't reply to yourself",
+    st_toast_deleted:'Status deleted', st_toast_notif_on:'Notifications turned on',
+    st_toast_hidden:'Hidden', st_toast_reported:'Report sent',
+    st_you:'You', st_status:'Status', st_join_prefix:'Join ',
+  }
+};
+let appLang=localStorage.getItem('appLang')||'fr';
+function t(key){return I18N[appLang]?.[key]||I18N.fr[key]||key;}
+function applyTranslations(){
+  document.querySelectorAll('[data-i18n]').forEach(elm=>{elm.textContent=t(elm.getAttribute('data-i18n'));});
+  document.querySelectorAll('[data-i18n-ph]').forEach(elm=>{elm.placeholder=t(elm.getAttribute('data-i18n-ph'));});
+  const btn=el('langBtn');if(btn)btn.textContent=appLang.toUpperCase();
+}
+function toggleLang(){
+  appLang=appLang==='fr'?'en':'fr';
+  localStorage.setItem('appLang',appLang);
+  applyTranslations();
+  if(el('statusCreate')&&el('statusCreate').style.display==='flex'){
+    const grid=el('stCatGrid');
+    if(grid&&grid.children.length)openStatusCreate(statusPhotoUrl||undefined);
+  }
+}
 // ── HELPERS ──
-function el(id){return document.getElementById(id);}
+let sendCtx='chat';
+const SEND_CTX_REDIRECT={mIn:'stVReplyInput',sendB:'stVReplyBtn',sendIcon:'stVReplyIcon',vbar:'stVvbar',vWave:'stVWave',vTimer:'stVTimer'};
+function el(id){
+  if(sendCtx==='status'&&SEND_CTX_REDIRECT[id])id=SEND_CTX_REDIRECT[id];
+  return document.getElementById(id);
+}
+
+// ── Back-button handling: hardware back closes the open overlay, not the app ──
+let slModalOpen=false;
+function pushModalState(){
+  if(!slModalOpen){
+    slModalOpen=true;
+    try{history.pushState({slModal:true},document.title);}catch(e){}
+  }
+}
+function consumeModalState(){
+  if(slModalOpen){
+    slModalOpen=false;
+    try{history.back();}catch(e){}
+  }
+}
+function closeTopModal(){
+  if(el('statusView')&&el('statusView').style.display==='flex'){closeStatusView();return;}
+  if(el('statusCreate')&&el('statusCreate').style.display==='flex'){closeStatusCreate();return;}
+  if(el('profileView')&&el('profileView').style.display==='flex'){closeProfileView();return;}
+  if(el('groupW')&&getComputedStyle(el('groupW')).display!=='none'){closeGroup();return;}
+  if(el('chatW')&&getComputedStyle(el('chatW')).display!=='none'){closeChat();return;}
+}
+window.addEventListener('popstate',function(){
+  if(slModalOpen){
+    slModalOpen=false;
+    closeTopModal();
+  }
+});
 function v(id){return(el(id)?.value||'').trim();}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function e2(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
@@ -2871,7 +2855,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v24.js?v=studylink-pwa-24',location.href).href;
+  const workerUrl=new URL('sw-v21.js?v=studylink-pwa-21',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -2899,6 +2883,7 @@ function setupPWA(){
   window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
 }
 function bootstrapStudyLink(){
+  applyTranslations();
   setupNavigation();
   setupPWA();
   const disconnectButton=el('disconnectBtn');
@@ -2912,11 +2897,8 @@ function bootstrapStudyLink(){
     b.onclick=()=>{selTags.includes(s)?selTags=selTags.filter(t=>t!==s):selTags.push(s);b.classList.toggle('sel');};
     ts.appendChild(b);
   });
-  el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartSend();}});
-  el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
-  el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
-  el('stVReplyInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartStatusReply();}});
-  setupVoiceSwipe('stVReplyBtn',startStatusVoice,stopAndSendStatusVoice,cancelStatusVoice);
+  el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartSend();});
+    el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter')smartGSend();});
 }
 const startStudyLink=()=>{
   if(window.__studylinkBooted)return;
