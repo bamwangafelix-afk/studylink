@@ -723,7 +723,7 @@ function listenUsers(){
     // Update online dots on feed without full re-render
     sn.docChanges().forEach(change=>{
       if(change.type==='modified'){
-        const u=change.doc.data();
+        const u={...change.doc.data(),uid:change.doc.id};
         // Update status dot in inbox if visible
         const st=getStatusInfo(u.status,u.lastSeen);
         document.querySelectorAll(`[data-uid="${u.uid}"] .status-dot`).forEach(dot=>{
@@ -1001,7 +1001,8 @@ async function publishStatus(){
 // ── STATUS VIEW ──
 let curStatusUid=null;
 function viewStatus(uid){
-  const u=allUsers.find(x=>x.uid===uid);
+  if(!uid||!CU?.uid)return showToast('Session expirée, reconnectez-vous');
+  const u=allUsers.find(x=>x?.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
   pushModalState();
@@ -1056,6 +1057,8 @@ function viewStatus(uid){
 function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
+  if(!menu||!CU?.uid||!curStatusUid){if(menu)menu.style.display='none';return;}
+
   if(menu.style.display==='block'){menu.style.display='none';return;}
   clearTimeout(statusAutoCloseTimer);
   const isMine=curStatusUid===CU.uid;
@@ -1127,7 +1130,8 @@ function shareStatus(){
 }
 function showForwardSource(){
   el('stVMenu').style.display='none';
-  const mine=allUsers.find(u=>u.uid===CU.uid);
+  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
+  const mine=allUsers.find(u=>u?.uid===CU.uid);
   const sp=activeStatusOf(mine);
   if(sp?.forwardedFrom)showToast('Transféré depuis un autre statut');
 }
@@ -1140,6 +1144,7 @@ function saveStatusMedia(){
 }
 async function deleteStatus(){
   el('stVMenu').style.display='none';
+  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
   if(!confirm(t('st_confirm_delete')))return;
   try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'));}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
@@ -1184,7 +1189,8 @@ function hideStatusUser(){
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
-  const u=allUsers.find(x=>x.uid===curStatusUid);
+  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
+  const u=allUsers.find(x=>x?.uid===curStatusUid);
   if(!u||!curStatusUid)return;
   const reason=prompt(`${appLang==='fr'?'Signaler le statut de':'Report'} ${u.name||'cet utilisateur'} ?\n${appLang==='fr'?'Décrivez brièvement le motif :':'Briefly describe the reason:'}`);
   if(!reason)return;
@@ -1866,6 +1872,24 @@ async function execDelMsgs(scope,isGrp){
   clearSelection();
   showToast(scope==='everyone'?'🗑️ Deleted for everyone':'🗑️ Deleted for you');
 }
+function voiceSourceOf(m){
+  const value=m?.data??m?.voiceUrl??m?.audioUrl??m?.url??'';
+  if(typeof value==='string')return value.trim();
+  if(value&&typeof value.url==='string')return value.url.trim();
+  if(value&&typeof value.secure_url==='string')return value.secure_url.trim();
+  return '';
+}
+function voiceSourceCandidates(src){
+  const raw=String(src||'').trim();
+  if(!raw||raw==='null'||raw==='undefined')return [];
+  const sources=[raw];
+  try{
+    const url=new URL(raw,location.href);
+    if(url.pathname.includes('/auto/upload/'))sources.push(raw.replace('/auto/upload/','/video/upload/'));
+    if(url.pathname.includes('/raw/upload/'))sources.push(raw.replace('/raw/upload/','/video/upload/'));
+  }catch(e){}
+  return [...new Set(sources)];
+}
 function buildBbl(m,isGrp){
   if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
@@ -1916,8 +1940,9 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
     const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     const audioDur=m.dur||'0:00';
-    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    const audioSrc=voiceSourceOf(m);
+    if(!audioSrc){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(audioSrc)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -1942,6 +1967,7 @@ function buildBbl(m,isGrp){
       else{voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
     }
     const durLabel=m.dur||'0:00';
+    const voiceSrc=voiceSourceOf(m);
     const playBtnBg=self?'rgba(255,255,255,0.25)':vAccent;
     const playBtnColor='#fff';
     const playShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
@@ -1950,15 +1976,22 @@ function buildBbl(m,isGrp){
         <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
         <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Échec de l’envoi vocal</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Vérifiez la connexion puis réessayez.</div></div>
       </div>${rcHtml}`;
-    }else if(!m.data){
+    }else if(!voiceSrc){
+      // A sent message with no usable source is unavailable, not still uploading.
+      // Keeping it out of the player prevents a misleading play button.
+      const unavailable=m.status!=='sending';
+      if(unavailable){
+        inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div><div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Audio indisponible</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Le fichier n’est plus accessible.</div></div></div>${rcHtml}`;
+      }else{
       // Still sending — show progress + "Sending..." + timer
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
         <div style="flex:1;"><div class="vprog" style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:5px;"><div style="width:0%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div>
         <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;color:${self?'rgba(255,255,255,.8)':'var(--sub)'};">Sending...</span><span class="vdur">${durLabel}</span></div></div>
       </div>${rcHtml}`;
+      }
     }else{
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(voiceSrc)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
             ${waveSVG}
@@ -2653,24 +2686,39 @@ function resetVoicePlayer(){
 function stopOtherVoicePlayers(exceptId){if(voicePlayer&&String(voicePlayerId)!==String(exceptId))resetVoicePlayer();}
 function toggleVP(id,src){
   const bubble=el('vp_'+id),btn=bubble?.querySelector('.vpbtn'),resolvedSrc=src||btn?.dataset?.voiceSrc||bubble?.dataset?.voiceSrc||'';
-  if(!resolvedSrc){showToast('⚠️ Cet audio est indisponible.');return;}
+  const sources=voiceSourceCandidates(resolvedSrc);
+  if(!sources.length){showToast('⚠️ Cet audio est indisponible.');return;}
   try{
     if(voicePlayer&&String(voicePlayerId)===String(id)){
       if(!voicePlayer.paused){voicePlayer.pause();setVoiceButtonIcon(btn,false);return;}
       if(voicePlayer.ended)voicePlayer.currentTime=0;
     }else{
       stopOtherVoicePlayers(id);
-      const a=new Audio();a.preload='metadata';a.playsInline=true;a.src=resolvedSrc;
-      voicePlayer=a;voicePlayerId=String(id);
-      const token=voicePlayerToken;
+      const startSource=(sourceIndex)=>{
+        const currentSrc=sources[sourceIndex];
+        const a=new Audio();a.preload='metadata';a.playsInline=true;a.src=currentSrc;
+        voicePlayer=a;voicePlayerId=String(id);
+        const token=voicePlayerToken;
+        const retrySource=()=>{
+          if(token!==voicePlayerToken)return;
+          if(sourceIndex+1<sources.length){resetVoicePlayer();startSource(sourceIndex+1);return;}
+          resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');
+        };
       const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
       const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id),currentButton=()=>document.querySelector(`#vp_${id} .vpbtn`);
       a.onloadedmetadata=()=>{if(token!==voicePlayerToken)return;const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
       a.ontimeupdate=()=>{if(token!==voicePlayerToken)return;const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
       a.onended=()=>{if(token!==voicePlayerToken)return;a.currentTime=0;const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(currentButton(),false);};
       a.onpause=()=>{if(token===voicePlayerToken&&!a.ended)setVoiceButtonIcon(currentButton(),false);};
-      a.onerror=()=>{if(token!==voicePlayerToken)return;resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');};
-      a.onplay=()=>{if(token!==voicePlayerToken)return;if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
+        a.onerror=retrySource;
+        a.onstalled=()=>{if(token===voicePlayerToken&&a.readyState===0)retrySource();};
+        a.onplay=()=>{if(token!==voicePlayerToken)return;if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
+        const playPromise=a.play();
+        setVoiceButtonIcon(btn,true);
+        if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{if(a===voicePlayer)retrySource();});
+      };
+      startSource(0);
+      return;
     }
     const player=voicePlayer,playPromise=player?.play();
     setVoiceButtonIcon(btn,true);
@@ -2798,7 +2846,7 @@ function renderInbox(q="",sn=null){
     const missingUids=entries.map(d=>(d.data().participants||[]).find(id=>id!==CU.uid)).filter(uid=>uid&&!allUsers.find(u=>u.uid===uid));
     if(missingUids.length){
       const fetched=await Promise.all(missingUids.map(uid=>db.collection('users').doc(uid).get().catch(()=>null)));
-      fetched.forEach(snap=>{if(snap&&snap.exists){const d=snap.data();if(d&&!allUsers.find(u=>u.uid===d.uid))allUsers.push(d);}});
+      fetched.forEach(snap=>{if(snap&&snap.exists){const d={...snap.data(),uid:snap.id};if(!allUsers.find(u=>u.uid===d.uid))allUsers.push(d);}});
     }
     f.innerHTML='';
     // Use in-memory unread map — NO extra Firestore fetch needed
@@ -3008,7 +3056,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v30.js?v=studylink-pwa-30',location.href).href;
+  const workerUrl=new URL('sw-v31.js?v=studylink-pwa-31',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
