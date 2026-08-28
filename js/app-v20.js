@@ -899,12 +899,12 @@ function renderStatusBar(){
 }
 
 // ── STATUS CREATE ──
-function openStatusCreate(draftPhoto){
+function openStatusCreate(draftPhoto,keepForward=false){
   if(!MP?.name)return showToast('❌ Complete your profile first');
   pushModalState();
   selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
   if(draftPhoto){statusPhotoUrl=draftPhoto;}
-  else{statusPhotoUrl=null;forwardedFromDraft=null;}
+  else{statusPhotoUrl=null;if(!keepForward)forwardedFromDraft=null;}
   el('stMsg').value='';el('stCharCount').textContent='0 / 100';
   updateStatusCreateTheme();
   if(statusPhotoUrl){el('stPhotoPreview').src=statusPhotoUrl;el('stPhotoPreviewWrap').style.display='block';el('stPhotoEmpty').style.display='none';}
@@ -1113,7 +1113,7 @@ function forwardStatus(){
   forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur'};
   const draftPhoto=sp.photo||null;
   closeStatusView();
-  openStatusCreate(draftPhoto);
+  openStatusCreate(draftPhoto,true);
 }
 function shareStatus(){
   el('stVMenu').style.display='none';
@@ -1151,12 +1151,26 @@ function viewStatusProfile(){
   if(typeof openProfile==='function')openProfile(uid);
   else showToast('Profil');
 }
-function toggleStatusNotif(){
+function replyToStatus(){
   el('stVMenu').style.display='none';
-  const u=allUsers.find(x=>x.uid===curStatusUid);
-  if(confirm(t('st_confirm_notif').replace('{name}',u?.name||'cet utilisateur'))){
-    showToast(t('st_toast_notif_on'));
-  }
+  const uid=curStatusUid,u=allUsers.find(x=>x.uid===uid);
+  if(!uid||!u)return showToast('Profil introuvable');
+  closeStatusView(true);
+  openChat(u.name||'Utilisateur',uid);
+}
+async function toggleStatusNotif(){
+  el('stVMenu').style.display='none';
+  const uid=curStatusUid,u=allUsers.find(x=>x.uid===uid);
+  if(!uid||!u||uid===CU?.uid)return;
+  const current=Array.isArray(MP?.statusNotifyUids)?MP.statusNotifyUids:[];
+  const enabled=current.includes(uid);
+  if(!enabled&&!confirm(t('st_confirm_notif').replace('{name}',u.name||'cet utilisateur')))return;
+  try{
+    const op=enabled?firebase.firestore.FieldValue.arrayRemove(uid):firebase.firestore.FieldValue.arrayUnion(uid);
+    await db.collection('users').doc(CU.uid).set({statusNotifyUids:op},{merge:true});
+    MP={...MP,statusNotifyUids:enabled?current.filter(x=>x!==uid):[...current,uid]};
+    showToast(enabled?'Notifications désactivées':t('st_toast_notif_on'));
+  }catch(e){showToast('❌ Impossible de modifier les notifications');}
 }
 function hideStatusUser(){
   el('stVMenu').style.display='none';
@@ -1170,9 +1184,12 @@ function hideStatusUser(){
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
-  if(confirm('Signaler ce statut pour contenu inapproprié ?')){
-    showToast(t('st_toast_reported'));
-  }
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  if(!u||!curStatusUid)return;
+  const reason=prompt(`${appLang==='fr'?'Signaler le statut de':'Report'} ${u.name||'cet utilisateur'} ?\n${appLang==='fr'?'Décrivez brièvement le motif :':'Briefly describe the reason:'}`);
+  if(!reason)return;
+  db.collection('reports').add({type:'status',reportedUid:curStatusUid,reportedName:u.name||'',statusMessage:activeStatusOf(u)?.message||'',reporterUid:CU.uid,reporterName:MP?.name||'',reason,createdAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(()=>showToast(t('st_toast_reported'))).catch(()=>showToast('❌ Impossible d’envoyer le signalement'));
 }
 async function sendQuickStatusReply(toUid,text){
   const cid=getCID(CU.uid,toUid);const t=now();

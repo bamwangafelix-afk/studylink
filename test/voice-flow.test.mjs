@@ -418,3 +418,13 @@ test('places the account name above the right-aligned header controls', async ()
   assert.match(css, /\.hdr-actions\{[^}]*flex-direction:column/);
   assert.match(css, /\.hdr-controls\{display:flex/);
 });
+
+test('wires all non-owner Statut menu actions to real handlers', () => {
+  assert.match(source, /<button onclick="forwardStatus\(\)">\$\{t\('st_menu_forward'\)\}<\/button>/);
+  assert.match(source, /<button onclick="replyToStatus\(\)">\$\{t\('st_menu_message'\)\}<\/button>/);
+  assert.match(source, /function replyToStatus\(\)[\s\S]*openChat\(u\.name\|\|'Utilisateur',uid\)/);
+  assert.match(source, /async function toggleStatusNotif\(\)[\s\S]*statusNotifyUids/);
+  assert.match(source, /function hideStatusUser\(\)[\s\S]*hiddenStatusUids/);
+  assert.match(source, /function reportStatus\(\)[\s\S]*collection\('reports'\)\.add/);
+  assert.match(source, /openStatusCreate\(draftPhoto,true\)/);
+});
