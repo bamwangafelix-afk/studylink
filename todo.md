@@ -149,3 +149,4 @@
 - [ ] Restore the Statut menu's View profile action for the selected user.
 - [ ] Add regression coverage for opening a profile from the Statut viewer while preserving modal history and language switching.
 - [ ] Run the full StudyLink regression suite and publish the verified fix.
+- [ ] Advance the PWA cache version for the profile fix so installed clients cannot keep the previous broken JavaScript bundle.
