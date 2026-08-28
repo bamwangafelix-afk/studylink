@@ -362,6 +362,24 @@ async function uploadVoiceToFirebase(file){
   });
   return ref.getDownloadURL();
 }
+async function uploadVoiceReliable(file){
+  uploadVoiceReliable.lastError='';
+  uploadVoiceReliable.lastStorage='';
+  let firebaseError='';
+  if(voiceStorage&&CU){
+    try{
+      const storageUrl=await uploadVoiceToFirebase(file);
+      if(storageUrl){uploadVoiceReliable.lastStorage='firebase-storage';return storageUrl;}
+    }catch(e){
+      firebaseError=e?.message||'Firebase Storage upload failed';
+      console.warn('Firebase voice upload failed; trying Cloudinary:',e);
+    }
+  }
+  const cloudUrl=await uploadCloud(file,'audio');
+  if(cloudUrl){uploadVoiceReliable.lastStorage='cloudinary';return cloudUrl;}
+  uploadVoiceReliable.lastError=[firebaseError,uploadCloud.lastError].filter(Boolean).join(' · ');
+  return null;
+}
 function readVoiceAsDataUrl(file,maxBytes=300000){
   return new Promise(resolve=>{
     if(!file||file.size>maxBytes||typeof FileReader==='undefined'){resolve(null);return;}
@@ -423,10 +441,14 @@ auth.onAuthStateChanged(async u=>{
   clearTimeout(authFallbackTimer);
   if(u){
     CU=u;
-    // Reveal the shell immediately. Profile, inbox, and user-list hydration continue in the background.
+    // Reveal the shell and start realtime listeners before any profile read.
+    // A slow user-document request must not hold Home or Messages on Loading.
     el('auth').style.display='none';
     el('ov').style.display='none';
     tab('home');
+    try{listenPosts();}catch(e){showDataError('posts',e);}
+    try{listenUsers();}catch(e){showDataError('users',e);}
+    try{setupInbox();}catch(e){showDataError('inbox',e);}
     const sn=await db.collection('users').doc(u.uid).get().catch(()=>null);
     const data=sn?.exists?sn.data():null;
     if(data&&!data.country&&el('step2F').style.display!=='flex'){
@@ -435,6 +457,7 @@ auth.onAuthStateChanged(async u=>{
       showStep2();
       return;
     }
+    // Profile, favorites, migration and presence continue after realtime data has started.
     try{await loadPro();}catch(e){console.log('loadPro error:',e);}
     try{await loadFavs();}catch(e){}
     // Migrate existing chats to chatIds array — only runs once ever (when migrated flag not set)
@@ -450,10 +473,7 @@ auth.onAuthStateChanged(async u=>{
       }
     }catch(e){console.log('migrate chatIds:',e);}
     try{setupPresence();}catch(e){}
-    try{listenPosts();}catch(e){}
-    try{listenUsers();}catch(e){}
     try{setupNotifL();}catch(e){}
-    try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
   }else{
     // Firebase can call this branch after a successful sign-out and later after a new login.
     // Always release the click guard so Disconnect works on every session, not only the first one.
@@ -882,7 +902,9 @@ function statusMillis(ts){
 function activeStatusOf(u){
   if(!u||!u.statusPost)return null;
   const createdMs=statusMillis(u.statusPost.createdAt);
-  if(!createdMs)return null; // still syncing with server, not ready yet
+  // A freshly-written serverTimestamp can be null for the first snapshot.
+  // Keep the status usable while Firestore resolves the timestamp.
+  if(!createdMs)return u.statusPost;
   if(Date.now()-createdMs>STATUS_TTL_MS)return null;
   return u.statusPost;
 }
@@ -918,8 +940,10 @@ function renderStatusBar(){
 }
 
 // ── STATUS CREATE ──
+function currentDisplayName(){return MP?.name||CU?.displayName||CU?.email?.split('@')[0]||'';}
 function openStatusCreate(draftPhoto,keepForward=false){
-  if(!MP?.name)return showToast('❌ Complete your profile first');
+  if(!CU?.uid)return showToast('❌ Session expirée, reconnectez-vous');
+  if(!currentDisplayName())return showToast('❌ Complete your profile first');
   pushModalState();
   const source=keepForward&&forwardedFromDraft?forwardedFromDraft:null;
   selStatusCat=source?.category||null;
@@ -1006,7 +1030,8 @@ function updateStatusPreview(){
     <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
 }
 async function publishStatus(){
-  if(!MP?.name)return showToast('❌ Complete your profile first');
+  if(!CU?.uid)return showToast('❌ Session expirée, reconnectez-vous');
+  if(!currentDisplayName())return showToast('❌ Complete your profile first');
   if(statusUploading)return showToast('❌ Photo en cours d\'envoi, patiente');
   const msg=v('stMsg');
   if(!statusPhotoUrl){
@@ -1025,7 +1050,13 @@ async function publishStatus(){
 }
 
 // ── STATUS VIEW ──
-let curStatusUid=null;
+let curStatusUid=null,curStatusData=null;
+function currentViewedStatus(){
+  const cached=curStatusUid?allUsers.find(x=>x?.uid===curStatusUid):null;
+  const u=cached||curStatusData?.user||null;
+  const sp=activeStatusOf(u)||curStatusData?.status||null;
+  return {u,sp};
+}
 function viewStatus(uid){
   if(!uid||!CU?.uid)return showToast('Session expirée, reconnectez-vous');
   const u=allUsers.find(x=>x?.uid===uid);
@@ -1033,6 +1064,7 @@ function viewStatus(uid){
   if(!sp)return showToast('❌ Statut expiré');
   pushModalState();
   curStatusUid=uid;
+  curStatusData={uid,user:{...u},status:{...sp}};
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
   const c=sp.category?CATS[sp.category]:null;
@@ -1089,8 +1121,8 @@ function toggleStatusMenu(){
   clearTimeout(statusAutoCloseTimer);
   const isMine=curStatusUid===CU.uid;
   if(isMine){
-    const mine=allUsers.find(u=>u.uid===CU.uid);
-    const sp=activeStatusOf(mine);
+    const mine=allUsers.find(u=>u.uid===CU.uid)||{uid:CU.uid,...(MP||{})};
+    const sp=activeStatusOf(mine)||curStatusData?.status;
     const isForward=!!sp?.forwardedFrom;
     menu.innerHTML=`
       <button onclick="showSeenBy()">${t('st_menu_seenby')}</button>
@@ -1102,6 +1134,7 @@ function toggleStatusMenu(){
   }else{
     menu.innerHTML=`
       <button onclick="forwardStatus()">${t('st_menu_forward')}</button>
+      <button onclick="saveStatusMedia()">${t('st_menu_save')}</button>
       <button onclick="replyToStatus()">${t('st_menu_message')}</button>
       <button onclick="viewStatusProfile()">${t('st_menu_viewprofile')}</button>
       <button onclick="toggleStatusNotif()">${t('st_menu_notif')}</button>
@@ -1113,8 +1146,7 @@ function toggleStatusMenu(){
 }
 function showSeenBy(){
   el('stVMenu').style.display='none';
-  const u=allUsers.find(x=>x.uid===curStatusUid);
-  const sp=activeStatusOf(u);
+  const {u,sp}=currentViewedStatus();
   const seenUids=(sp?.viewedBy||[]);
   const list=el('stVSeenList');
   if(seenUids.length===0){
@@ -1137,17 +1169,15 @@ function openSeenProfile(uid){
 function forwardStatus(){
   el('stVMenu').style.display='none';
   if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
-  const u=allUsers.find(x=>x?.uid===curStatusUid);
-  const sp=activeStatusOf(u);
+  const {u,sp}=currentViewedStatus();
   if(!u||!sp)return showToast('❌ Ce statut n’est plus disponible');
   forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur',category:sp.category||null,message:sp.message||'',subject:sp.subject||null,photo:sp.photo||null,linkedGroupId:sp.linkedGroupId||null,linkedGroupName:sp.linkedGroupName||null};
   closeStatusView();
-  openStatusCreate(sp.photo||null,true);
+  requestAnimationFrame(()=>{openStatusCreate(sp.photo||null,true);showToast('🔁 Statut transféré dans l’éditeur. Vérifiez puis publiez.');});
 }
 function shareStatus(){
   el('stVMenu').style.display='none';
-  const u=allUsers.find(x=>x.uid===curStatusUid);
-  const sp=activeStatusOf(u);
+  const {u,sp}=currentViewedStatus();
   if(!sp)return;
   const text=`${u?.name||'Quelqu\'un'} sur StudyLink: ${sp.message||'a partagé une photo'}`;
   if(navigator.share){navigator.share({title:'StudyLink',text}).catch(()=>{});}
@@ -1157,17 +1187,31 @@ function shareStatus(){
 function showForwardSource(){
   el('stVMenu').style.display='none';
   if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
-  const mine=allUsers.find(u=>u?.uid===CU.uid);
-  const sp=activeStatusOf(mine),source=sp?.forwardedFrom;
+  const mine=allUsers.find(u=>u?.uid===CU.uid)||{uid:CU.uid,...(MP||{})};
+  const sp=activeStatusOf(mine)||curStatusData?.status,source=sp?.forwardedFrom;
   if(!source)return showToast('Ce statut n’est pas un transfert');
   showToast(`Transféré depuis ${source.name||'un autre utilisateur'}`);
 }
-function saveStatusMedia(){
-  const u=allUsers.find(x=>x.uid===curStatusUid);
-  const sp=activeStatusOf(u);
-  if(sp?.photo)window.open(sp.photo,'_blank');
-  else showToast('Rien à enregistrer, statut texte seul');
+async function saveStatusMedia(){
   el('stVMenu').style.display='none';
+  const {sp}=currentViewedStatus();
+  if(!sp)return showToast('❌ Ce statut n’est plus disponible');
+  if(!sp.photo){
+    const text=sp.message||'';
+    if(text&&navigator.clipboard){try{await navigator.clipboard.writeText(text);showToast('✅ Texte du statut copié');}catch(e){showToast('⚠️ Sélectionnez et copiez le texte manuellement');}}
+    else showToast('Rien à enregistrer, statut texte seul');
+    return;
+  }
+  try{
+    const response=await fetch(sp.photo,{mode:'cors',cache:'no-store'});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const blob=await response.blob(),url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='studylink-status.jpg';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);showToast('✅ Photo enregistrée');
+  }catch(e){
+    const opened=window.open(sp.photo,'_blank');
+    showToast(opened?'📷 Image ouverte. Maintenez-la pour l’enregistrer.':'⚠️ Autorisez les fenêtres ou maintenez la photo pour l’enregistrer.');
+  }
 }
 async function deleteStatus(){
   el('stVMenu').style.display='none';
@@ -1328,11 +1372,10 @@ async function stopAndSendStatusVoice(){
   let msgRef=null,uploadCommitted=false;
   try{
     msgRef=await db.collection('chats').doc(cid).collection('messages').add({type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    let url=await uploadCloud(file,'audio'),fallbackError='';
-    if(!url){try{const storageUrl=await uploadVoiceToFirebase(file);if(storageUrl){await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});url=storageUrl;uploadCommitted=true;}}catch(e){fallbackError=e?.message||'Firebase Storage upload failed';}}
+    let url=await uploadVoiceReliable(file),fallbackError=uploadVoiceReliable.lastError||'';
     if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
-    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
-    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
+    if(!url){await msgRef.update({status:'failed',error:[uploadVoiceReliable.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
+    if(!uploadCommitted){await msgRef.update({data:url,status:'sent',storage:uploadVoiceReliable.lastStorage||'remote'});uploadCommitted=true;}
     const upd={participants:[CU.uid,toUid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(upd,{merge:true});
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
@@ -2420,20 +2463,8 @@ async function stopAndSendVoice(){
       senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
       status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    let url=await uploadCloud(file,'audio');
-    let voiceFallbackError='';
-    if(!url){
-      try{
-        const storageUrl=await uploadVoiceToFirebase(file);
-        if(storageUrl){
-          await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
-          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
-        }
-      }catch(storageErr){
-        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
-        console.warn('Firebase voice fallback failed:',storageErr);
-      }
-    }
+    let url=await uploadVoiceReliable(file);
+    let voiceFallbackError=uploadVoiceReliable.lastError||'';
     if(!url){
       // Keep very short voice notes usable even if both remote upload paths fail.
       const inlineUrl=await readVoiceAsDataUrl(file);
@@ -2442,13 +2473,13 @@ async function stopAndSendVoice(){
       }
     }
     if(!url){
-      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      const failure=[uploadVoiceReliable.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
       await msgRef.update({status:'failed',error:failure}).catch(()=>{});
       vSending=false;
       showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
       return;
     }
-    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
+    if(!uploadCommitted){await msgRef.update({data:url,status:'sent',storage:uploadVoiceReliable.lastStorage||'remote'});uploadCommitted=true;}
     const _vUpd={participants:[CU.uid,chat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
     _vUpd['unread.'+chat.uid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
@@ -2556,20 +2587,8 @@ async function stopAndSendGVoice(){
       senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
       time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    let url=await uploadCloud(file,'audio');
-    let voiceFallbackError='';
-    if(!url){
-      try{
-        const storageUrl=await uploadVoiceToFirebase(file);
-        if(storageUrl){
-          await gvRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
-          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
-        }
-      }catch(storageErr){
-        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
-        console.warn('Firebase group voice fallback failed:',storageErr);
-      }
-    }
+    let url=await uploadVoiceReliable(file);
+    let voiceFallbackError=uploadVoiceReliable.lastError||'';
     if(!url){
       const inlineUrl=await readVoiceAsDataUrl(file);
       if(inlineUrl){
@@ -2577,7 +2596,7 @@ async function stopAndSendGVoice(){
       }
     }
     if(!url){
-      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      const failure=[uploadVoiceReliable.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
       await gvRef.update({status:'failed',error:failure}).catch(()=>{});
       gVoiceSending=false;
       showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
@@ -3083,7 +3102,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v32.js?v=studylink-pwa-32',location.href).href;
+  const workerUrl=new URL('sw-v33.js?v=studylink-pwa-33',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
