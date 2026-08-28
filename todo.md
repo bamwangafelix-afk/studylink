@@ -138,7 +138,14 @@
 
 ## Clarified user-file integration request (2026-08-28)
 
-- [ ] Re-evaluate the supplied `styles.css`, `app-v20.js`, and `index.html` as the user's newer working versions rather than assuming they are obsolete.
-- [ ] Merge every genuine new feature from the supplied versions into the existing pwa-26 StudyLink files while preserving current branding, PWA versioning, Color Companion, Statut reply flow, and recorder safeguards.
-- [ ] Expand regression coverage for the combined behavior and run all tests.
-- [ ] Republish the combined release to GitHub Pages and verify the live result.
+- [x] Re-evaluate the supplied `styles.css`, `app-v20.js`, and `index.html` as the user's newer working versions rather than assuming they are obsolete.
+- [x] Merge every genuine new feature from the supplied versions into the existing pwa-26 StudyLink files while preserving current branding, PWA versioning, Color Companion, Statut reply flow, and recorder safeguards.
+- [x] Expand regression coverage for the combined behavior and run all tests.
+- [x] Republish the combined release to GitHub Pages and verify the live result.
+
+
+## View profile regression (2026-08-28)
+
+- [ ] Restore the Statut menu's View profile action for the selected user.
+- [ ] Add regression coverage for opening a profile from the Statut viewer while preserving modal history and language switching.
+- [ ] Run the full StudyLink regression suite and publish the verified fix.

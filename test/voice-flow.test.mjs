@@ -82,6 +82,12 @@ test('keeps hardware back navigation inside open StudyLink overlays', () => {
   assert.match(source, /consumeModalState\(\);/);
 });
 
+test('opens the selected profile from the Statut viewer and preserves modal history', () => {
+  assert.match(source, /function viewStatusProfile\(\)[\s\S]*closeStatusView\(true\)[\s\S]*openProfile\(uid\)/);
+  assert.match(source, /function closeStatusView\(preserveHistory=false\)/);
+  assert.match(source, /function openProfile\(uid\)[\s\S]*pushModalState\(\)/);
+});
+
 test('merges the user branch language switch without regressing pwa-26 Statut controls', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /id="langBtn"[^>]*onclick="toggleLang\(\)"/);

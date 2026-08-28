@@ -1053,7 +1053,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;consumeModalState();}
+function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1147,7 +1147,7 @@ async function deleteStatus(){
 function viewStatusProfile(){
   el('stVMenu').style.display='none';
   const uid=curStatusUid;
-  closeStatusView();
+  closeStatusView(true);
   if(typeof openProfile==='function')openProfile(uid);
   else showToast('Profil');
 }
