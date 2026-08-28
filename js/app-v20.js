@@ -1322,11 +1322,6 @@ async function sendStatusReply(){
   const ok=await sendQuickStatusReply(curStatusUid,text);
   if(ok){showToast('Message envoyé');restartStatusReplyTimer();}
 }
-function replyToStatus(){
-  el('stVMenu').style.display='none';
-  sendStatusReply();
-}
-
 function statusPressStart(e){
   if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
   clearTimeout(statusAutoCloseTimer);
@@ -3013,7 +3008,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v29.js?v=studylink-pwa-29',location.href).href;
+  const workerUrl=new URL('sw-v30.js?v=studylink-pwa-30',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
