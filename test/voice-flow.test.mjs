@@ -71,6 +71,17 @@ test('uses the conversation-style smart composer for Statut text and voice repli
   assert.doesNotMatch(source, /stVReplyBtn[^\n]*style\.background='(?:#1976d2|rgba\(255,255,255,\.18\))'/);
 });
 
+test('keeps hardware back navigation inside open StudyLink overlays', () => {
+  assert.match(source, /let slModalOpen=false;/);
+  assert.match(source, /function pushModalState\(\)/);
+  assert.match(source, /history\.pushState\(\{slModal:true\},document\.title\)/);
+  assert.match(source, /function consumeModalState\(\)/);
+  assert.match(source, /window\.addEventListener\('popstate'/);
+  assert.match(source, /function closeTopModal\(\)/);
+  assert.match(source, /pushModalState\(\);/);
+  assert.match(source, /consumeModalState\(\);/);
+});
+
 test('does not require a reload after microphone permission is granted', () => {
   assert.match(source, /function getVoiceStream\(\)/);
   assert.match(source, /Microphone bloqué\. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici\./);

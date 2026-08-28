@@ -126,3 +126,11 @@
 - [x] Update PWA icon assets, manifest metadata, and cache version, then publish and verify the new home-screen icon without regressing the Color Companion.
 
 - [x] Update static StudyLink regression expectations from pwa-24 to pwa-26 after the new app-icon release, then rerun the suite.
+
+
+## User-provided file reconciliation (2026-08-28)
+
+- [x] Compare the supplied `styles.css`, `app-v20.js`, and `index.html` against the current StudyLink versions.
+- [x] Preserve existing pwa-26 branding, Color Companion, recorder safeguards, and PWA behavior while integrating compatible new functionality.
+- [x] Run the complete StudyLink regression suite after reconciliation.
+- [ ] Publish the reconciled files to `bamwangafelix-afk/studylink` and verify the live GitHub Pages shell and assets.

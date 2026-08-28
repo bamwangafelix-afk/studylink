@@ -6,7 +6,32 @@ const MIC_SVG_INNER='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="
 function setMicIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 48 48');ic.setAttribute('width','26');ic.setAttribute('height','26');ic.innerHTML=MIC_SVG_INNER;}
 function setSendIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 24 24');ic.setAttribute('width','24');ic.setAttribute('height','24');ic.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';}
 
-
+// ── MOBILE OVERLAY BACK NAVIGATION ──
+// Keep Android's hardware back button inside StudyLink while a full-screen
+// overlay is open, instead of navigating away from the app shell.
+let slModalOpen=false;
+function pushModalState(){
+  if(slModalOpen)return;
+  slModalOpen=true;
+  try{history.pushState({slModal:true},document.title);}catch(e){}
+}
+function consumeModalState(){
+  if(!slModalOpen)return;
+  slModalOpen=false;
+  try{history.back();}catch(e){}
+}
+function closeTopModal(){
+  if(el('statusView')?.style.display==='flex'){closeStatusView();return;}
+  if(el('statusCreate')?.style.display==='flex'){closeStatusCreate();return;}
+  if(el('profileView')?.style.display==='flex'){closeProfileView();return;}
+  if(el('groupW')&&getComputedStyle(el('groupW')).display!=='none'){closeGroup();return;}
+  if(el('chatW')&&getComputedStyle(el('chatW')).display!=='none'){closeChat();return;}
+}
+window.addEventListener('popstate',()=>{
+  if(!slModalOpen)return;
+  slModalOpen=false;
+  closeTopModal();
+});
 
 // ── GLOBAL CRASH PREVENTION ──
 window.addEventListener('unhandledrejection',e=>{
@@ -612,6 +637,7 @@ function hideEF(){el('EF').style.display='none';}
 function openProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
+  pushModalState();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
   el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
@@ -623,10 +649,10 @@ function openProfile(uid){
   el('pvSkills').innerHTML=(u.skills||[]).map(s=>`<span class="tbadge" style="background:#fff3e0;color:#e65100;">${esc(s)}</span>`).join('');
   const isSelf=uid===CU?.uid;
   el('pvMsgBtn').style.display=isSelf?'none':'block';
-  el('pvMsgBtn').onclick=()=>{closeProfileView();openChat(u.name||'',uid);};
+  el('pvMsgBtn').onclick=()=>{closeProfileView(true);openChat(u.name||'',uid);};
   el('profileView').style.display='flex';
 }
-function closeProfileView(){el('profileView').style.display='none';}
+function closeProfileView(preserveHistory=false){el('profileView').style.display='none';if(!preserveHistory)consumeModalState();}
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
@@ -875,6 +901,7 @@ function renderStatusBar(){
 // ── STATUS CREATE ──
 function openStatusCreate(draftPhoto){
   if(!MP?.name)return showToast('❌ Complete your profile first');
+  pushModalState();
   selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
   if(draftPhoto){statusPhotoUrl=draftPhoto;}
   else{statusPhotoUrl=null;forwardedFromDraft=null;}
@@ -899,7 +926,7 @@ function openStatusCreate(draftPhoto){
   updateStatusPreview();
   el('statusCreate').style.display='flex';
 }
-function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');}
+function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');consumeModalState();}
 function selectStatusCat(k){
   selStatusCat=k;
   document.querySelectorAll('.stCatCard').forEach(c=>c.classList.remove('sel'));
@@ -977,6 +1004,7 @@ function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
+  pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
@@ -1025,7 +1053,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
+function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;consumeModalState();}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1399,6 +1427,7 @@ function openChat(name,uid){
   curChat=null;replyMsg=null;
   const mb=el('msgB');if(mb)mb.innerHTML='';
   curChat={name,uid};
+  pushModalState();
   el('chatT').textContent=name;
   const other=allUsers.find(u=>u.uid===uid);
   const st=getStatusInfo(other?.status,other?.lastSeen);
@@ -1509,6 +1538,7 @@ function closeChat(){
   curChat=null;replyMsg=null;
   el('rplybar').style.display='none';
   closeMediaPanel();closeStickers();clearSelection();
+  consumeModalState();
 }
 function onMsgInput(){
   if(!curChat)return;
@@ -1705,6 +1735,7 @@ async function openGroup(postId,name){
     if(!gs.exists){showToast('❌ Group not found');showOv(false);return;}
     if(!(gs.data().members||[]).includes(CU.uid))await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
     curGrp={id:postId,name};
+    pushModalState();
     el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
@@ -1731,6 +1762,7 @@ function closeGroup(){
   el('gTypebar').style.display='none';el('groupW').style.display='none';
   if(grpUnsub){grpUnsub();grpUnsub=null;}if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
   curGrp=null;closeGStickers();clearSelection();
+  consumeModalState();
 }
 async function sendGMsg(){
   const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
