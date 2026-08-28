@@ -130,7 +130,7 @@ let voiceWakeLock=null;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
 let voiceTouchSuppressUntil=0;
-let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null;
+let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null,usersUnsub=null,postsUnsub=null;
 let signOutInProgress=false,disconnectBound=false;
 const waveTimers=Object.create(null);
 let replyMsg=null,curEId=null,curED=null,typDebounce=null,gTypDebounce=null;
@@ -388,10 +388,10 @@ function compressImg(file){
 
 // ── AUTH ──
 function cleanupAuthListeners(){
-  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub,grpPresenceUnsub,window._typingUnsub,window._statusUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
+  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub,grpPresenceUnsub,usersUnsub,postsUnsub,window._typingUnsub,window._statusUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
   if(typeof inboxUnsub==='function')try{inboxUnsub();}catch(e){}
   if(typeof inboxChatsUnsub==='function')try{inboxChatsUnsub();}catch(e){}
-  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;grpPresenceUnsub=null;
+  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;grpPresenceUnsub=null;usersUnsub=null;postsUnsub=null;
   window._typingUnsub=null;window._statusUnsub=null;
   if(typeof inboxUnsub==='function')inboxUnsub=null;
   if(typeof inboxChatsUnsub==='function')inboxChatsUnsub=null;
@@ -705,8 +705,26 @@ async function savePro(){
 }
 
 // ── USERS ──
+const dataErrorNoticeAt=Object.create(null);
+function showDataError(kind,error){
+  const now=Date.now();
+  if(now-(dataErrorNoticeAt[kind]||0)<5000)return;
+  dataErrorNoticeAt[kind]=now;
+  console.warn(kind+' data listener failed:',error?.code||error?.message||error);
+  if(kind==='posts'&&!cachedPosts.length){
+    const feed=el('feed');
+    if(feed)feed.innerHTML=`<div class="card" style="text-align:center;padding:24px;"><div style="font-size:28px;margin-bottom:8px;">⚠️</div><b>Impossible de charger les données</b><p style="font-size:12px;color:var(--sub);margin:8px 0 14px;">Vérifiez la connexion puis réessayez.</p><button class="btn" style="max-width:220px;margin:0 auto;" onclick="retryDataLoad()">Réessayer</button></div>`;
+  }
+  showToast('❌ Données indisponibles. Vérifiez la connexion puis réessayez.');
+}
+function retryDataLoad(){
+  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
+  try{listenPosts();listenUsers();setupInbox();showToast('🔄 Rechargement des données...');}
+  catch(e){showDataError('retry',e);}
+}
 function listenUsers(){
-  db.collection('users').onSnapshot(sn=>{
+  if(usersUnsub)usersUnsub();
+  usersUnsub=db.collection('users').onSnapshot(sn=>{
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
     renderStatusBar();
     // Only re-render Find if it's currently visible
@@ -731,14 +749,15 @@ function listenUsers(){
         });
       }
     });
-  },e=>console.log('users:',e));
+  },e=>showDataError('users',e));
 }
 
 // ── POSTS ──
 let cachedPosts=[],lastPostCount=0,_feedShown=10;
 function listenPosts(){
+  if(postsUnsub)postsUnsub();
   // Listen to latest 30 posts in real-time; we only render _feedShown of them
-  db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
+  postsUnsub=db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
     const newPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
     const isHomeVisible=el('Phome')&&el('Phome').style.display!=='none';
     if(isHomeVisible){
@@ -757,7 +776,7 @@ function listenPosts(){
       }
       cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     }
-  },e=>console.log(e));
+  },e=>showDataError('posts',e));
 }
 function loadMorePosts(){
   _feedShown+=10;
@@ -902,10 +921,13 @@ function renderStatusBar(){
 function openStatusCreate(draftPhoto,keepForward=false){
   if(!MP?.name)return showToast('❌ Complete your profile first');
   pushModalState();
-  selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
-  if(draftPhoto){statusPhotoUrl=draftPhoto;}
-  else{statusPhotoUrl=null;if(!keepForward)forwardedFromDraft=null;}
-  el('stMsg').value='';el('stCharCount').textContent='0 / 100';
+  const source=keepForward&&forwardedFromDraft?forwardedFromDraft:null;
+  selStatusCat=source?.category||null;
+  selStatusSubject=source?.subject||null;
+  selStatusGroup=source?.linkedGroupId?{id:source.linkedGroupId,name:source.linkedGroupName||'Groupe'}:null;
+  statusPhotoUrl=draftPhoto||source?.photo||null;
+  if(!keepForward)forwardedFromDraft=null;
+  el('stMsg').value=source?.message||'';el('stCharCount').textContent=(el('stMsg').value.length)+' / 100';
   updateStatusCreateTheme();
   if(statusPhotoUrl){el('stPhotoPreview').src=statusPhotoUrl;el('stPhotoPreviewWrap').style.display='block';el('stPhotoEmpty').style.display='none';}
   else{el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';}
@@ -914,14 +936,18 @@ function openStatusCreate(draftPhoto,keepForward=false){
     const c=CATS[k];
     return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${catLabel(k)}</div></div>`;
   }).join('');
+  if(selStatusCat)el('stCat_'+selStatusCat)?.classList.add('sel');
   const subjWrap=el('stSubjSel');
   subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
+  if(selStatusSubject)el('stSubj_'+selStatusSubject.replace(/[^a-zA-Z0-9]/g,''))?.classList.add('sel');
   const myGroups=cachedPosts.filter(p=>p.type==='Group'&&p.uid===CU.uid);
   const grpWrap=el('stGroupSel');
   if(myGroups.length===0){
     grpWrap.innerHTML=`<span style="font-size:12px;color:var(--sub);">Tu n'as pas encore créé de groupe dans le Feed</span>`;
   }else{
     grpWrap.innerHTML=myGroups.map(g=>`<button type="button" class="tag" id="stGrp_${g.id}" onclick="toggleStatusGroup('${g.id}','${e2(g.groupName||'Groupe')}')">🏫 ${esc(g.groupName||'Groupe')}</button>`).join('');
+    if(selStatusGroup&&myGroups.some(g=>g.id===selStatusGroup.id))el('stGrp_'+selStatusGroup.id)?.classList.add('sel');
+    else if(selStatusGroup)selStatusGroup=null;
   }
   updateStatusPreview();
   el('statusCreate').style.display='flex';
@@ -1110,13 +1136,13 @@ function openSeenProfile(uid){
 }
 function forwardStatus(){
   el('stVMenu').style.display='none';
-  const u=allUsers.find(x=>x.uid===curStatusUid);
+  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
+  const u=allUsers.find(x=>x?.uid===curStatusUid);
   const sp=activeStatusOf(u);
-  if(!sp)return;
-  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur'};
-  const draftPhoto=sp.photo||null;
+  if(!u||!sp)return showToast('❌ Ce statut n’est plus disponible');
+  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur',category:sp.category||null,message:sp.message||'',subject:sp.subject||null,photo:sp.photo||null,linkedGroupId:sp.linkedGroupId||null,linkedGroupName:sp.linkedGroupName||null};
   closeStatusView();
-  openStatusCreate(draftPhoto,true);
+  openStatusCreate(sp.photo||null,true);
 }
 function shareStatus(){
   el('stVMenu').style.display='none';
@@ -1132,8 +1158,9 @@ function showForwardSource(){
   el('stVMenu').style.display='none';
   if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
   const mine=allUsers.find(u=>u?.uid===CU.uid);
-  const sp=activeStatusOf(mine);
-  if(sp?.forwardedFrom)showToast('Transféré depuis un autre statut');
+  const sp=activeStatusOf(mine),source=sp?.forwardedFrom;
+  if(!source)return showToast('Ce statut n’est pas un transfert');
+  showToast(`Transféré depuis ${source.name||'un autre utilisateur'}`);
 }
 function saveStatusMedia(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
@@ -2807,7 +2834,7 @@ function setupInbox(){
     // discovery must remain active even when chatIds is stale or absent.
     if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     if(!inboxChatsUnsub)startChatListener();
-  },e=>{showToast('❌ Inbox error: '+e.message);});
+    },e=>showDataError('inbox',e));
 }
 
 function renderInbox(q="",sn=null){
@@ -2899,7 +2926,7 @@ function renderInbox(q="",sn=null){
     });
   };
   if(sn){_execRender(sn);return;}
-  db.collection('chats').where('participants','array-contains',CU.uid).get().then(_execRender).catch(e=>console.log(e));
+  db.collection('chats').where('participants','array-contains',CU.uid).get().then(_execRender).catch(e=>showDataError('inbox',e));
 }
 function reportUser(uid,name){
   if(!uid)return;
@@ -3056,7 +3083,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v31.js?v=studylink-pwa-31',location.href).href;
+  const workerUrl=new URL('sw-v32.js?v=studylink-pwa-32',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
