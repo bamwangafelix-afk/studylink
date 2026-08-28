@@ -133,4 +133,12 @@
 - [x] Compare the supplied `styles.css`, `app-v20.js`, and `index.html` against the current StudyLink versions.
 - [x] Preserve existing pwa-26 branding, Color Companion, recorder safeguards, and PWA behavior while integrating compatible new functionality.
 - [x] Run the complete StudyLink regression suite after reconciliation.
-- [ ] Publish the reconciled files to `bamwangafelix-afk/studylink` and verify the live GitHub Pages shell and assets.
+- [x] Publish the reconciled files to `bamwangafelix-afk/studylink` and verify the live GitHub Pages shell and assets.
+
+
+## Clarified user-file integration request (2026-08-28)
+
+- [ ] Re-evaluate the supplied `styles.css`, `app-v20.js`, and `index.html` as the user's newer working versions rather than assuming they are obsolete.
+- [ ] Merge every genuine new feature from the supplied versions into the existing pwa-26 StudyLink files while preserving current branding, PWA versioning, Color Companion, Statut reply flow, and recorder safeguards.
+- [ ] Expand regression coverage for the combined behavior and run all tests.
+- [ ] Republish the combined release to GitHub Pages and verify the live result.

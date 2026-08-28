@@ -82,6 +82,24 @@ test('keeps hardware back navigation inside open StudyLink overlays', () => {
   assert.match(source, /consumeModalState\(\);/);
 });
 
+test('merges the user branch language switch without regressing pwa-26 Statut controls', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /id="langBtn"[^>]*onclick="toggleLang\(\)"/);
+  assert.match(html, /data-i18n="st_new_title"/);
+  assert.match(html, /data-i18n="st_category_label"/);
+  assert.match(html, /data-i18n-ph="st_reply_placeholder"/);
+  assert.match(html, /id="stColorCompanion"/);
+  assert.match(html, /id="stVReplyInput"[^>]*oninput="onStatusReplyInput\(\)"/);
+  assert.match(source, /const I18N=\{/);
+  assert.match(source, /let appLang=localStorage\.getItem\('appLang'\)\|\|'fr'/);
+  assert.match(source, /function toggleLang\(\)/);
+  assert.match(source, /function applyTranslations\(\)/);
+  assert.match(source, /function catLabel\(key\)/);
+  assert.match(source, /const workerUrl=new URL\('sw-v26\.js\?v=studylink-pwa-26'/);
+  assert.match(source, /function smartStatusReply\(\)/);
+  assert.match(source, /function startStatusVoice\(fromGesture=false\)/);
+});
+
 test('does not require a reload after microphone permission is granted', () => {
   assert.match(source, /function getVoiceStream\(\)/);
   assert.match(source, /Microphone bloqué\. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici\./);

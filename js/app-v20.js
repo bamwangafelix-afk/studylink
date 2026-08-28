@@ -912,7 +912,7 @@ function openStatusCreate(draftPhoto){
   const grid=el('stCatGrid');
   grid.innerHTML=Object.keys(CATS).map(k=>{
     const c=CATS[k];
-    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${c.label}</div></div>`;
+    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${catLabel(k)}</div></div>`;
   }).join('');
   const subjWrap=el('stSubjSel');
   subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
@@ -975,7 +975,7 @@ function updateStatusPreview(){
   const c=selStatusCat?CATS[selStatusCat]:null;
   const av=statusPhotoUrl?`<img class="stThumb" src="${statusPhotoUrl}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
   const ringCls=selStatusCat?('ring-'+selStatusCat):'ring-photo';
-  const desc=c?(`${c.emoji} ${c.label}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
+  const desc=c?(`${c.emoji} ${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
   p.innerHTML=`<div class="stRing ${ringCls}" style="width:52px;height:52px;flex-shrink:0;">${av}</div>
     <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
 }
@@ -1016,7 +1016,7 @@ function viewStatus(uid){
   const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
   el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
-  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${c.label}`;}
+  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${catLabel(sp.category)}`;}
   else{el('stVBadge').style.display='none';}
   if(sp.message){el('stVMsg').style.display='block';el('stVMsg').textContent=sp.message;}
   else{el('stVMsg').style.display='none';}
@@ -1064,20 +1064,20 @@ function toggleStatusMenu(){
     const sp=activeStatusOf(mine);
     const isForward=!!sp?.forwardedFrom;
     menu.innerHTML=`
-      <button onclick="showSeenBy()">Vu par</button>
-      ${isForward?`<button onclick="showForwardSource()">Transféré</button>`:''}
-      <button onclick="shareStatus()">Partager</button>
-      <button onclick="saveStatusMedia()">Enregistrer</button>
-      <button class="danger" onclick="deleteStatus()">Supprimer</button>
+      <button onclick="showSeenBy()">${t('st_menu_seenby')}</button>
+      ${isForward?`<button onclick="showForwardSource()">${t('st_menu_forward')}</button>`:''}
+      <button onclick="shareStatus()">${t('st_menu_share')}</button>
+      <button onclick="saveStatusMedia()">${t('st_menu_save')}</button>
+      <button class="danger" onclick="deleteStatus()">${t('st_menu_delete')}</button>
     `;
   }else{
     menu.innerHTML=`
-      <button onclick="forwardStatus()">Transférer</button>
-      <button onclick="replyToStatus()">Message</button>
-      <button onclick="viewStatusProfile()">Voir profil</button>
-      <button onclick="toggleStatusNotif()">Notifications</button>
-      <button onclick="hideStatusUser()">Masquer</button>
-      <button class="danger" onclick="reportStatus()">Signaler</button>
+      <button onclick="forwardStatus()">${t('st_menu_forward')}</button>
+      <button onclick="replyToStatus()">${t('st_menu_message')}</button>
+      <button onclick="viewStatusProfile()">${t('st_menu_viewprofile')}</button>
+      <button onclick="toggleStatusNotif()">${t('st_menu_notif')}</button>
+      <button onclick="hideStatusUser()">${t('st_menu_hide')}</button>
+      <button class="danger" onclick="reportStatus()">${t('st_menu_report')}</button>
     `;
   }
   menu.style.display='block';
@@ -1089,14 +1089,14 @@ function showSeenBy(){
   const seenUids=(sp?.viewedBy||[]);
   const list=el('stVSeenList');
   if(seenUids.length===0){
-    list.innerHTML=`<div class="stVSeenHdr">Vu par personne pour l'instant</div>`;
+    list.innerHTML=`<div class="stVSeenHdr">${t('st_seen_none')}</div>`;
   }else{
     const rows=seenUids.map(uid=>{
       const su=allUsers.find(x=>x.uid===uid);
       const av=su?.photo?`<img src="${su.photo}">`:esc((su?.name||'?')[0]||'?').toUpperCase();
       return `<div class="stVSeenRow" onclick="openSeenProfile('${uid}')"><div class="stVSeenAv">${av}</div><div class="stVSeenName">${esc(su?.name||'Utilisateur')}</div></div>`;
     }).join('');
-    list.innerHTML=`<div class="stVSeenHdr">Vu par ${seenUids.length}</div>${rows}`;
+    list.innerHTML=`<div class="stVSeenHdr">${t('st_seen_count')} ${seenUids.length}</div>${rows}`;
   }
   list.style.display='block';
 }
@@ -1140,8 +1140,8 @@ function saveStatusMedia(){
 }
 async function deleteStatus(){
   el('stVMenu').style.display='none';
-  if(!confirm('Supprimer ton statut ?'))return;
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast('Statut supprimé');}
+  if(!confirm(t('st_confirm_delete')))return;
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'));}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
@@ -1154,24 +1154,24 @@ function viewStatusProfile(){
 function toggleStatusNotif(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
-  if(confirm(`Tu seras notifié quand ${u?.name||'cet utilisateur'} ajoute un nouveau statut.`)){
-    showToast('Notifications activées');
+  if(confirm(t('st_confirm_notif').replace('{name}',u?.name||'cet utilisateur'))){
+    showToast(t('st_toast_notif_on'));
   }
 }
 function hideStatusUser(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
-  if(confirm(`Les statuts de ${u?.name||'cet utilisateur'} n'apparaîtront plus dans tes mises à jour.`)){
+  if(confirm(t('st_confirm_hide').replace('{name}',u?.name||'cet utilisateur'))){
     let hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
     if(!hidden.includes(curStatusUid))hidden.push(curStatusUid);
     localStorage.setItem('hiddenStatusUids',JSON.stringify(hidden));
-    closeStatusView();renderStatusBar();showToast('Masqué');
+    closeStatusView();renderStatusBar();showToast(t('st_toast_hidden'));
   }
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
   if(confirm('Signaler ce statut pour contenu inapproprié ?')){
-    showToast('Signalement envoyé');
+    showToast(t('st_toast_reported'));
   }
 }
 async function sendQuickStatusReply(toUid,text){
@@ -2875,6 +2875,60 @@ function setupNotifL(){
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>b.delete(d.ref));return b.commit();});}
 
+// ── I18N (merged from user branch) ──
+const I18N={
+  fr:{
+    st_new_title:'Nouveau statut',st_publish:'Publier',st_photo_label:'Photo (optionnel)',
+    st_add_photo:'Ajouter une photo',st_photo_hint:'Notes, bureau de révision, selfie...',
+    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',
+    st_subject_label:'Matière (optionnel)',st_link_group_label:'Lier un groupe (optionnel)',
+    st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
+    st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
+    st_reply_placeholder:'Répondre...',st_cat_dispo:'Disponible',st_cat_revision:'En révision',
+    st_cat_aide:"Besoin d'aide",st_cat_session:'Session en cours',st_cat_pause:'Pause',st_cat_objectif:'Objectif atteint',
+    st_menu_seenby:'Vu par',st_menu_share:'Partager',st_menu_save:'Enregistrer',st_menu_delete:'Supprimer',
+    st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
+    st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
+    st_toast_published:'✅ Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
+    st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
+    st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',
+    st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',
+    st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
+    st_confirm_notif:'Tu seras notifié quand {name} ajoute un nouveau statut.',
+    st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
+  },
+  en:{
+    st_new_title:'New status',st_publish:'Post',st_photo_label:'Photo (optional)',st_add_photo:'Add a photo',
+    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',
+    st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
+    st_msg_placeholder:'Free to study now, who wants to join?',st_preview_label:'Preview',
+    st_expiry_note:'⏱ Your status disappears automatically after 24h',st_reply_placeholder:'Reply...',
+    st_cat_dispo:'Available',st_cat_revision:'Studying',st_cat_aide:'Need help',st_cat_session:'In session',
+    st_cat_pause:'Break',st_cat_objectif:'Goal reached',st_menu_seenby:'Seen by',st_menu_share:'Share',st_menu_save:'Save',
+    st_menu_delete:'Delete',st_menu_forward:'Forward',st_menu_message:'Message',st_menu_viewprofile:'View profile',
+    st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
+    st_toast_published:'✅ Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
+    st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
+    st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',
+    st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",
+    st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
+    st_confirm_notif:'You will be notified when {name} adds a new status.',
+    st_confirm_hide:"{name}'s statuses will no longer appear in your updates."
+  }
+};
+let appLang=localStorage.getItem('appLang')||'fr';
+function t(key){return I18N[appLang]?.[key]||I18N.fr[key]||key;}
+const STATUS_I18N_KEYS={dispo:'st_cat_dispo',revision:'st_cat_revision',aide:'st_cat_aide',session:'st_cat_session',pause:'st_cat_pause',objectif:'st_cat_objectif'};
+function catLabel(key){return t(STATUS_I18N_KEYS[key])||CATS[key]?.label||key;}
+function applyTranslations(){
+  document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=t(node.getAttribute('data-i18n'));});
+  document.querySelectorAll('[data-i18n-ph]').forEach(node=>{node.placeholder=t(node.getAttribute('data-i18n-ph'));});
+  const langBtn=document.getElementById('langBtn');if(langBtn)langBtn.textContent=appLang.toUpperCase();
+  document.querySelectorAll('#stCatGrid .stCatCard .nm').forEach((node,index)=>{const key=Object.keys(CATS)[index];if(key)node.textContent=catLabel(key);});
+  if(document.getElementById('statusCreate')?.style.display==='flex'){updateStatusPreview();}
+}
+function toggleLang(){appLang=appLang==='fr'?'en':'fr';localStorage.setItem('appLang',appLang);applyTranslations();if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);}
+
 // ── HELPERS ──
 function el(id){return document.getElementById(id);}
 function v(id){return(el(id)?.value||'').trim();}
@@ -2970,6 +3024,7 @@ function setupPWA(){
   window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
 }
 function bootstrapStudyLink(){
+  applyTranslations();
   setupNavigation();
   setupPWA();
   const disconnectButton=el('disconnectBtn');
