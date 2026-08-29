@@ -654,10 +654,10 @@ async function loadPro(){
 }
 function showEF(){el('EF').style.display='block';el('EF').scrollIntoView({behavior:'smooth'});}
 function hideEF(){el('EF').style.display='none';}
-function openProfile(uid){
+function openProfile(uid,options={}){
   const u=allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
-  pushModalState();
+  if(!options.reuseModalHistory)pushModalState();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
   el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
@@ -1162,9 +1162,11 @@ function showSeenBy(){
   list.style.display='block';
 }
 function openSeenProfile(uid){
-  closeStatusView();
-  if(typeof openProfile==='function')openProfile(uid);
-  else showToast('Profil');
+  const u=uid&&allUsers.find(x=>x.uid===uid);
+  el('stVSeenList').style.display='none';
+  if(!u){closeStatusView();return showToast(t('st_toast_profile_missing'));}
+  closeStatusView(true);
+  if(typeof openProfile==='function')openProfile(uid,{reuseModalHistory:true});
 }
 function forwardStatus(){
   el('stVMenu').style.display='none';
@@ -1223,9 +1225,10 @@ async function deleteStatus(){
 function viewStatusProfile(){
   el('stVMenu').style.display='none';
   const uid=curStatusUid;
+  const u=uid&&allUsers.find(x=>x.uid===uid);
+  if(!uid||!u){closeStatusView();return showToast(t('st_toast_profile_missing'));}
   closeStatusView(true);
-  if(typeof openProfile==='function')openProfile(uid);
-  else showToast('Profil');
+  if(typeof openProfile==='function')openProfile(uid,{reuseModalHistory:true});
 }
 function replyToStatus(){
   el('stVMenu').style.display='none';
@@ -2996,10 +2999,10 @@ const I18N={
     st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
     st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
     st_toast_published:'✅ Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
-    st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
+    st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',st_toast_profile_missing:'Profil introuvable',
     st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',
     st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',
-    st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
+    profile_title:'Profil',profile_message:'Message',st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
     st_confirm_notif:'Tu seras notifié quand {name} ajoute un nouveau statut.',
     st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
   },
@@ -3014,10 +3017,10 @@ const I18N={
     st_menu_delete:'Delete',st_menu_forward:'Forward',st_menu_message:'Message',st_menu_viewprofile:'View profile',
     st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
     st_toast_published:'✅ Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
-    st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
+    st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',st_toast_profile_missing:'Profile not found',
     st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',
     st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",
-    st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
+    profile_title:'Profile',profile_message:'Message',st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
     st_confirm_notif:'You will be notified when {name} adds a new status.',
     st_confirm_hide:"{name}'s statuses will no longer appear in your updates."
   }
