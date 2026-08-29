@@ -130,7 +130,7 @@ let voiceWakeLock=null;
 // Voice recording uses pointer gestures so touch, mouse, and stylus share one reliable path.
 // Hold the mic to record, swipe upward to lock, release to keep recording, then tap to send.
 let voiceTouchSuppressUntil=0;
-let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null,usersUnsub=null,postsUnsub=null;
+let voicePlayer=null,voicePlayerId=null,voicePlayerToken=0,notifUnsub=null,msgBUnsub=null;
 let signOutInProgress=false,disconnectBound=false;
 const waveTimers=Object.create(null);
 let replyMsg=null,curEId=null,curED=null,typDebounce=null,gTypDebounce=null;
@@ -362,24 +362,6 @@ async function uploadVoiceToFirebase(file){
   });
   return ref.getDownloadURL();
 }
-async function uploadVoiceReliable(file){
-  uploadVoiceReliable.lastError='';
-  uploadVoiceReliable.lastStorage='';
-  let firebaseError='';
-  if(voiceStorage&&CU){
-    try{
-      const storageUrl=await uploadVoiceToFirebase(file);
-      if(storageUrl){uploadVoiceReliable.lastStorage='firebase-storage';return storageUrl;}
-    }catch(e){
-      firebaseError=e?.message||'Firebase Storage upload failed';
-      console.warn('Firebase voice upload failed; trying Cloudinary:',e);
-    }
-  }
-  const cloudUrl=await uploadCloud(file,'audio');
-  if(cloudUrl){uploadVoiceReliable.lastStorage='cloudinary';return cloudUrl;}
-  uploadVoiceReliable.lastError=[firebaseError,uploadCloud.lastError].filter(Boolean).join(' · ');
-  return null;
-}
 function readVoiceAsDataUrl(file,maxBytes=300000){
   return new Promise(resolve=>{
     if(!file||file.size>maxBytes||typeof FileReader==='undefined'){resolve(null);return;}
@@ -406,10 +388,10 @@ function compressImg(file){
 
 // ── AUTH ──
 function cleanupAuthListeners(){
-  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub,grpPresenceUnsub,usersUnsub,postsUnsub,window._typingUnsub,window._statusUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
+  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub,grpPresenceUnsub,window._typingUnsub,window._statusUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
   if(typeof inboxUnsub==='function')try{inboxUnsub();}catch(e){}
   if(typeof inboxChatsUnsub==='function')try{inboxChatsUnsub();}catch(e){}
-  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;grpPresenceUnsub=null;usersUnsub=null;postsUnsub=null;
+  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;grpPresenceUnsub=null;
   window._typingUnsub=null;window._statusUnsub=null;
   if(typeof inboxUnsub==='function')inboxUnsub=null;
   if(typeof inboxChatsUnsub==='function')inboxChatsUnsub=null;
@@ -441,15 +423,10 @@ auth.onAuthStateChanged(async u=>{
   clearTimeout(authFallbackTimer);
   if(u){
     CU=u;
-    syncHeaderUser();
-    // Reveal the shell and start realtime listeners before any profile read.
-    // A slow user-document request must not hold Home or Messages on Loading.
+    // Reveal the shell immediately. Profile, inbox, and user-list hydration continue in the background.
     el('auth').style.display='none';
     el('ov').style.display='none';
     tab('home');
-    try{listenPosts();}catch(e){showDataError('posts',e);}
-    try{listenUsers();}catch(e){showDataError('users',e);}
-    try{setupInbox();}catch(e){showDataError('inbox',e);}
     const sn=await db.collection('users').doc(u.uid).get().catch(()=>null);
     const data=sn?.exists?sn.data():null;
     if(data&&!data.country&&el('step2F').style.display!=='flex'){
@@ -458,7 +435,6 @@ auth.onAuthStateChanged(async u=>{
       showStep2();
       return;
     }
-    // Profile, favorites, migration and presence continue after realtime data has started.
     try{await loadPro();}catch(e){console.log('loadPro error:',e);}
     try{await loadFavs();}catch(e){}
     // Migrate existing chats to chatIds array — only runs once ever (when migrated flag not set)
@@ -474,7 +450,10 @@ auth.onAuthStateChanged(async u=>{
       }
     }catch(e){console.log('migrate chatIds:',e);}
     try{setupPresence();}catch(e){}
+    try{listenPosts();}catch(e){}
+    try{listenUsers();}catch(e){}
     try{setupNotifL();}catch(e){}
+    try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
   }else{
     // Firebase can call this branch after a successful sign-out and later after a new login.
     // Always release the click guard so Disconnect works on every session, not only the first one.
@@ -598,26 +577,6 @@ async function notifyAllExcept(senderUid,icon,title,body){
   }catch(e){console.log(e);}
 }
 function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
-function syncHeaderUser(){
-  const fallback=CU?.displayName||CU?.email?.split('@')[0]||'';
-  const header=el('topN');
-  if(header&&!header.textContent.trim()&&fallback)header.textContent=fallback;
-  if(CU?.uid&&!allUsers.some(u=>u.uid===CU.uid)&&fallback)allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers];
-  renderStatusBar();
-}
-function withTimeout(promise,ms,label){
-  let timer;
-  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);});
-  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
-}
-function showFallbackProfile(name){
-  if(!name)return;
-  MP={...(MP||{}),name};
-  el('topN').textContent=name;
-  updatePC();
-  el('pcardEl').style.display='flex';
-  el('EF').style.display='block';
-}
 async function doOut(){
   if(signOutInProgress)return;
   if(!window.confirm('Disconnect?'))return;
@@ -653,8 +612,6 @@ async function delAccount(){
 
 // ── PROFILE ──
 async function loadPro(){
-  const fallback=CU?.displayName||CU?.email?.split('@')[0]||'';
-  if(fallback&&!el('topN').textContent.trim())el('topN').textContent=fallback;
   try{
     const sn=await db.collection('users').doc(CU.uid).get();
     if(sn.exists){
@@ -672,22 +629,15 @@ async function loadPro(){
       el('pcDot').className='odot online';
       if(MP.name){updatePC();el('pcardEl').style.display='flex';el('EF').style.display='none';}
       else el('EF').style.display='block';
-    }else{
-      showFallbackProfile(fallback);
-      if(fallback)allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers.filter(x=>x.uid!==CU.uid)];
-      renderStatusBar();
-    }
-  }catch(e){
-    showFallbackProfile(fallback);
-    console.warn('loadPro error:',e);
-  }
+    }else el('EF').style.display='block';
+  }catch(e){console.log(e);}
 }
 function showEF(){el('EF').style.display='block';el('EF').scrollIntoView({behavior:'smooth'});}
 function hideEF(){el('EF').style.display='none';}
-function openProfile(uid,options={}){
+function openProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
-  if(!options.reuseModalHistory)pushModalState();
+  pushModalState();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
   el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
@@ -755,26 +705,8 @@ async function savePro(){
 }
 
 // ── USERS ──
-const dataErrorNoticeAt=Object.create(null);
-function showDataError(kind,error){
-  const now=Date.now();
-  if(now-(dataErrorNoticeAt[kind]||0)<5000)return;
-  dataErrorNoticeAt[kind]=now;
-  console.warn(kind+' data listener failed:',error?.code||error?.message||error);
-  if(kind==='posts'&&!cachedPosts.length){
-    const feed=el('feed');
-    if(feed)feed.innerHTML=`<div class="card" style="text-align:center;padding:24px;"><div style="font-size:28px;margin-bottom:8px;">⚠️</div><b>Impossible de charger les données</b><p style="font-size:12px;color:var(--sub);margin:8px 0 14px;">Vérifiez la connexion puis réessayez.</p><button class="btn" style="max-width:220px;margin:0 auto;" onclick="retryDataLoad()">Réessayer</button></div>`;
-  }
-  showToast('❌ Données indisponibles. Vérifiez la connexion puis réessayez.');
-}
-function retryDataLoad(){
-  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
-  try{listenPosts();listenUsers();setupInbox();showToast('🔄 Rechargement des données...');}
-  catch(e){showDataError('retry',e);}
-}
 function listenUsers(){
-  if(usersUnsub)usersUnsub();
-  usersUnsub=db.collection('users').onSnapshot(sn=>{
+  db.collection('users').onSnapshot(sn=>{
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
     renderStatusBar();
     // Only re-render Find if it's currently visible
@@ -791,7 +723,7 @@ function listenUsers(){
     // Update online dots on feed without full re-render
     sn.docChanges().forEach(change=>{
       if(change.type==='modified'){
-        const u={...change.doc.data(),uid:change.doc.id};
+        const u=change.doc.data();
         // Update status dot in inbox if visible
         const st=getStatusInfo(u.status,u.lastSeen);
         document.querySelectorAll(`[data-uid="${u.uid}"] .status-dot`).forEach(dot=>{
@@ -799,15 +731,14 @@ function listenUsers(){
         });
       }
     });
-  },e=>showDataError('users',e));
+  },e=>console.log('users:',e));
 }
 
 // ── POSTS ──
 let cachedPosts=[],lastPostCount=0,_feedShown=10;
 function listenPosts(){
-  if(postsUnsub)postsUnsub();
   // Listen to latest 30 posts in real-time; we only render _feedShown of them
-  postsUnsub=db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
+  db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
     const newPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
     const isHomeVisible=el('Phome')&&el('Phome').style.display!=='none';
     if(isHomeVisible){
@@ -826,7 +757,7 @@ function listenPosts(){
       }
       cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     }
-  },e=>showDataError('posts',e));
+  },e=>console.log(e));
 }
 function loadMorePosts(){
   _feedShown+=10;
@@ -846,23 +777,22 @@ function loadMorePosts(){
 }
 function toggleGN(val){el('gnW').style.display=val==='Group'?'block':'none';}
 async function addPost(){
-  const authorName=MP?.name||currentDisplayName();
-  if(!authorName)return alert('Complete your profile first');
+  if(!MP?.name)return alert('Complete your profile first');
   const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
   const gname=type==='Group'?v('gName'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
   showOv(true);
   try{
-    const ref=await withTimeout(db.collection('posts').add({type,text,tags:[...selTags],groupName:gname,user:{name:authorName,country:MP?.country||'',uni:MP?.uni||'',course:MP?.course||'',year:MP?.year||'',status:'Online',photo:myPho,intent:MP?.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()}),15000,'Publication timeout. Vérifiez la connexion.');
-    if(type==='Group')await withTimeout(db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()}),15000,'Group creation timeout.');
+    const ref=await db.collection('posts').add({type,text,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
-    notifyAllExcept(CU.uid,'📢','📢 New Post by '+authorName,text.substring(0,60));
+    notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];document.querySelectorAll('#tagSel .tag').forEach(b=>b.classList.remove('sel'));
     el('pText').value='';el('pType').value='Individual';el('gName').value='';el('gnW').style.display='none';
     showToast('📢 Posted!');tab('home');
-  }catch(e){showToast('❌ '+(e.message||'Publication impossible. Vérifiez la connexion.'));}
-  finally{showOv(false);}
+  }catch(e){showToast('❌ '+e.message);}
+  showOv(false);
 }
 async function delPost(id){if(!confirm('Delete?'))return;await db.collection('posts').doc(id).delete();}
 function fmtLastSeen(lastSeen){
@@ -933,9 +863,7 @@ function statusMillis(ts){
 function activeStatusOf(u){
   if(!u||!u.statusPost)return null;
   const createdMs=statusMillis(u.statusPost.createdAt);
-  // A freshly-written serverTimestamp can be null for the first snapshot.
-  // Keep the status usable while Firestore resolves the timestamp.
-  if(!createdMs)return u.statusPost;
+  if(!createdMs)return null; // still syncing with server, not ready yet
   if(Date.now()-createdMs>STATUS_TTL_MS)return null;
   return u.statusPost;
 }
@@ -971,18 +899,13 @@ function renderStatusBar(){
 }
 
 // ── STATUS CREATE ──
-function currentDisplayName(){return MP?.name||CU?.displayName||CU?.email?.split('@')[0]||'';}
-function openStatusCreate(draftPhoto,keepForward=false){
-  if(!CU?.uid)return showToast('❌ Session expirée, reconnectez-vous');
-  if(!currentDisplayName())return showToast('❌ Complete your profile first');
+function openStatusCreate(draftPhoto){
+  if(!MP?.name)return showToast('❌ Complete your profile first');
   pushModalState();
-  const source=keepForward&&forwardedFromDraft?forwardedFromDraft:null;
-  selStatusCat=source?.category||null;
-  selStatusSubject=source?.subject||null;
-  selStatusGroup=source?.linkedGroupId?{id:source.linkedGroupId,name:source.linkedGroupName||'Groupe'}:null;
-  statusPhotoUrl=draftPhoto||source?.photo||null;
-  if(!keepForward)forwardedFromDraft=null;
-  el('stMsg').value=source?.message||'';el('stCharCount').textContent=(el('stMsg').value.length)+' / 100';
+  selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
+  if(draftPhoto){statusPhotoUrl=draftPhoto;}
+  else{statusPhotoUrl=null;forwardedFromDraft=null;}
+  el('stMsg').value='';el('stCharCount').textContent='0 / 100';
   updateStatusCreateTheme();
   if(statusPhotoUrl){el('stPhotoPreview').src=statusPhotoUrl;el('stPhotoPreviewWrap').style.display='block';el('stPhotoEmpty').style.display='none';}
   else{el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';}
@@ -991,18 +914,14 @@ function openStatusCreate(draftPhoto,keepForward=false){
     const c=CATS[k];
     return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${catLabel(k)}</div></div>`;
   }).join('');
-  if(selStatusCat)el('stCat_'+selStatusCat)?.classList.add('sel');
   const subjWrap=el('stSubjSel');
   subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
-  if(selStatusSubject)el('stSubj_'+selStatusSubject.replace(/[^a-zA-Z0-9]/g,''))?.classList.add('sel');
   const myGroups=cachedPosts.filter(p=>p.type==='Group'&&p.uid===CU.uid);
   const grpWrap=el('stGroupSel');
   if(myGroups.length===0){
     grpWrap.innerHTML=`<span style="font-size:12px;color:var(--sub);">Tu n'as pas encore créé de groupe dans le Feed</span>`;
   }else{
     grpWrap.innerHTML=myGroups.map(g=>`<button type="button" class="tag" id="stGrp_${g.id}" onclick="toggleStatusGroup('${g.id}','${e2(g.groupName||'Groupe')}')">🏫 ${esc(g.groupName||'Groupe')}</button>`).join('');
-    if(selStatusGroup&&myGroups.some(g=>g.id===selStatusGroup.id))el('stGrp_'+selStatusGroup.id)?.classList.add('sel');
-    else if(selStatusGroup)selStatusGroup=null;
   }
   updateStatusPreview();
   el('statusCreate').style.display='flex';
@@ -1061,8 +980,7 @@ function updateStatusPreview(){
     <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
 }
 async function publishStatus(){
-  if(!CU?.uid)return showToast('❌ Session expirée, reconnectez-vous');
-  if(!currentDisplayName())return showToast('❌ Complete your profile first');
+  if(!MP?.name)return showToast('❌ Complete your profile first');
   if(statusUploading)return showToast('❌ Photo en cours d\'envoi, patiente');
   const msg=v('stMsg');
   if(!statusPhotoUrl){
@@ -1081,21 +999,13 @@ async function publishStatus(){
 }
 
 // ── STATUS VIEW ──
-let curStatusUid=null,curStatusData=null;
-function currentViewedStatus(){
-  const cached=curStatusUid?allUsers.find(x=>x?.uid===curStatusUid):null;
-  const u=cached||curStatusData?.user||null;
-  const sp=activeStatusOf(u)||curStatusData?.status||null;
-  return {u,sp};
-}
+let curStatusUid=null;
 function viewStatus(uid){
-  if(!uid||!CU?.uid)return showToast('Session expirée, reconnectez-vous');
-  const u=allUsers.find(x=>x?.uid===uid);
+  const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
   pushModalState();
   curStatusUid=uid;
-  curStatusData={uid,user:{...u},status:{...sp}};
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
   const c=sp.category?CATS[sp.category]:null;
@@ -1146,14 +1056,12 @@ function viewStatus(uid){
 function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
-  if(!menu||!CU?.uid||!curStatusUid){if(menu)menu.style.display='none';return;}
-
   if(menu.style.display==='block'){menu.style.display='none';return;}
   clearTimeout(statusAutoCloseTimer);
   const isMine=curStatusUid===CU.uid;
   if(isMine){
-    const mine=allUsers.find(u=>u.uid===CU.uid)||{uid:CU.uid,...(MP||{})};
-    const sp=activeStatusOf(mine)||curStatusData?.status;
+    const mine=allUsers.find(u=>u.uid===CU.uid);
+    const sp=activeStatusOf(mine);
     const isForward=!!sp?.forwardedFrom;
     menu.innerHTML=`
       <button onclick="showSeenBy()">${t('st_menu_seenby')}</button>
@@ -1165,7 +1073,6 @@ function toggleStatusMenu(){
   }else{
     menu.innerHTML=`
       <button onclick="forwardStatus()">${t('st_menu_forward')}</button>
-      <button onclick="saveStatusMedia()">${t('st_menu_save')}</button>
       <button onclick="replyToStatus()">${t('st_menu_message')}</button>
       <button onclick="viewStatusProfile()">${t('st_menu_viewprofile')}</button>
       <button onclick="toggleStatusNotif()">${t('st_menu_notif')}</button>
@@ -1177,7 +1084,8 @@ function toggleStatusMenu(){
 }
 function showSeenBy(){
   el('stVMenu').style.display='none';
-  const {u,sp}=currentViewedStatus();
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sp=activeStatusOf(u);
   const seenUids=(sp?.viewedBy||[]);
   const list=el('stVSeenList');
   if(seenUids.length===0){
@@ -1193,24 +1101,24 @@ function showSeenBy(){
   list.style.display='block';
 }
 function openSeenProfile(uid){
-  const u=uid&&allUsers.find(x=>x.uid===uid);
-  el('stVSeenList').style.display='none';
-  if(!u){closeStatusView();return showToast(t('st_toast_profile_missing'));}
-  closeStatusView(true);
-  if(typeof openProfile==='function')openProfile(uid,{reuseModalHistory:true});
+  closeStatusView();
+  if(typeof openProfile==='function')openProfile(uid);
+  else showToast('Profil');
 }
 function forwardStatus(){
   el('stVMenu').style.display='none';
-  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
-  const {u,sp}=currentViewedStatus();
-  if(!u||!sp)return showToast('❌ Ce statut n’est plus disponible');
-  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur',category:sp.category||null,message:sp.message||'',subject:sp.subject||null,photo:sp.photo||null,linkedGroupId:sp.linkedGroupId||null,linkedGroupName:sp.linkedGroupName||null};
-  closeStatusView(true);
-  requestAnimationFrame(()=>{openStatusCreate(sp.photo||null,true);showToast('🔁 Statut transféré dans l’éditeur. Vérifiez puis publiez.');});
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sp=activeStatusOf(u);
+  if(!sp)return;
+  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur'};
+  const draftPhoto=sp.photo||null;
+  closeStatusView();
+  openStatusCreate(draftPhoto);
 }
 function shareStatus(){
   el('stVMenu').style.display='none';
-  const {u,sp}=currentViewedStatus();
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sp=activeStatusOf(u);
   if(!sp)return;
   const text=`${u?.name||'Quelqu\'un'} sur StudyLink: ${sp.message||'a partagé une photo'}`;
   if(navigator.share){navigator.share({title:'StudyLink',text}).catch(()=>{});}
@@ -1219,36 +1127,19 @@ function shareStatus(){
 }
 function showForwardSource(){
   el('stVMenu').style.display='none';
-  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
-  const mine=allUsers.find(u=>u?.uid===CU.uid)||{uid:CU.uid,...(MP||{})};
-  const sp=activeStatusOf(mine)||curStatusData?.status,source=sp?.forwardedFrom;
-  if(!source)return showToast('Ce statut n’est pas un transfert');
-  showToast(`Transféré depuis ${source.name||'un autre utilisateur'}`);
+  const mine=allUsers.find(u=>u.uid===CU.uid);
+  const sp=activeStatusOf(mine);
+  if(sp?.forwardedFrom)showToast('Transféré depuis un autre statut');
 }
-async function saveStatusMedia(){
+function saveStatusMedia(){
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sp=activeStatusOf(u);
+  if(sp?.photo)window.open(sp.photo,'_blank');
+  else showToast('Rien à enregistrer, statut texte seul');
   el('stVMenu').style.display='none';
-  const {sp}=currentViewedStatus();
-  if(!sp)return showToast('❌ Ce statut n’est plus disponible');
-  if(!sp.photo){
-    const text=sp.message||'';
-    if(text&&navigator.clipboard){try{await navigator.clipboard.writeText(text);showToast('✅ Texte du statut copié');}catch(e){showToast('⚠️ Sélectionnez et copiez le texte manuellement');}}
-    else showToast('Rien à enregistrer, statut texte seul');
-    return;
-  }
-  try{
-    const response=await fetch(sp.photo,{mode:'cors',cache:'no-store'});
-    if(!response.ok)throw new Error('HTTP '+response.status);
-    const blob=await response.blob(),url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download='studylink-status.jpg';document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),1500);showToast('✅ Photo enregistrée');
-  }catch(e){
-    const opened=window.open(sp.photo,'_blank');
-    showToast(opened?'📷 Image ouverte. Maintenez-la pour l’enregistrer.':'⚠️ Autorisez les fenêtres ou maintenez la photo pour l’enregistrer.');
-  }
 }
 async function deleteStatus(){
   el('stVMenu').style.display='none';
-  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
   if(!confirm(t('st_confirm_delete')))return;
   try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'));}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
@@ -1256,31 +1147,16 @@ async function deleteStatus(){
 function viewStatusProfile(){
   el('stVMenu').style.display='none';
   const uid=curStatusUid;
-  const u=uid&&allUsers.find(x=>x.uid===uid);
-  if(!uid||!u){closeStatusView();return showToast(t('st_toast_profile_missing'));}
   closeStatusView(true);
-  if(typeof openProfile==='function')openProfile(uid,{reuseModalHistory:true});
+  if(typeof openProfile==='function')openProfile(uid);
+  else showToast('Profil');
 }
-function replyToStatus(){
+function toggleStatusNotif(){
   el('stVMenu').style.display='none';
-  const uid=curStatusUid,u=allUsers.find(x=>x.uid===uid);
-  if(!uid||!u)return showToast('Profil introuvable');
-  closeStatusView(true);
-  openChat(u.name||'Utilisateur',uid);
-}
-async function toggleStatusNotif(){
-  el('stVMenu').style.display='none';
-  const uid=curStatusUid,u=allUsers.find(x=>x.uid===uid);
-  if(!uid||!u||uid===CU?.uid)return;
-  const current=Array.isArray(MP?.statusNotifyUids)?MP.statusNotifyUids:[];
-  const enabled=current.includes(uid);
-  if(!enabled&&!confirm(t('st_confirm_notif').replace('{name}',u.name||'cet utilisateur')))return;
-  try{
-    const op=enabled?firebase.firestore.FieldValue.arrayRemove(uid):firebase.firestore.FieldValue.arrayUnion(uid);
-    await db.collection('users').doc(CU.uid).set({statusNotifyUids:op},{merge:true});
-    MP={...MP,statusNotifyUids:enabled?current.filter(x=>x!==uid):[...current,uid]};
-    showToast(enabled?'Notifications désactivées':t('st_toast_notif_on'));
-  }catch(e){showToast('❌ Impossible de modifier les notifications');}
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  if(confirm(t('st_confirm_notif').replace('{name}',u?.name||'cet utilisateur'))){
+    showToast(t('st_toast_notif_on'));
+  }
 }
 function hideStatusUser(){
   el('stVMenu').style.display='none';
@@ -1294,13 +1170,9 @@ function hideStatusUser(){
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
-  if(!CU?.uid)return showToast('Session expirée, reconnectez-vous');
-  const u=allUsers.find(x=>x?.uid===curStatusUid);
-  if(!u||!curStatusUid)return;
-  const reason=prompt(`${appLang==='fr'?'Signaler le statut de':'Report'} ${u.name||'cet utilisateur'} ?\n${appLang==='fr'?'Décrivez brièvement le motif :':'Briefly describe the reason:'}`);
-  if(!reason)return;
-  db.collection('reports').add({type:'status',reportedUid:curStatusUid,reportedName:u.name||'',statusMessage:activeStatusOf(u)?.message||'',reporterUid:CU.uid,reporterName:MP?.name||'',reason,createdAt:firebase.firestore.FieldValue.serverTimestamp()})
-    .then(()=>showToast(t('st_toast_reported'))).catch(()=>showToast('❌ Impossible d’envoyer le signalement'));
+  if(confirm('Signaler ce statut pour contenu inapproprié ?')){
+    showToast(t('st_toast_reported'));
+  }
 }
 async function sendQuickStatusReply(toUid,text){
   const cid=getCID(CU.uid,toUid);const t=now();
@@ -1406,10 +1278,11 @@ async function stopAndSendStatusVoice(){
   let msgRef=null,uploadCommitted=false;
   try{
     msgRef=await db.collection('chats').doc(cid).collection('messages').add({type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    let url=await uploadVoiceReliable(file),fallbackError=uploadVoiceReliable.lastError||'';
+    let url=await uploadCloud(file,'audio'),fallbackError='';
+    if(!url){try{const storageUrl=await uploadVoiceToFirebase(file);if(storageUrl){await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});url=storageUrl;uploadCommitted=true;}}catch(e){fallbackError=e?.message||'Firebase Storage upload failed';}}
     if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
-    if(!url){await msgRef.update({status:'failed',error:[uploadVoiceReliable.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
-    if(!uploadCommitted){await msgRef.update({data:url,status:'sent',storage:uploadVoiceReliable.lastStorage||'remote'});uploadCommitted=true;}
+    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
+    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
     const upd={participants:[CU.uid,toUid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(upd,{merge:true});
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
@@ -1432,6 +1305,11 @@ async function sendStatusReply(){
   const ok=await sendQuickStatusReply(curStatusUid,text);
   if(ok){showToast('Message envoyé');restartStatusReplyTimer();}
 }
+function replyToStatus(){
+  el('stVMenu').style.display='none';
+  sendStatusReply();
+}
+
 function statusPressStart(e){
   if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
   clearTimeout(statusAutoCloseTimer);
@@ -1976,24 +1854,6 @@ async function execDelMsgs(scope,isGrp){
   clearSelection();
   showToast(scope==='everyone'?'🗑️ Deleted for everyone':'🗑️ Deleted for you');
 }
-function voiceSourceOf(m){
-  const value=m?.data??m?.voiceUrl??m?.audioUrl??m?.url??'';
-  if(typeof value==='string')return value.trim();
-  if(value&&typeof value.url==='string')return value.url.trim();
-  if(value&&typeof value.secure_url==='string')return value.secure_url.trim();
-  return '';
-}
-function voiceSourceCandidates(src){
-  const raw=String(src||'').trim();
-  if(!raw||raw==='null'||raw==='undefined')return [];
-  const sources=[raw];
-  try{
-    const url=new URL(raw,location.href);
-    if(url.pathname.includes('/auto/upload/'))sources.push(raw.replace('/auto/upload/','/video/upload/'));
-    if(url.pathname.includes('/raw/upload/'))sources.push(raw.replace('/raw/upload/','/video/upload/'));
-  }catch(e){}
-  return [...new Set(sources)];
-}
 function buildBbl(m,isGrp){
   if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
@@ -2044,9 +1904,8 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
     const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     const audioDur=m.dur||'0:00';
-    const audioSrc=voiceSourceOf(m);
-    if(!audioSrc){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(audioSrc)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -2071,7 +1930,6 @@ function buildBbl(m,isGrp){
       else{voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
     }
     const durLabel=m.dur||'0:00';
-    const voiceSrc=voiceSourceOf(m);
     const playBtnBg=self?'rgba(255,255,255,0.25)':vAccent;
     const playBtnColor='#fff';
     const playShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
@@ -2080,22 +1938,15 @@ function buildBbl(m,isGrp){
         <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
         <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Échec de l’envoi vocal</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Vérifiez la connexion puis réessayez.</div></div>
       </div>${rcHtml}`;
-    }else if(!voiceSrc){
-      // A sent message with no usable source is unavailable, not still uploading.
-      // Keeping it out of the player prevents a misleading play button.
-      const unavailable=m.status!=='sending';
-      if(unavailable){
-        inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div><div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Audio indisponible</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Le fichier n’est plus accessible.</div></div></div>${rcHtml}`;
-      }else{
+    }else if(!m.data){
       // Still sending — show progress + "Sending..." + timer
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
         <div style="flex:1;"><div class="vprog" style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:5px;"><div style="width:0%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div>
         <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;color:${self?'rgba(255,255,255,.8)':'var(--sub)'};">Sending...</span><span class="vdur">${durLabel}</span></div></div>
       </div>${rcHtml}`;
-      }
     }else{
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(voiceSrc)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
             ${waveSVG}
@@ -2497,8 +2348,20 @@ async function stopAndSendVoice(){
       senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
       status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    let url=await uploadVoiceReliable(file);
-    let voiceFallbackError=uploadVoiceReliable.lastError||'';
+    let url=await uploadCloud(file,'audio');
+    let voiceFallbackError='';
+    if(!url){
+      try{
+        const storageUrl=await uploadVoiceToFirebase(file);
+        if(storageUrl){
+          await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
+          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
+        }
+      }catch(storageErr){
+        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
+        console.warn('Firebase voice fallback failed:',storageErr);
+      }
+    }
     if(!url){
       // Keep very short voice notes usable even if both remote upload paths fail.
       const inlineUrl=await readVoiceAsDataUrl(file);
@@ -2507,13 +2370,13 @@ async function stopAndSendVoice(){
       }
     }
     if(!url){
-      const failure=[uploadVoiceReliable.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
       await msgRef.update({status:'failed',error:failure}).catch(()=>{});
       vSending=false;
       showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
       return;
     }
-    if(!uploadCommitted){await msgRef.update({data:url,status:'sent',storage:uploadVoiceReliable.lastStorage||'remote'});uploadCommitted=true;}
+    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
     const _vUpd={participants:[CU.uid,chat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
     _vUpd['unread.'+chat.uid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
@@ -2621,8 +2484,20 @@ async function stopAndSendGVoice(){
       senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
       time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    let url=await uploadVoiceReliable(file);
-    let voiceFallbackError=uploadVoiceReliable.lastError||'';
+    let url=await uploadCloud(file,'audio');
+    let voiceFallbackError='';
+    if(!url){
+      try{
+        const storageUrl=await uploadVoiceToFirebase(file);
+        if(storageUrl){
+          await gvRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
+          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
+        }
+      }catch(storageErr){
+        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
+        console.warn('Firebase group voice fallback failed:',storageErr);
+      }
+    }
     if(!url){
       const inlineUrl=await readVoiceAsDataUrl(file);
       if(inlineUrl){
@@ -2630,7 +2505,7 @@ async function stopAndSendGVoice(){
       }
     }
     if(!url){
-      const failure=[uploadVoiceReliable.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
+      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
       await gvRef.update({status:'failed',error:failure}).catch(()=>{});
       gVoiceSending=false;
       showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
@@ -2766,39 +2641,24 @@ function resetVoicePlayer(){
 function stopOtherVoicePlayers(exceptId){if(voicePlayer&&String(voicePlayerId)!==String(exceptId))resetVoicePlayer();}
 function toggleVP(id,src){
   const bubble=el('vp_'+id),btn=bubble?.querySelector('.vpbtn'),resolvedSrc=src||btn?.dataset?.voiceSrc||bubble?.dataset?.voiceSrc||'';
-  const sources=voiceSourceCandidates(resolvedSrc);
-  if(!sources.length){showToast('⚠️ Cet audio est indisponible.');return;}
+  if(!resolvedSrc){showToast('⚠️ Cet audio est indisponible.');return;}
   try{
     if(voicePlayer&&String(voicePlayerId)===String(id)){
       if(!voicePlayer.paused){voicePlayer.pause();setVoiceButtonIcon(btn,false);return;}
       if(voicePlayer.ended)voicePlayer.currentTime=0;
     }else{
       stopOtherVoicePlayers(id);
-      const startSource=(sourceIndex)=>{
-        const currentSrc=sources[sourceIndex];
-        const a=new Audio();a.preload='metadata';a.playsInline=true;a.src=currentSrc;
-        voicePlayer=a;voicePlayerId=String(id);
-        const token=voicePlayerToken;
-        const retrySource=()=>{
-          if(token!==voicePlayerToken)return;
-          if(sourceIndex+1<sources.length){resetVoicePlayer();startSource(sourceIndex+1);return;}
-          resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');
-        };
+      const a=new Audio();a.preload='metadata';a.playsInline=true;a.src=resolvedSrc;
+      voicePlayer=a;voicePlayerId=String(id);
+      const token=voicePlayerToken;
       const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
       const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id),currentButton=()=>document.querySelector(`#vp_${id} .vpbtn`);
       a.onloadedmetadata=()=>{if(token!==voicePlayerToken)return;const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
       a.ontimeupdate=()=>{if(token!==voicePlayerToken)return;const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
       a.onended=()=>{if(token!==voicePlayerToken)return;a.currentTime=0;const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(currentButton(),false);};
       a.onpause=()=>{if(token===voicePlayerToken&&!a.ended)setVoiceButtonIcon(currentButton(),false);};
-        a.onerror=retrySource;
-        a.onstalled=()=>{if(token===voicePlayerToken&&a.readyState===0)retrySource();};
-        a.onplay=()=>{if(token!==voicePlayerToken)return;if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
-        const playPromise=a.play();
-        setVoiceButtonIcon(btn,true);
-        if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{if(a===voicePlayer)retrySource();});
-      };
-      startSource(0);
-      return;
+      a.onerror=()=>{if(token!==voicePlayerToken)return;resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');};
+      a.onplay=()=>{if(token!==voicePlayerToken)return;if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
     }
     const player=voicePlayer,playPromise=player?.play();
     setVoiceButtonIcon(btn,true);
@@ -2870,11 +2730,8 @@ function setupInbox(){
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',CU.uid).onSnapshot(sn=>{
       _cachedInboxDocs=sn.docs.slice();
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
-    },e=>showDataError('inbox',e));
+    },e=>console.log('inboxChats:',e));
   };
-  // Start chat discovery independently of the user document listener.
-  // A missing or denied users/{uid} snapshot must not block Messages.
-  startChatListener();
 
   inboxUnsub=db.collection('users').doc(CU.uid).onSnapshot(snap=>{
     const data=snap.data()||{};
@@ -2890,7 +2747,7 @@ function setupInbox(){
     // discovery must remain active even when chatIds is stale or absent.
     if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     if(!inboxChatsUnsub)startChatListener();
-    },e=>showDataError('inbox',e));
+  },e=>{showToast('❌ Inbox error: '+e.message);});
 }
 
 function renderInbox(q="",sn=null){
@@ -2929,7 +2786,7 @@ function renderInbox(q="",sn=null){
     const missingUids=entries.map(d=>(d.data().participants||[]).find(id=>id!==CU.uid)).filter(uid=>uid&&!allUsers.find(u=>u.uid===uid));
     if(missingUids.length){
       const fetched=await Promise.all(missingUids.map(uid=>db.collection('users').doc(uid).get().catch(()=>null)));
-      fetched.forEach(snap=>{if(snap&&snap.exists){const d={...snap.data(),uid:snap.id};if(!allUsers.find(u=>u.uid===d.uid))allUsers.push(d);}});
+      fetched.forEach(snap=>{if(snap&&snap.exists){const d=snap.data();if(d&&!allUsers.find(u=>u.uid===d.uid))allUsers.push(d);}});
     }
     f.innerHTML='';
     // Use in-memory unread map — NO extra Firestore fetch needed
@@ -2982,7 +2839,7 @@ function renderInbox(q="",sn=null){
     });
   };
   if(sn){_execRender(sn);return;}
-  db.collection('chats').where('participants','array-contains',CU.uid).get().then(_execRender).catch(e=>showDataError('inbox',e));
+  db.collection('chats').where('participants','array-contains',CU.uid).get().then(_execRender).catch(e=>console.log(e));
 }
 function reportUser(uid,name){
   if(!uid)return;
@@ -3033,10 +2890,10 @@ const I18N={
     st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
     st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
     st_toast_published:'✅ Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
-    st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',st_toast_profile_missing:'Profil introuvable',
+    st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
     st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',
     st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',
-    profile_title:'Profil',profile_message:'Message',st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
+    st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
     st_confirm_notif:'Tu seras notifié quand {name} ajoute un nouveau statut.',
     st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
   },
@@ -3051,10 +2908,10 @@ const I18N={
     st_menu_delete:'Delete',st_menu_forward:'Forward',st_menu_message:'Message',st_menu_viewprofile:'View profile',
     st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
     st_toast_published:'✅ Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
-    st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',st_toast_profile_missing:'Profile not found',
+    st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
     st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',
     st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",
-    profile_title:'Profile',profile_message:'Message',st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
+    st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
     st_confirm_notif:'You will be notified when {name} adds a new status.',
     st_confirm_hide:"{name}'s statuses will no longer appear in your updates."
   }
@@ -3139,7 +2996,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v36.js?v=studylink-pwa-36',location.href).href;
+  const workerUrl=new URL('sw-v38.js?v=studylink-pwa-38',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
