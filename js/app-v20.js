@@ -441,6 +441,7 @@ auth.onAuthStateChanged(async u=>{
   clearTimeout(authFallbackTimer);
   if(u){
     CU=u;
+    syncHeaderUser();
     // Reveal the shell and start realtime listeners before any profile read.
     // A slow user-document request must not hold Home or Messages on Loading.
     el('auth').style.display='none';
@@ -597,6 +598,13 @@ async function notifyAllExcept(senderUid,icon,title,body){
   }catch(e){console.log(e);}
 }
 function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
+function syncHeaderUser(){
+  const fallback=CU?.displayName||CU?.email?.split('@')[0]||'';
+  const header=el('topN');
+  if(header&&!header.textContent.trim()&&fallback)header.textContent=fallback;
+  if(CU?.uid&&!allUsers.some(u=>u.uid===CU.uid)&&fallback)allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers];
+  renderStatusBar();
+}
 async function doOut(){
   if(signOutInProgress)return;
   if(!window.confirm('Disconnect?'))return;
@@ -632,6 +640,8 @@ async function delAccount(){
 
 // ── PROFILE ──
 async function loadPro(){
+  const fallback=CU?.displayName||CU?.email?.split('@')[0]||'';
+  if(fallback&&!el('topN').textContent.trim())el('topN').textContent=fallback;
   try{
     const sn=await db.collection('users').doc(CU.uid).get();
     if(sn.exists){
@@ -649,8 +659,14 @@ async function loadPro(){
       el('pcDot').className='odot online';
       if(MP.name){updatePC();el('pcardEl').style.display='flex';el('EF').style.display='none';}
       else el('EF').style.display='block';
-    }else el('EF').style.display='block';
-  }catch(e){console.log(e);}
+    }else{
+      if(fallback){MP={...(MP||{}),name:fallback};el('topN').textContent=fallback;allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers.filter(x=>x.uid!==CU.uid)];renderStatusBar();}
+      el('EF').style.display='block';
+    }
+  }catch(e){
+    if(fallback){MP={...(MP||{}),name:fallback};el('topN').textContent=fallback;renderStatusBar();}
+    console.warn('loadPro error:',e);
+  }
 }
 function showEF(){el('EF').style.display='block';el('EF').scrollIntoView({behavior:'smooth'});}
 function hideEF(){el('EF').style.display='none';}
@@ -3105,7 +3121,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v34.js?v=studylink-pwa-34',location.href).href;
+  const workerUrl=new URL('sw-v35.js?v=studylink-pwa-35',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
