@@ -899,6 +899,10 @@ function renderStatusBar(){
 }
 
 // ── STATUS CREATE ──
+function statusVectorIcon(key){
+  const paths={text:'<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 8h8M8 11h5"/>',dispo:'<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-3 2.5-4.5 6-4.5S14.5 16 15 19M14 14.5c3.5-.5 6 1 7 4.5"/>',revision:'<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 12h6M9 16h6"/>',aide:'<path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/>',session:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M13 14h3"/>',pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',objectif:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>'};
+  return `<svg class="stVectorIcon" viewBox="0 0 24 24" aria-hidden="true">${paths[key]||paths.text}</svg>`;
+}
 function openStatusCreate(draftPhoto){
   if(!MP?.name)return showToast('❌ Complete your profile first');
   pushModalState();
@@ -912,7 +916,7 @@ function openStatusCreate(draftPhoto){
   const grid=el('stCatGrid');
   grid.innerHTML=Object.keys(CATS).map(k=>{
     const c=CATS[k];
-    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${catLabel(k)}</div></div>`;
+    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${statusVectorIcon(k)}</div><div class="nm">${catLabel(k)}</div></div>`;
   }).join('');
   const subjWrap=el('stSubjSel');
   subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
@@ -921,7 +925,7 @@ function openStatusCreate(draftPhoto){
   if(myGroups.length===0){
     grpWrap.innerHTML=`<span style="font-size:12px;color:var(--sub);">Tu n'as pas encore créé de groupe dans le Feed</span>`;
   }else{
-    grpWrap.innerHTML=myGroups.map(g=>`<button type="button" class="tag" id="stGrp_${g.id}" onclick="toggleStatusGroup('${g.id}','${e2(g.groupName||'Groupe')}')">🏫 ${esc(g.groupName||'Groupe')}</button>`).join('');
+    grpWrap.innerHTML=myGroups.map(g=>`<button type="button" class="tag" id="stGrp_${g.id}" onclick="toggleStatusGroup('${g.id}','${e2(g.groupName||'Groupe')}')">${statusVectorIcon('aide')} ${esc(g.groupName||'Groupe')}</button>`).join('');
   }
   updateStatusPreview();
   el('statusCreate').style.display='flex';
@@ -951,7 +955,7 @@ async function handleStatusPhoto(e){
   el('stPhotoEmpty').innerHTML='<div style="font-size:13px;color:var(--sub);">Envoi en cours...</div>';
   const url=await uploadCloud(file,'image');
   statusUploading=false;
-  if(!url){el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';return;}
+  if(!url){el('stPhotoEmpty').innerHTML=`<div class="stPhotoVector" aria-hidden="true">${statusVectorIcon('photo')}</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>`;return;}
   statusPhotoUrl=url;
   forwardedFromDraft=null;
   el('stPhotoPreview').src=url;
@@ -965,7 +969,7 @@ function removeStatusPhoto(){
   forwardedFromDraft=null;
   el('stPhotoPreviewWrap').style.display='none';
   el('stPhotoEmpty').style.display='block';
-  el('stPhotoEmpty').innerHTML='<div style="font-size:28px;">📷</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>';
+  el('stPhotoEmpty').innerHTML=`<div class="stPhotoVector" aria-hidden="true">${statusVectorIcon('photo')}</div><div style="font-weight:700;font-size:14px;color:var(--btnB);">Ajouter une photo</div><div style="font-size:12px;color:var(--sub);margin-top:2px;">Notes, bureau de révision, selfie...</div>`;
   updateStatusPreview();
   updateStatusCreateTheme();
 }
@@ -3011,7 +3015,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-42',location.href).href;
+  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-45',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
