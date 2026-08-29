@@ -1174,7 +1174,7 @@ function forwardStatus(){
   const {u,sp}=currentViewedStatus();
   if(!u||!sp)return showToast('❌ Ce statut n’est plus disponible');
   forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur',category:sp.category||null,message:sp.message||'',subject:sp.subject||null,photo:sp.photo||null,linkedGroupId:sp.linkedGroupId||null,linkedGroupName:sp.linkedGroupName||null};
-  closeStatusView();
+  closeStatusView(true);
   requestAnimationFrame(()=>{openStatusCreate(sp.photo||null,true);showToast('🔁 Statut transféré dans l’éditeur. Vérifiez puis publiez.');});
 }
 function shareStatus(){
@@ -3105,7 +3105,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v33.js?v=studylink-pwa-33',location.href).href;
+  const workerUrl=new URL('sw-v34.js?v=studylink-pwa-34',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
