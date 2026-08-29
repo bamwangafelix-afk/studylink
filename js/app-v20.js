@@ -605,6 +605,19 @@ function syncHeaderUser(){
   if(CU?.uid&&!allUsers.some(u=>u.uid===CU.uid)&&fallback)allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers];
   renderStatusBar();
 }
+function withTimeout(promise,ms,label){
+  let timer;
+  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);});
+  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
+function showFallbackProfile(name){
+  if(!name)return;
+  MP={...(MP||{}),name};
+  el('topN').textContent=name;
+  updatePC();
+  el('pcardEl').style.display='flex';
+  el('EF').style.display='block';
+}
 async function doOut(){
   if(signOutInProgress)return;
   if(!window.confirm('Disconnect?'))return;
@@ -660,11 +673,12 @@ async function loadPro(){
       if(MP.name){updatePC();el('pcardEl').style.display='flex';el('EF').style.display='none';}
       else el('EF').style.display='block';
     }else{
-      if(fallback){MP={...(MP||{}),name:fallback};el('topN').textContent=fallback;allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers.filter(x=>x.uid!==CU.uid)];renderStatusBar();}
-      el('EF').style.display='block';
+      showFallbackProfile(fallback);
+      if(fallback)allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers.filter(x=>x.uid!==CU.uid)];
+      renderStatusBar();
     }
   }catch(e){
-    if(fallback){MP={...(MP||{}),name:fallback};el('topN').textContent=fallback;renderStatusBar();}
+    showFallbackProfile(fallback);
     console.warn('loadPro error:',e);
   }
 }
@@ -832,22 +846,23 @@ function loadMorePosts(){
 }
 function toggleGN(val){el('gnW').style.display=val==='Group'?'block':'none';}
 async function addPost(){
-  if(!MP?.name)return alert('Complete your profile first');
+  const authorName=MP?.name||currentDisplayName();
+  if(!authorName)return alert('Complete your profile first');
   const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
   const gname=type==='Group'?v('gName'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
   showOv(true);
   try{
-    const ref=await db.collection('posts').add({type,text,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const ref=await withTimeout(db.collection('posts').add({type,text,tags:[...selTags],groupName:gname,user:{name:authorName,country:MP?.country||'',uni:MP?.uni||'',course:MP?.course||'',year:MP?.year||'',status:'Online',photo:myPho,intent:MP?.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()}),15000,'Publication timeout. Vérifiez la connexion.');
+    if(type==='Group')await withTimeout(db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()}),15000,'Group creation timeout.');
     // only send to ALERTS (not messages)
-    notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
+    notifyAllExcept(CU.uid,'📢','📢 New Post by '+authorName,text.substring(0,60));
     selTags=[];document.querySelectorAll('#tagSel .tag').forEach(b=>b.classList.remove('sel'));
     el('pText').value='';el('pType').value='Individual';el('gName').value='';el('gnW').style.display='none';
     showToast('📢 Posted!');tab('home');
-  }catch(e){showToast('❌ '+e.message);}
-  showOv(false);
+  }catch(e){showToast('❌ '+(e.message||'Publication impossible. Vérifiez la connexion.'));}
+  finally{showOv(false);}
 }
 async function delPost(id){if(!confirm('Delete?'))return;await db.collection('posts').doc(id).delete();}
 function fmtLastSeen(lastSeen){
@@ -2855,8 +2870,11 @@ function setupInbox(){
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',CU.uid).onSnapshot(sn=>{
       _cachedInboxDocs=sn.docs.slice();
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
-    },e=>console.log('inboxChats:',e));
+    },e=>showDataError('inbox',e));
   };
+  // Start chat discovery independently of the user document listener.
+  // A missing or denied users/{uid} snapshot must not block Messages.
+  startChatListener();
 
   inboxUnsub=db.collection('users').doc(CU.uid).onSnapshot(snap=>{
     const data=snap.data()||{};
@@ -3121,7 +3139,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v35.js?v=studylink-pwa-35',location.href).href;
+  const workerUrl=new URL('sw-v36.js?v=studylink-pwa-36',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
