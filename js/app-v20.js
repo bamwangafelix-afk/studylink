@@ -1107,12 +1107,16 @@ function openSeenProfile(uid){
 }
 function forwardStatus(){
   el('stVMenu').style.display='none';
-  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sourceUid=curStatusUid;
+  const u=allUsers.find(x=>x.uid===sourceUid);
   const sp=activeStatusOf(u);
   if(!sp)return;
   const draftPhoto=sp.photo||null;
-  const draftFrom={uid:curStatusUid,name:u.name||'Utilisateur'};
-  closeStatusView();
+  const draftFrom={uid:sourceUid,name:u.name||'Utilisateur'};
+  // Keep the existing modal history entry while switching overlays. Calling
+  // closeStatusView() normally schedules history.back(), which can immediately
+  // close the newly opened composer on Android/PWA browsers.
+  closeStatusView(true);
   openStatusCreate(draftPhoto);
   forwardedFromDraft=draftFrom;
 }
@@ -3007,7 +3011,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-39',location.href).href;
+  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-40',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
