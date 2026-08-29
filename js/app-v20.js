@@ -1110,10 +1110,11 @@ function forwardStatus(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
   if(!sp)return;
-  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur'};
   const draftPhoto=sp.photo||null;
+  const draftFrom={uid:curStatusUid,name:u.name||'Utilisateur'};
   closeStatusView();
   openStatusCreate(draftPhoto);
+  forwardedFromDraft=draftFrom;
 }
 function shareStatus(){
   el('stVMenu').style.display='none';
@@ -1134,9 +1135,16 @@ function showForwardSource(){
 function saveStatusMedia(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
-  if(sp?.photo)window.open(sp.photo,'_blank');
-  else showToast('Rien à enregistrer, statut texte seul');
   el('stVMenu').style.display='none';
+  if(!sp?.photo){showToast('Rien à enregistrer, statut texte seul');return;}
+  const a=document.createElement('a');
+  a.href=sp.photo;
+  a.download='studylink-statut-'+Date.now()+'.jpg';
+  a.target='_blank';
+  a.rel='noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 async function deleteStatus(){
   el('stVMenu').style.display='none';
@@ -1307,7 +1315,10 @@ async function sendStatusReply(){
 }
 function replyToStatus(){
   el('stVMenu').style.display='none';
-  sendStatusReply();
+  const uid=curStatusUid;
+  const u=allUsers.find(x=>x.uid===uid);
+  closeStatusView(true);
+  openChat(u?.name||'',uid);
 }
 
 function statusPressStart(e){
@@ -2996,7 +3007,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v38.js?v=studylink-pwa-38',location.href).href;
+  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-39',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
