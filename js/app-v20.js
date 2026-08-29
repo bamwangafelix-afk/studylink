@@ -1026,7 +1026,7 @@ function viewStatus(uid){
   else{el('stVJoinGroupBtn').style.display='none';}
   const view=el('statusView');
   applyStatusTheme(view,statusThemeFor(sp.category,sp.photo,sp.message));
-  if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='cover';view.style.backgroundPosition='center';}
+  if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='100% 100%,contain';view.style.backgroundPosition='center';}
   else{
     const grad={dispo:'#27ae60,#1e8a4c',revision:'#2563eb,#16357a',aide:'#f5730a,#c2570a',session:'#7b2ff7,#4b1f99',pause:'#8a93ab,#5c6478',objectif:'#f5b301,#a67c00'}[sp.category]||'#4a5a8f,#16357a';
     view.style.backgroundImage=`linear-gradient(160deg,${grad})`;
@@ -3011,7 +3011,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-40',location.href).href;
+  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-41',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});

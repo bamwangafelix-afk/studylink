@@ -49,8 +49,8 @@ test('uses large explicit non-submit microphone controls', async () => {
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
   assert.match(html, /<button type="button" class="cin-action" id="sendB"/);
   assert.match(html, /<button type="button" class="cin-action" id="gSendB"/);
-  assert.match(html, /<script defer src="js\/app-v20\.js\?v=studylink-pwa-40"><\/script>/);
-  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-40">/);
+  assert.match(html, /<script defer src="js\/app-v20\.js\?v=studylink-pwa-41"><\/script>/);
+  assert.match(html, /<link rel="stylesheet" href="css\/styles\.css\?v=studylink-pwa-41">/);
   assert.match(css, /\.cin-action\{[^}]*width:50px;height:50px;min-width:50px/);
 });
 
@@ -88,7 +88,7 @@ test('opens the selected profile from the Statut viewer and preserves modal hist
   assert.match(source, /function openProfile\(uid\)[\s\S]*pushModalState\(\)/);
 });
 
-test('merges the user branch language switch without regressing pwa-40 Statut controls', async () => {
+test('merges the user branch language switch without regressing pwa-41 Statut controls', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /id="langBtn"[^>]*onclick="toggleLang\(\)"/);
   assert.match(html, /data-i18n="st_new_title"/);
@@ -101,7 +101,7 @@ test('merges the user branch language switch without regressing pwa-40 Statut co
   assert.match(source, /function toggleLang\(\)/);
   assert.match(source, /function applyTranslations\(\)/);
   assert.match(source, /function catLabel\(key\)/);
-  assert.match(source, /const workerUrl=new URL\('sw-v39\.js\?v=studylink-pwa-40'/);
+  assert.match(source, /const workerUrl=new URL\('sw-v39\.js\?v=studylink-pwa-41'/);
   assert.match(source, /function smartStatusReply\(\)/);
   assert.match(source, /function startStatusVoice\(fromGesture=false\)/);
 });
@@ -212,14 +212,14 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   const manifest = await readFile(new URL('../manifest.webmanifest', import.meta.url), 'utf8');
   const worker = await readFile(new URL('../sw-v39.js', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-40"/);
-  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-40/);
+  assert.match(html, /rel="manifest" href="manifest\.webmanifest\?v=studylink-pwa-41"/);
+  assert.match(html, /icons\/studylink-192\.png\?v=studylink-pwa-41/);
   assert.match(html, /id="installBanner"/);
   assert.match(html, /meta name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /meta name="apple-mobile-web-app-capable" content="yes"/);
   assert.match(html, /id="disconnectBtn"/);
   assert.doesNotMatch(html, /onclick="doOut\(\)"/);
-  assert.match(source, /const workerUrl=new URL\('sw-v39\.js\?v=studylink-pwa-40',location\.href\)\.href/);
+  assert.match(source, /const workerUrl=new URL\('sw-v39\.js\?v=studylink-pwa-41',location\.href\)\.href/);
   assert.match(source, /beforeinstallprompt/);
   assert.match(source, /appinstalled/);
   assert.match(source, /updateViaCache:'none'/);
@@ -228,12 +228,12 @@ test('ships an installable PWA shell with the supplied StudyLink icon', async ()
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /"display_override": \["standalone", "minimal-ui"\]/);
   assert.match(manifest, /"prefer_related_applications": false/);
-  assert.match(worker, /studylink-shell-v40/);
-  assert.match(manifest, /"start_url": "\.\/\?source=pwa-40"/);
-  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-40/);
+  assert.match(worker, /studylink-shell-v41/);
+  assert.match(manifest, /"start_url": "\.\/\?source=pwa-41"/);
+  assert.match(manifest, /studylink-512\.png\?v=studylink-pwa-41/);
   assert.match(worker, /self\.addEventListener\('fetch'/);
   assert.doesNotMatch(html, /data:image\/png;base64,/);
-  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-40'\)/);
+  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-41'\)/);
   assert.match(css, /background-size:cover;background-position:center/);
 });
 
@@ -312,7 +312,7 @@ test('ships realtime typing and recording presence for private and group chats',
 test('restores the login background and gives the top wordmark a clearer mobile size', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
-  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-40'\)/);
+  assert.match(css, /#auth\{[^}]*background-color:#0d2f4d;background-image:url\('\.\.\/icons\/studylink-login-full-logo\.png\?v=studylink-pwa-41'\)/);
   assert.match(css, /background-size:cover;background-position:center/);
   assert.match(css, /@media \(max-width:600px\)\{#auth>p\{margin-bottom:92px!important;\}#auth \.af\{transform:translateY\(18px\);\}\}/);
   assert.match(html, /<p id="asub" style="color:#405a78;margin-bottom:18px;font-size:14px;font-style:italic;visibility:hidden;">Connect &bull; Learn &bull; Grow<\/p>/);
