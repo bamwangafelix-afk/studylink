@@ -598,21 +598,11 @@ async function notifyAllExcept(senderUid,icon,title,body){
   }catch(e){console.log(e);}
 }
 function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
-function profileCacheKey(uid){return uid?'studylink.profile.'+uid:'';}
-function readProfileCache(uid){
-  try{const raw=uid&&localStorage.getItem(profileCacheKey(uid));return raw?JSON.parse(raw):null;}catch(e){return null;}
-}
-function writeProfileCache(profile){
-  try{if(profile?.uid)localStorage.setItem(profileCacheKey(profile.uid),JSON.stringify(profile));}catch(e){}
-}
 function syncHeaderUser(){
-  const cached=readProfileCache(CU?.uid);
-  if(cached)MP={...cached,...(MP||{})};
-  const fallback=MP?.name||CU?.displayName||CU?.email?.split('@')[0]||'';
+  const fallback=CU?.displayName||CU?.email?.split('@')[0]||'';
   const header=el('topN');
   if(header&&!header.textContent.trim()&&fallback)header.textContent=fallback;
-  if(CU?.uid&&!allUsers.some(u=>u.uid===CU.uid)&&fallback)allUsers=[{uid:CU.uid,...(MP||{}),name:fallback,photo:MP?.photo||CU.photoURL||'',status:'Online'},...allUsers];
-  if(MP?.name){updatePC();el('pcardEl').style.display='flex';}
+  if(CU?.uid&&!allUsers.some(u=>u.uid===CU.uid)&&fallback)allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers];
   renderStatusBar();
 }
 function withTimeout(promise,ms,label){
@@ -620,11 +610,10 @@ function withTimeout(promise,ms,label){
   const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);});
   return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
 }
-function showFallbackProfile(name,profile={}){
-  if(!name&&!profile?.name)return;
-  MP={...(MP||{}),...profile,name:profile.name||name};
-  writeProfileCache(CU?.uid?{...MP,uid:CU.uid}:MP);
-  el('topN').textContent=MP.name||name||'';
+function showFallbackProfile(name){
+  if(!name)return;
+  MP={...(MP||{}),name};
+  el('topN').textContent=name;
   updatePC();
   el('pcardEl').style.display='flex';
   el('EF').style.display='block';
@@ -669,7 +658,7 @@ async function loadPro(){
   try{
     const sn=await db.collection('users').doc(CU.uid).get();
     if(sn.exists){
-      MP={...sn.data(),uid:CU.uid};writeProfileCache(MP);myPho=MP.photo||'';
+      MP=sn.data();myPho=MP.photo||'';
       el('topN').textContent=MP.name||'';
       el('uN').value=MP.name||'';el('uBio').value=MP.bio||'';
       el('uU').value=MP.uni||'';el('uCo').value=MP.course||'';
@@ -684,13 +673,12 @@ async function loadPro(){
       if(MP.name){updatePC();el('pcardEl').style.display='flex';el('EF').style.display='none';}
       else el('EF').style.display='block';
     }else{
-      const cached=readProfileCache(CU?.uid)||{};
-      showFallbackProfile(fallback,cached);
-      if(fallback)allUsers=[{uid:CU.uid,...cached,name:cached.name||fallback,photo:cached.photo||CU.photoURL||'',status:'Online'},...allUsers.filter(x=>x.uid!==CU.uid)];
+      showFallbackProfile(fallback);
+      if(fallback)allUsers=[{uid:CU.uid,name:fallback,photo:CU.photoURL||'',status:'Online'},...allUsers.filter(x=>x.uid!==CU.uid)];
       renderStatusBar();
     }
   }catch(e){
-    showFallbackProfile(fallback,readProfileCache(CU?.uid)||{});
+    showFallbackProfile(fallback);
     console.warn('loadPro error:',e);
   }
 }
@@ -3151,7 +3139,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v37.js?v=studylink-pwa-37',location.href).href;
+  const workerUrl=new URL('sw-v36.js?v=studylink-pwa-36',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
