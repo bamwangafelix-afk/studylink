@@ -639,6 +639,9 @@ function openProfile(uid,profileData=null){
   const u=profileData||allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
   pushModalState();
+  const profileStatus=activeStatusOf(u);
+  const profileRingClass=profileStatus?.category?`ring-outline-${profileStatus.category}`:'';
+  el('pvAvatar').className=`profile-view-avatar ${profileRingClass}`.trim();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
   el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
@@ -3021,7 +3024,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v41.js?v=studylink-pwa-51',location.href).href;
+  const workerUrl=new URL('sw-v42.js?v=studylink-pwa-52',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});

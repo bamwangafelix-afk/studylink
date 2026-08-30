@@ -163,7 +163,15 @@
 
 ## pwa-50 profile category refinements (2026-08-30)
 
-- [ ] Ensure the Give Help / Apporter de l’aide category displays its black circular badge in the profile Statut view like the other categories.
-- [ ] Set the View profile back arrow and Profil title to white in dark mode.
-- [ ] Preserve the existing blue-green application icon and verify the corrected release with regression tests and live checks.
-- [ ] Advance the visual corrections to pwa-51 with a fresh service worker so installed StudyLink clients receive the new CSS.
+- [x] Ensure the Give Help / Apporter de l’aide category displays its black circular badge in the profile Statut view like the other categories.
+- [x] Set the View profile back arrow and Profil title to white in dark mode.
+- [x] Preserve the existing blue-green application icon and verify the corrected release with regression tests and live checks.
+- [x] Advance the visual corrections to pwa-51 with a fresh service worker so installed StudyLink clients receive the new CSS.
+
+
+## Screenshot-confirmed dark profile refinements (2026-08-30)
+
+- [x] Match the Give Help / Apporter de l’aide Statut ring and category treatment to the requested black appearance in the profile view.
+- [x] Make the profile name below the avatar white in dark mode.
+- [x] Add regression coverage, cache-bust the release, publish, and verify the live result.
+- [x] Advance the profile styling correction to pwa-52 with a fresh service worker cache.
