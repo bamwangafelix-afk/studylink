@@ -196,3 +196,9 @@
 - [x] Add regression coverage for the final ring geometry and publish the corrected PWA release.
 - [ ] Verify the corrected ring visually on the live mobile layout.
 
+
+## Uniform Status avatar sizing (2026-08-30)
+
+- [x] Match the Give Help Status avatar circle dimensions to every other Status avatar.
+- [ ] Add regression coverage, publish the sizing correction, and verify the live mobile layout.
+
