@@ -153,9 +153,17 @@
 - [x] Correct the pwa-27 service-worker cache identifier so the new profile fix activates reliably in installed clients.
 
 
-## pwa-49 visual refinements (2026-08-30)
+## pwa-50 visual refinements (2026-08-30)
 
-- [ ] Make the camera icon and « Ajouter la photo » label white in the dark theme.
-- [ ] Set the profile-view back arrow and « Profil » heading to the same blue as the profile name.
-- [ ] Reorder Statut message rendering so the message appears first and the category icon appears below it.
-- [ ] Add regression coverage, publish the refinements, and verify the live pwa-49 shell.
+- [x] Make the camera icon and « Ajouter la photo » label white in the dark theme.
+- [x] Set the profile-view back arrow and « Profil » heading to the same blue as the profile name.
+- [x] Reorder Statut message rendering so the message appears first and the category icon appears below it.
+- [x] Add regression coverage, publish the refinements, and verify the live pwa-50 shell.
+
+
+## pwa-50 profile category refinements (2026-08-30)
+
+- [ ] Ensure the Give Help / Apporter de l’aide category displays its black circular badge in the profile Statut view like the other categories.
+- [ ] Set the View profile back arrow and Profil title to white in dark mode.
+- [ ] Preserve the existing blue-green application icon and verify the corrected release with regression tests and live checks.
+- [ ] Advance the visual corrections to pwa-51 with a fresh service worker so installed StudyLink clients receive the new CSS.
