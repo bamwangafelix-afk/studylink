@@ -202,3 +202,9 @@
 - [x] Match the Give Help Status avatar circle dimensions to every other Status avatar.
 - [ ] Add regression coverage, publish the sizing correction, and verify the live mobile layout.
 
+
+## Give Help inner avatar reduction (2026-08-30)
+
+- [x] Reduce only the Give Help Status avatar image circle so it matches the visible size of the other category avatars.
+- [x] Add regression coverage, publish the next PWA version, and verify the live mobile result.
+
