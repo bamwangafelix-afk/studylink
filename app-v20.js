@@ -6,32 +6,7 @@ const MIC_SVG_INNER='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="
 function setMicIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 48 48');ic.setAttribute('width','26');ic.setAttribute('height','26');ic.innerHTML=MIC_SVG_INNER;}
 function setSendIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 24 24');ic.setAttribute('width','24');ic.setAttribute('height','24');ic.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';}
 
-// ── MOBILE OVERLAY BACK NAVIGATION ──
-// Keep Android's hardware back button inside StudyLink while a full-screen
-// overlay is open, instead of navigating away from the app shell.
-let slModalOpen=false;
-function pushModalState(){
-  if(slModalOpen)return;
-  slModalOpen=true;
-  try{history.pushState({slModal:true},document.title);}catch(e){}
-}
-function consumeModalState(){
-  if(!slModalOpen)return;
-  slModalOpen=false;
-  try{history.back();}catch(e){}
-}
-function closeTopModal(){
-  if(el('statusView')?.style.display==='flex'){closeStatusView();return;}
-  if(el('statusCreate')?.style.display==='flex'){closeStatusCreate();return;}
-  if(el('profileView')?.style.display==='flex'){closeProfileView();return;}
-  if(el('groupW')&&getComputedStyle(el('groupW')).display!=='none'){closeGroup();return;}
-  if(el('chatW')&&getComputedStyle(el('chatW')).display!=='none'){closeChat();return;}
-}
-window.addEventListener('popstate',()=>{
-  if(!slModalOpen)return;
-  slModalOpen=false;
-  closeTopModal();
-});
+
 
 // ── GLOBAL CRASH PREVENTION ──
 window.addEventListener('unhandledrejection',e=>{
@@ -74,50 +49,11 @@ function applyStatusTheme(root,theme){
   const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
   root.classList.add('status-theme-'+next);
   root.dataset.statusTheme=next;
-  if(root.id==='statusCreate'||root.id==='statusView')updateStatusCompanionTheme(next);
 }
 function updateStatusCreateTheme(){
   const msg=el('stMsg')?.value?.trim()||'';
   applyStatusTheme(el('statusCreate'),statusThemeFor(selStatusCat,statusPhotoUrl,msg));
-  updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,msg));
 }
-const STATUS_COMPANION_LABELS={photo:'Photo uniquement',text:'Message',dispo:'Disponible',revision:'Révision',aide:"Besoin d'aide",session:'Session en cours',pause:'Pause',objectif:'Objectif atteint'};
-function updateStatusCompanionTheme(theme){
-  const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
-  ['stColorCompanion'].forEach(id=>{
-    const bar=el(id);if(!bar)return;
-    bar.dataset.statusTheme=next;
-    const label=bar.querySelector('[data-companion-label]')||bar.querySelector('#stCompanionLabel');
-    const dot=bar.querySelector('[data-companion-dot]')||bar.querySelector('#stCompanionDot');
-    if(label)label.textContent=STATUS_COMPANION_LABELS[next]||'Message';
-    if(dot)dot.style.background='var(--status-accent)';
-  });
-}
-function syncStatusCompanionViewport(){
-  const vv=window.visualViewport;
-  const offset=vv?Math.max(0,window.innerHeight-vv.height-vv.offsetTop):0;
-  document.documentElement.style.setProperty('--status-keyboard-offset',Math.round(offset)+'px');
-}
-function showStatusCompanion(id){
-  const bar=el(id);if(!bar)return;
-  syncStatusCompanionViewport();
-  bar.classList.add('is-visible');
-}
-function showStatusColorCompanion(){showStatusCompanion('stColorCompanion');updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,v('stMsg')));}
-function scheduleStatusCompanionHide(id){
-  setTimeout(()=>{
-    const active=document.activeElement;if(active?.id==='stMsg')return;
-    el(id)?.classList.remove('is-visible');
-  },180);
-}
-function insertStatusText(inputId,text){
-  const input=el(inputId);if(!input)return;
-  const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
-  input.value=input.value.slice(0,start)+text+input.value.slice(end);
-  input.selectionStart=input.selectionEnd=start+text.length;
-  input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();
-}
-function insertStatusCompanionEmoji(emoji){insertStatusText('stMsg',emoji);showStatusColorCompanion();}
 let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
 let statusAutoCloseTimer=null;
 let statusRemainingMs=STATUS_VIEW_MS;
@@ -637,7 +573,6 @@ function hideEF(){el('EF').style.display='none';}
 function openProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
-  pushModalState();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
   el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
@@ -649,10 +584,10 @@ function openProfile(uid){
   el('pvSkills').innerHTML=(u.skills||[]).map(s=>`<span class="tbadge" style="background:#fff3e0;color:#e65100;">${esc(s)}</span>`).join('');
   const isSelf=uid===CU?.uid;
   el('pvMsgBtn').style.display=isSelf?'none':'block';
-  el('pvMsgBtn').onclick=()=>{closeProfileView(true);openChat(u.name||'',uid);};
+  el('pvMsgBtn').onclick=()=>{closeProfileView();openChat(u.name||'',uid);};
   el('profileView').style.display='flex';
 }
-function closeProfileView(preserveHistory=false){el('profileView').style.display='none';if(!preserveHistory)consumeModalState();}
+function closeProfileView(){el('profileView').style.display='none';}
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
@@ -901,7 +836,6 @@ function renderStatusBar(){
 // ── STATUS CREATE ──
 function openStatusCreate(draftPhoto){
   if(!MP?.name)return showToast('❌ Complete your profile first');
-  pushModalState();
   selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
   if(draftPhoto){statusPhotoUrl=draftPhoto;}
   else{statusPhotoUrl=null;forwardedFromDraft=null;}
@@ -912,7 +846,7 @@ function openStatusCreate(draftPhoto){
   const grid=el('stCatGrid');
   grid.innerHTML=Object.keys(CATS).map(k=>{
     const c=CATS[k];
-    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${catLabel(k)}</div></div>`;
+    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${c.label}</div></div>`;
   }).join('');
   const subjWrap=el('stSubjSel');
   subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
@@ -926,7 +860,7 @@ function openStatusCreate(draftPhoto){
   updateStatusPreview();
   el('statusCreate').style.display='flex';
 }
-function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');consumeModalState();}
+function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');}
 function selectStatusCat(k){
   selStatusCat=k;
   document.querySelectorAll('.stCatCard').forEach(c=>c.classList.remove('sel'));
@@ -975,7 +909,7 @@ function updateStatusPreview(){
   const c=selStatusCat?CATS[selStatusCat]:null;
   const av=statusPhotoUrl?`<img class="stThumb" src="${statusPhotoUrl}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
   const ringCls=selStatusCat?('ring-'+selStatusCat):'ring-photo';
-  const desc=c?(`${c.emoji} ${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
+  const desc=c?(`${c.emoji} ${c.label}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
   p.innerHTML=`<div class="stRing ${ringCls}" style="width:52px;height:52px;flex-shrink:0;">${av}</div>
     <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
 }
@@ -1004,7 +938,6 @@ function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
-  pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
@@ -1016,7 +949,7 @@ function viewStatus(uid){
   const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
   el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
-  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${catLabel(sp.category)}`;}
+  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${c.label}`;}
   else{el('stVBadge').style.display='none';}
   if(sp.message){el('stVMsg').style.display='block';el('stVMsg').textContent=sp.message;}
   else{el('stVMsg').style.display='none';}
@@ -1053,7 +986,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
+function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1064,20 +997,20 @@ function toggleStatusMenu(){
     const sp=activeStatusOf(mine);
     const isForward=!!sp?.forwardedFrom;
     menu.innerHTML=`
-      <button onclick="showSeenBy()">${t('st_menu_seenby')}</button>
-      ${isForward?`<button onclick="showForwardSource()">${t('st_menu_forward')}</button>`:''}
-      <button onclick="shareStatus()">${t('st_menu_share')}</button>
-      <button onclick="saveStatusMedia()">${t('st_menu_save')}</button>
-      <button class="danger" onclick="deleteStatus()">${t('st_menu_delete')}</button>
+      <button onclick="showSeenBy()">Vu par</button>
+      ${isForward?`<button onclick="showForwardSource()">Transféré</button>`:''}
+      <button onclick="shareStatus()">Partager</button>
+      <button onclick="saveStatusMedia()">Enregistrer</button>
+      <button class="danger" onclick="deleteStatus()">Supprimer</button>
     `;
   }else{
     menu.innerHTML=`
-      <button onclick="forwardStatus()">${t('st_menu_forward')}</button>
-      <button onclick="replyToStatus()">${t('st_menu_message')}</button>
-      <button onclick="viewStatusProfile()">${t('st_menu_viewprofile')}</button>
-      <button onclick="toggleStatusNotif()">${t('st_menu_notif')}</button>
-      <button onclick="hideStatusUser()">${t('st_menu_hide')}</button>
-      <button class="danger" onclick="reportStatus()">${t('st_menu_report')}</button>
+      <button onclick="forwardStatus()">Transférer</button>
+      <button onclick="replyToStatus()">Message</button>
+      <button onclick="viewStatusProfile()">Voir profil</button>
+      <button onclick="toggleStatusNotif()">Notifications</button>
+      <button onclick="hideStatusUser()">Masquer</button>
+      <button class="danger" onclick="reportStatus()">Signaler</button>
     `;
   }
   menu.style.display='block';
@@ -1089,14 +1022,14 @@ function showSeenBy(){
   const seenUids=(sp?.viewedBy||[]);
   const list=el('stVSeenList');
   if(seenUids.length===0){
-    list.innerHTML=`<div class="stVSeenHdr">${t('st_seen_none')}</div>`;
+    list.innerHTML=`<div class="stVSeenHdr">Vu par personne pour l'instant</div>`;
   }else{
     const rows=seenUids.map(uid=>{
       const su=allUsers.find(x=>x.uid===uid);
       const av=su?.photo?`<img src="${su.photo}">`:esc((su?.name||'?')[0]||'?').toUpperCase();
       return `<div class="stVSeenRow" onclick="openSeenProfile('${uid}')"><div class="stVSeenAv">${av}</div><div class="stVSeenName">${esc(su?.name||'Utilisateur')}</div></div>`;
     }).join('');
-    list.innerHTML=`<div class="stVSeenHdr">${t('st_seen_count')} ${seenUids.length}</div>${rows}`;
+    list.innerHTML=`<div class="stVSeenHdr">Vu par ${seenUids.length}</div>${rows}`;
   }
   list.style.display='block';
 }
@@ -1110,11 +1043,10 @@ function forwardStatus(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
   if(!sp)return;
+  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur'};
   const draftPhoto=sp.photo||null;
-  const draftFrom={uid:curStatusUid,name:u.name||'Utilisateur'};
   closeStatusView();
   openStatusCreate(draftPhoto);
-  forwardedFromDraft=draftFrom;
 }
 function shareStatus(){
   el('stVMenu').style.display='none';
@@ -1135,51 +1067,44 @@ function showForwardSource(){
 function saveStatusMedia(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
+  if(sp?.photo)window.open(sp.photo,'_blank');
+  else showToast('Rien à enregistrer, statut texte seul');
   el('stVMenu').style.display='none';
-  if(!sp?.photo){showToast('Rien à enregistrer, statut texte seul');return;}
-  const a=document.createElement('a');
-  a.href=sp.photo;
-  a.download='studylink-statut-'+Date.now()+'.jpg';
-  a.target='_blank';
-  a.rel='noopener';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
 }
 async function deleteStatus(){
   el('stVMenu').style.display='none';
-  if(!confirm(t('st_confirm_delete')))return;
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'));}
+  if(!confirm('Supprimer ton statut ?'))return;
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast('Statut supprimé');}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
   el('stVMenu').style.display='none';
   const uid=curStatusUid;
-  closeStatusView(true);
+  closeStatusView();
   if(typeof openProfile==='function')openProfile(uid);
   else showToast('Profil');
 }
 function toggleStatusNotif(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
-  if(confirm(t('st_confirm_notif').replace('{name}',u?.name||'cet utilisateur'))){
-    showToast(t('st_toast_notif_on'));
+  if(confirm(`Tu seras notifié quand ${u?.name||'cet utilisateur'} ajoute un nouveau statut.`)){
+    showToast('Notifications activées');
   }
 }
 function hideStatusUser(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
-  if(confirm(t('st_confirm_hide').replace('{name}',u?.name||'cet utilisateur'))){
+  if(confirm(`Les statuts de ${u?.name||'cet utilisateur'} n'apparaîtront plus dans tes mises à jour.`)){
     let hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
     if(!hidden.includes(curStatusUid))hidden.push(curStatusUid);
     localStorage.setItem('hiddenStatusUids',JSON.stringify(hidden));
-    closeStatusView();renderStatusBar();showToast(t('st_toast_hidden'));
+    closeStatusView();renderStatusBar();showToast('Masqué');
   }
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
   if(confirm('Signaler ce statut pour contenu inapproprié ?')){
-    showToast(t('st_toast_reported'));
+    showToast('Signalement envoyé');
   }
 }
 async function sendQuickStatusReply(toUid,text){
@@ -1315,10 +1240,7 @@ async function sendStatusReply(){
 }
 function replyToStatus(){
   el('stVMenu').style.display='none';
-  const uid=curStatusUid;
-  const u=allUsers.find(x=>x.uid===uid);
-  closeStatusView(true);
-  openChat(u?.name||'',uid);
+  sendStatusReply();
 }
 
 function statusPressStart(e){
@@ -1438,7 +1360,6 @@ function openChat(name,uid){
   curChat=null;replyMsg=null;
   const mb=el('msgB');if(mb)mb.innerHTML='';
   curChat={name,uid};
-  pushModalState();
   el('chatT').textContent=name;
   const other=allUsers.find(u=>u.uid===uid);
   const st=getStatusInfo(other?.status,other?.lastSeen);
@@ -1549,7 +1470,6 @@ function closeChat(){
   curChat=null;replyMsg=null;
   el('rplybar').style.display='none';
   closeMediaPanel();closeStickers();clearSelection();
-  consumeModalState();
 }
 function onMsgInput(){
   if(!curChat)return;
@@ -1746,7 +1666,6 @@ async function openGroup(postId,name){
     if(!gs.exists){showToast('❌ Group not found');showOv(false);return;}
     if(!(gs.data().members||[]).includes(CU.uid))await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
     curGrp={id:postId,name};
-    pushModalState();
     el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
@@ -1773,7 +1692,6 @@ function closeGroup(){
   el('gTypebar').style.display='none';el('groupW').style.display='none';
   if(grpUnsub){grpUnsub();grpUnsub=null;}if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
   curGrp=null;closeGStickers();clearSelection();
-  consumeModalState();
 }
 async function sendGMsg(){
   const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
@@ -2886,60 +2804,6 @@ function setupNotifL(){
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>b.delete(d.ref));return b.commit();});}
 
-// ── I18N (merged from user branch) ──
-const I18N={
-  fr:{
-    st_new_title:'Nouveau statut',st_publish:'Publier',st_photo_label:'Photo (optionnel)',
-    st_add_photo:'Ajouter une photo',st_photo_hint:'Notes, bureau de révision, selfie...',
-    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',
-    st_subject_label:'Matière (optionnel)',st_link_group_label:'Lier un groupe (optionnel)',
-    st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
-    st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
-    st_reply_placeholder:'Répondre...',st_cat_dispo:'Disponible',st_cat_revision:'En révision',
-    st_cat_aide:"Besoin d'aide",st_cat_session:'Session en cours',st_cat_pause:'Pause',st_cat_objectif:'Objectif atteint',
-    st_menu_seenby:'Vu par',st_menu_share:'Partager',st_menu_save:'Enregistrer',st_menu_delete:'Supprimer',
-    st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
-    st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
-    st_toast_published:'✅ Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
-    st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
-    st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',
-    st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',
-    st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
-    st_confirm_notif:'Tu seras notifié quand {name} ajoute un nouveau statut.',
-    st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
-  },
-  en:{
-    st_new_title:'New status',st_publish:'Post',st_photo_label:'Photo (optional)',st_add_photo:'Add a photo',
-    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',
-    st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
-    st_msg_placeholder:'Free to study now, who wants to join?',st_preview_label:'Preview',
-    st_expiry_note:'⏱ Your status disappears automatically after 24h',st_reply_placeholder:'Reply...',
-    st_cat_dispo:'Available',st_cat_revision:'Studying',st_cat_aide:'Need help',st_cat_session:'In session',
-    st_cat_pause:'Break',st_cat_objectif:'Goal reached',st_menu_seenby:'Seen by',st_menu_share:'Share',st_menu_save:'Save',
-    st_menu_delete:'Delete',st_menu_forward:'Forward',st_menu_message:'Message',st_menu_viewprofile:'View profile',
-    st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
-    st_toast_published:'✅ Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
-    st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
-    st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',
-    st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",
-    st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
-    st_confirm_notif:'You will be notified when {name} adds a new status.',
-    st_confirm_hide:"{name}'s statuses will no longer appear in your updates."
-  }
-};
-let appLang=localStorage.getItem('appLang')||'fr';
-function t(key){return I18N[appLang]?.[key]||I18N.fr[key]||key;}
-const STATUS_I18N_KEYS={dispo:'st_cat_dispo',revision:'st_cat_revision',aide:'st_cat_aide',session:'st_cat_session',pause:'st_cat_pause',objectif:'st_cat_objectif'};
-function catLabel(key){return t(STATUS_I18N_KEYS[key])||CATS[key]?.label||key;}
-function applyTranslations(){
-  document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=t(node.getAttribute('data-i18n'));});
-  document.querySelectorAll('[data-i18n-ph]').forEach(node=>{node.placeholder=t(node.getAttribute('data-i18n-ph'));});
-  const langBtn=document.getElementById('langBtn');if(langBtn)langBtn.textContent=appLang.toUpperCase();
-  document.querySelectorAll('#stCatGrid .stCatCard .nm').forEach((node,index)=>{const key=Object.keys(CATS)[index];if(key)node.textContent=catLabel(key);});
-  if(document.getElementById('statusCreate')?.style.display==='flex'){updateStatusPreview();}
-}
-function toggleLang(){appLang=appLang==='fr'?'en':'fr';localStorage.setItem('appLang',appLang);applyTranslations();if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);}
-
 // ── HELPERS ──
 function el(id){return document.getElementById(id);}
 function v(id){return(el(id)?.value||'').trim();}
@@ -3007,7 +2871,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v38.js?v=studylink-pwa-38',location.href).href;
+  const workerUrl=new URL('sw-v24.js?v=studylink-pwa-24',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -3035,7 +2899,6 @@ function setupPWA(){
   window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
 }
 function bootstrapStudyLink(){
-  applyTranslations();
   setupNavigation();
   setupPWA();
   const disconnectButton=el('disconnectBtn');
@@ -3053,12 +2916,6 @@ function bootstrapStudyLink(){
   el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
   el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
   el('stVReplyInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartStatusReply();}});
-  el('stMsg')?.addEventListener('focus',showStatusColorCompanion);
-  el('stMsg')?.addEventListener('blur',()=>scheduleStatusCompanionHide('stColorCompanion'));
-  window.visualViewport?.addEventListener('resize',syncStatusCompanionViewport);
-  window.visualViewport?.addEventListener('scroll',syncStatusCompanionViewport);
-  window.addEventListener('resize',syncStatusCompanionViewport);
-  syncStatusCompanionViewport();
   setupVoiceSwipe('stVReplyBtn',startStatusVoice,stopAndSendStatusVoice,cancelStatusVoice);
 }
 const startStudyLink=()=>{

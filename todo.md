@@ -146,8 +146,16 @@
 
 ## View profile regression (2026-08-28)
 
-- [ ] Restore the Statut menu's View profile action for the selected user.
-- [ ] Add regression coverage for opening a profile from the Statut viewer while preserving modal history and language switching.
-- [ ] Run the full StudyLink regression suite and publish the verified fix.
-- [ ] Advance the PWA cache version for the profile fix so installed clients cannot keep the previous broken JavaScript bundle.
-- [ ] Correct the pwa-27 service-worker cache identifier so the new profile fix activates reliably in installed clients.
+- [x] Restore the Statut menu's View profile action for the selected user.
+- [x] Add regression coverage for opening a profile from the Statut viewer while preserving modal history and language switching.
+- [x] Run the full StudyLink regression suite and publish the verified fix.
+- [x] Advance the PWA cache version for the profile fix so installed clients cannot keep the previous broken JavaScript bundle.
+- [x] Correct the pwa-27 service-worker cache identifier so the new profile fix activates reliably in installed clients.
+
+
+## pwa-49 visual refinements (2026-08-30)
+
+- [ ] Make the camera icon and « Ajouter la photo » label white in the dark theme.
+- [ ] Set the profile-view back arrow and « Profil » heading to the same blue as the profile name.
+- [ ] Reorder Statut message rendering so the message appears first and the category icon appears below it.
+- [ ] Add regression coverage, publish the refinements, and verify the live pwa-49 shell.
