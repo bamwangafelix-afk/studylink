@@ -182,3 +182,10 @@
 - [x] Diagnose why the Give Help category ring is still not visible around the profile avatar.
 - [x] Apply the ring through the actual profile rendering path and add targeted regression coverage.
 - [x] Cache-bust, publish, and verify the corrected ring on the live StudyLink release.
+
+
+## Give Help ring sizing refinement (2026-08-30)
+
+- [x] Reduce the Give Help black ring so it sits directly against the avatar and matches the other category ring geometry.
+- [x] Add or update regression coverage, cache-bust, publish, and verify the tightened ring live.
+- [x] Advance the tightened Give Help ring to pwa-54 with a fresh service worker so the corrected geometry reaches installed clients.
