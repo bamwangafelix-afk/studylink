@@ -6,32 +6,7 @@ const MIC_SVG_INNER='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="
 function setMicIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 48 48');ic.setAttribute('width','26');ic.setAttribute('height','26');ic.innerHTML=MIC_SVG_INNER;}
 function setSendIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 24 24');ic.setAttribute('width','24');ic.setAttribute('height','24');ic.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';}
 
-// ── MOBILE OVERLAY BACK NAVIGATION ──
-// Keep Android's hardware back button inside StudyLink while a full-screen
-// overlay is open, instead of navigating away from the app shell.
-let slModalOpen=false;
-function pushModalState(){
-  if(slModalOpen)return;
-  slModalOpen=true;
-  try{history.pushState({slModal:true},document.title);}catch(e){}
-}
-function consumeModalState(){
-  if(!slModalOpen)return;
-  slModalOpen=false;
-  try{history.back();}catch(e){}
-}
-function closeTopModal(){
-  if(el('statusView')?.style.display==='flex'){closeStatusView();return;}
-  if(el('statusCreate')?.style.display==='flex'){closeStatusCreate();return;}
-  if(el('profileView')?.style.display==='flex'){closeProfileView();return;}
-  if(el('groupW')&&getComputedStyle(el('groupW')).display!=='none'){closeGroup();return;}
-  if(el('chatW')&&getComputedStyle(el('chatW')).display!=='none'){closeChat();return;}
-}
-window.addEventListener('popstate',()=>{
-  if(!slModalOpen)return;
-  slModalOpen=false;
-  closeTopModal();
-});
+
 
 // ── GLOBAL CRASH PREVENTION ──
 window.addEventListener('unhandledrejection',e=>{
@@ -55,25 +30,13 @@ let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,
 // ── STATUSES ──
 const STATUS_TTL_MS=24*60*60*1000;
 const STATUS_VIEW_MS=6000;
-const CAT_ICONS={
-  revision:'<svg viewBox="0 0 429.819299 511.627946" fill="currentColor"><g transform="translate(-41.109273,511.627946) scale(0.100000,-0.100000)"><path d="M2390 5105 c-399 -76 -704 -362 -803 -755 -29 -115 -30 -329 -3 -445 48 -208 187 -438 329 -545 25 -19 47 -38 47 -41 0 -4 -21 -14 -47 -24 -79 -29 -236 -113 -325 -172 -82 -54 -221 -167 -266 -216 l-23 -24 -156 58 c-85 33 -168 59 -185 59 -48 0 -105 -36 -128 -80 -19 -37 -20 -58 -20 -324 l0 -284 -61 -21 c-162 -54 -280 -184 -324 -356 -62 -243 88 -514 329 -589 l56 -18 0 -307 c0 -280 2 -309 19 -341 10 -19 32 -43 48 -52 50 -30 1654 -628 1683 -628 26 0 1612 590 1678 624 18 9 41 34 52 56 19 37 20 58 20 344 l0 304 61 21 c162 54 280 184 324 356 62 243 -82 504 -324 586 l-61 21 0 284 c0 266 -1 287 -20 324 -23 44 -80 80 -128 80 -17 0 -100 -26 -185 -59 l-156 -58 -23 24 c-45 49 -195 170 -279 225 -88 58 -230 132 -311 163 l-48 18 88 86 c102 99 157 176 218 305 127 269 123 590 -12 859 -132 265 -373 457 -659 528 -106 27 -304 34 -405 14z m303 -299 c321 -62 567 -359 567 -686 0 -169 -74 -351 -192 -476 -219 -231 -534 -288 -818 -148 -79 39 -110 62 -181 133 -71 71 -94 102 -133 181 -140 285 -83 598 148 818 163 155 387 220 609 178z m159 -1716 c131 -27 252 -71 379 -137 97 -50 260 -161 267 -182 1 -4 -209 -88 -468 -185 l-470 -176 -470 176 c-259 97 -469 181 -468 185 7 21 171 133 268 183 159 82 312 131 490 156 104 14 361 4 472 -20z m-1079 -705 l637 -239 0 -889 c0 -707 -3 -888 -12 -885 -7 3 -300 112 -650 243 l-638 239 0 236 0 237 41 12 c55 17 122 85 142 146 25 72 25 598 0 670 -20 61 -87 129 -142 146 l-41 12 0 160 c0 123 3 158 13 155 6 -3 299 -112 650 -243z m2237 87 l0 -159 -41 -12 c-55 -17 -122 -85 -142 -146 -25 -72 -25 -598 0 -670 20 -61 87 -129 142 -146 l41 -12 0 -237 0 -236 -637 -239 c-351 -131 -644 -240 -650 -243 -10 -3 -13 178 -13 885 l0 889 643 242 c353 132 645 241 650 242 4 0 7 -71 7 -158z m-3000 -653 l0 -202 -83 5 c-65 3 -92 9 -121 27 -109 68 -126 221 -36 311 46 46 81 58 173 59 l67 1 0 -201z m3304 172 c21 -13 49 -42 64 -64 23 -34 27 -52 27 -107 0 -55 -4 -73 -27 -107 -42 -64 -87 -86 -185 -91 l-83 -5 0 203 0 203 83 -5 c65 -3 92 -9 121 -27z" fill-rule="evenodd"/></g></svg>',
-  session:'<svg viewBox="0 0 417.505327 467.921033" fill="currentColor"><g transform="translate(-47.500000,489.921033) scale(0.100000,-0.100000)"><path d="M1705 4888 c-139 -26 -301 -148 -368 -276 -63 -120 -67 -147 -67 -431 0 -247 1 -257 23 -296 71 -125 275 -108 326 28 7 17 11 115 11 240 0 117 5 228 10 248 12 43 66 99 112 115 25 10 321 13 1204 13 l1170 1 50 -25 c28 -14 59 -40 74 -62 l25 -37 0 -1846 0 -1846 -25 -38 c-15 -22 -45 -47 -75 -61 l-51 -25 -1180 2 -1180 3 -43 28 c-70 46 -80 83 -81 272 0 179 -11 218 -69 268 -103 86 -256 36 -292 -96 -17 -63 -6 -377 16 -447 59 -193 230 -349 423 -389 37 -8 424 -11 1246 -11 1157 0 1195 1 1270 20 43 11 103 34 135 52 80 45 182 151 219 229 66 135 62 -3 62 2036 0 1305 -3 1868 -11 1905 -20 97 -75 195 -153 272 -83 83 -145 119 -252 146 -75 19 -112 20 -1278 19 -708 -1 -1222 -5 -1251 -11z M2300 3631 c-92 -29 -169 -95 -208 -180 -21 -46 -27 -75 -30 -163 l-5 -108 -666 -2 -666 -3 -56 -26 c-72 -34 -134 -96 -168 -168 l-26 -56 0 -365 0 -365 25 -50 c31 -64 101 -134 165 -165 l50 -25 671 -3 671 -2 5 -113 c3 -93 8 -121 30 -168 30 -65 84 -121 153 -157 44 -24 62 -27 145 -27 81 0 102 4 140 24 25 13 265 204 533 424 376 307 497 412 522 451 89 135 68 312 -52 427 -26 26 -256 213 -511 417 -505 405 -517 413 -635 411 -34 0 -73 -4 -87 -8z" fill-rule="evenodd"/></g></svg>',
-  objectif:'<svg viewBox="0 0 479.912538 479.817243" fill="currentColor"><g transform="translate(-16.087462,495.917788) scale(0.100000,-0.100000)"><path d="M2325 4950 c-611 -63 -1202 -372 -1592 -835 -534 -633 -709 -1497 -462 -2272 244 -761 811 -1328 1572 -1572 693 -221 1470 -105 2074 311 373 256 668 614 842 1020 323 753 253 1586 -192 2271 l-70 108 231 233 c207 207 232 235 232 264 0 39 -38 82 -72 82 -13 0 -122 -29 -243 -64 -121 -35 -222 -62 -224 -60 -2 1 12 106 29 233 31 217 32 231 16 255 -18 28 -54 41 -88 32 -13 -3 -112 -104 -222 -225 l-198 -219 -98 64 c-282 185 -595 302 -957 359 -119 19 -454 27 -578 15z m570 -175 c238 -37 463 -110 670 -215 137 -69 275 -154 275 -168 0 -5 -69 -84 -152 -177 -84 -92 -156 -173 -160 -179 -4 -7 -10 -66 -14 -132 -4 -65 -9 -124 -13 -131 -4 -8 -32 6 -86 43 -163 112 -384 203 -586 240 -130 25 -410 25 -534 1 -326 -64 -575 -195 -806 -426 -231 -232 -366 -487 -425 -806 -26 -138 -26 -392 0 -530 39 -210 119 -408 237 -586 83 -125 281 -323 408 -407 173 -116 379 -200 586 -238 138 -26 392 -26 530 0 319 59 574 194 806 425 230 231 366 487 425 806 26 138 26 392 0 530 -40 216 -136 447 -256 613 -33 46 -60 85 -60 86 0 2 84 20 188 41 l187 38 133 131 132 130 18 -23 c128 -175 266 -474 327 -707 54 -207 69 -331 69 -574 0 -243 -15 -367 -69 -574 -201 -773 -833 -1399 -1612 -1596 -200 -51 -316 -64 -553 -64 -269 0 -424 22 -663 95 -512 157 -969 513 -1249 974 -436 716 -436 1614 0 2330 165 272 415 531 682 706 296 195 652 322 1005 358 124 13 439 5 560 -14z m1368 -288 l-17 -126 -288 -288 -288 -288 0 60 c1 117 -6 107 310 454 161 177 295 320 297 318 2 -3 -4 -61 -14 -130z m54 -455 l-279 -279 -100 -22 c-56 -11 -102 -20 -104 -18 -2 2 117 123 264 270 l267 267 100 29 c55 16 107 30 115 30 8 1 -110 -124 -263 -277z m-1500 -136 c108 -22 218 -58 322 -107 91 -42 262 -152 298 -191 l22 -24 -252 -252 -253 -253 -69 40 c-98 56 -184 82 -290 88 -186 10 -353 -54 -486 -186 -251 -252 -252 -651 0 -901 254 -253 649 -253 901 0 209 209 248 514 99 775 l-40 69 253 253 252 252 24 -22 c39 -36 149 -207 191 -298 49 -105 85 -215 108 -327 24 -120 24 -384 0 -504 -110 -552 -533 -975 -1085 -1085 -120 -24 -384 -24 -504 0 -551 110 -975 534 -1085 1085 -12 61 -17 136 -17 252 0 116 5 191 17 252 116 580 580 1018 1162 1097 98 14 334 6 432 -13z m-144 -871 c60 -16 157 -60 157 -72 0 -4 -79 -86 -175 -183 -154 -155 -175 -180 -175 -209 0 -43 38 -81 81 -81 29 0 54 21 209 175 97 96 179 175 183 175 12 0 56 -97 72 -157 65 -249 -94 -511 -350 -578 -251 -65 -513 94 -580 350 -89 342 237 669 578 580z" fill-rule="evenodd"/></g></svg>',
-  pause:'<svg viewBox="0 0 454.753047 457.438900" fill="currentColor"><g transform="translate(-28.079812,487.438900) scale(0.100000,-0.100000)"><path d="M2410 4870 c-444 -26 -867 -184 -1238 -463 -125 -93 -338 -305 -430 -429 -255 -342 -405 -718 -453 -1137 -17 -152 -7 -475 20 -626 88 -492 313 -916 672 -1260 338 -325 744 -526 1224 -606 241 -41 716 -25 817 27 34 18 46 59 27 92 -25 45 -38 47 -174 28 -376 -52 -701 -20 -1043 103 -519 186 -944 568 -1188 1066 -147 302 -214 591 -214 925 0 91 5 204 10 250 59 486 268 917 610 1260 330 331 747 539 1217 606 145 20 435 20 578 -1 481 -70 892 -279 1231 -626 498 -512 703 -1218 557 -1919 -14 -69 -26 -136 -26 -149 2 -57 88 -87 123 -43 41 50 88 322 97 552 16 432 -97 876 -317 1240 -235 390 -550 681 -952 880 -243 120 -565 210 -808 225 -192 11 -217 12 -340 5z M2523 4460 c-32 -13 -43 -41 -43 -109 0 -52 3 -62 26 -80 35 -28 69 -26 99 4 20 19 25 34 25 74 0 61 -14 95 -47 110 -28 13 -30 13 -60 1z M2502 3917 l-22 -23 0 -660 c0 -513 3 -664 13 -677 6 -9 194 -143 417 -297 439 -303 447 -308 489 -254 24 30 26 43 10 76 -6 13 -173 136 -394 288 l-384 265 -1 628 0 628 -25 24 c-31 32 -74 33 -103 2z M709 2652 c-30 -25 -30 -75 0 -105 18 -18 33 -22 87 -22 57 0 68 3 85 24 25 30 24 76 -1 101 -28 28 -137 29 -171 2z M4229 2652 c-30 -25 -30 -75 0 -105 18 -18 33 -22 87 -22 57 0 68 3 85 24 25 30 24 76 -1 101 -28 28 -137 29 -171 2z M3405 1565 l-25 -24 0 -596 0 -596 25 -24 24 -25 245 0 c260 0 285 4 305 47 16 35 15 1166 -1 1196 -24 45 -31 46 -296 47 l-253 0 -24 -25z m435 -620 l0 -495 -155 0 -155 0 0 495 0 495 155 0 155 0 0 -495z M4222 1578 c-12 -6 -27 -27 -33 -47 -6 -24 -9 -231 -7 -609 l3 -574 28 -24 c28 -24 28 -24 278 -24 l250 0 24 25 25 24 0 596 0 596 -25 24 -24 25 -248 -1 c-157 0 -256 -4 -271 -11z m418 -633 l0 -496 -152 3 -153 3 -3 493 -2 492 155 0 155 0 0 -495z M2523 940 c-32 -13 -43 -41 -43 -109 0 -52 3 -62 26 -80 35 -28 69 -26 99 4 20 19 25 34 25 74 0 61 -14 95 -47 110 -28 13 -30 13 -60 1z" fill-rule="evenodd"/></g></svg>',
-  give_help:'<svg viewBox="0 0 511.873876 422.344605" fill="currentColor"><g transform="translate(-0.126124,467.344605) scale(0.100000,-0.100000)"><path d="M2980 4673 c-181 -9 -381 -81 -575 -207 -138 -90 -283 -214 -505 -432 -200 -197 -218 -212 -260 -219 -68 -11 -191 -57 -256 -96 -75 -44 -219 -188 -263 -261 -76 -130 -111 -257 -111 -406 0 -125 22 -217 82 -342 45 -93 61 -115 147 -200 81 -81 111 -103 191 -143 135 -67 199 -82 355 -82 150 0 217 15 340 74 137 65 259 178 336 310 33 57 36 59 84 65 98 12 258 6 423 -16 201 -26 601 -32 716 -10 121 23 299 88 495 181 105 50 193 91 196 91 3 0 5 -7 5 -15 0 -27 61 -84 102 -95 25 -7 132 -10 288 -8 277 3 277 3 328 78 l22 33 0 714 c0 690 -1 715 -20 752 -13 27 -33 46 -63 60 -40 20 -60 21 -290 21 -150 0 -257 -4 -274 -11 -39 -14 -73 -48 -90 -87 -17 -41 12 -45 -348 55 -324 90 -509 135 -670 163 -120 22 -300 37 -385 33z m270 -198 c223 -23 437 -69 673 -144 105 -34 330 -95 420 -115 l27 -6 0 -523 0 -523 -37 -13 c-21 -7 -121 -53 -223 -101 -198 -94 -359 -153 -462 -169 -182 -28 -455 -22 -693 16 -136 21 -341 21 -504 -1 -172 -23 -316 -20 -337 8 -56 77 4 221 109 261 23 8 155 37 292 64 303 60 402 88 521 147 157 77 241 181 252 312 14 173 -86 307 -244 328 -64 8 -174 -9 -278 -43 -99 -33 -318 -141 -445 -220 l-95 -59 -75 40 c-42 22 -109 50 -149 61 l-72 21 157 155 c158 155 292 268 412 349 79 53 248 134 321 153 72 20 259 21 430 2z m1710 -785 l0 -670 -215 0 -215 0 0 670 0 670 215 0 215 0 0 -670z m-1919 150 c49 0 88 -90 69 -160 -30 -111 -172 -185 -483 -251 -132 -28 -143 -29 -152 -13 -5 9 -33 49 -61 88 l-50 72 95 56 c128 75 260 140 351 172 75 27 173 47 198 40 8 -2 22 -4 33 -4z m-1106 -186 c100 -24 200 -79 279 -154 39 -38 79 -82 88 -98 l18 -30 -68 -16 c-203 -50 -318 -173 -330 -353 -6 -92 10 -150 55 -203 55 -64 101 -83 222 -89 l104 -6 -38 -45 c-118 -142 -288 -222 -475 -223 -107 -1 -174 15 -276 64 -147 72 -264 205 -315 360 -35 107 -35 282 0 388 100 306 418 481 736 405z M2513 2293 c-13 -2 -221 -78 -463 -168 l-440 -163 -108 43 c-141 57 -258 79 -382 72 -92 -6 -199 -29 -269 -59 l-35 -14 -25 50 c-17 32 -42 62 -69 81 l-44 30 -251 3 c-212 3 -257 1 -293 -13 -52 -20 -109 -80 -124 -132 -8 -27 -10 -227 -8 -668 3 -617 3 -631 24 -670 11 -22 40 -53 63 -70 l43 -30 263 -3 c248 -3 266 -2 303 17 42 21 88 70 103 108 10 27 30 29 177 12 156 -17 261 -42 600 -144 390 -117 432 -125 624 -125 198 0 292 20 575 121 399 142 1448 565 1500 605 96 73 125 246 63 368 -27 52 -74 101 -111 116 -23 10 -27 16 -19 30 22 41 31 113 20 165 -21 99 -89 173 -189 202 -70 20 -118 11 -284 -52 -66 -25 -120 -45 -122 -45 -1 0 -5 20 -8 45 -18 125 -116 214 -247 222 -62 3 -77 -1 -315 -91 l-250 -94 -11 47 c-27 118 -107 191 -224 204 -25 3 -55 3 -67 0z m108 -182 c47 -48 38 -116 -21 -146 -45 -23 -459 -175 -477 -175 -18 0 -254 80 -266 90 -11 9 662 258 701 259 25 1 41 -7 63 -28z m811 -55 c48 -29 58 -111 19 -153 -11 -12 -182 -81 -401 -162 l-383 -143 -141 47 c-77 27 -147 51 -155 55 -8 4 109 53 285 118 165 61 389 145 499 187 204 76 230 81 277 51z m-2789 -55 c16 -12 17 -69 17 -624 0 -554 -2 -612 -17 -629 -15 -16 -36 -18 -233 -18 -171 0 -220 3 -236 14 -18 14 -19 34 -22 620 l-2 606 25 26 25 25 214 -3 c162 -2 217 -6 229 -17z m722 -110 c166 -59 859 -302 1075 -376 278 -97 302 -115 301 -227 0 -91 -62 -145 -179 -155 -54 -5 -84 3 -438 121 -209 69 -387 126 -396 126 -8 0 -27 -9 -42 -21 -32 -25 -36 -79 -7 -108 20 -20 675 -239 780 -262 75 -16 195 -7 253 18 25 12 66 40 91 62 40 37 92 59 636 261 326 121 606 220 624 220 49 -1 114 -35 137 -72 28 -43 24 -138 -6 -169 -27 -27 -941 -401 -1309 -536 -401 -147 -460 -162 -645 -170 -169 -7 -249 8 -609 117 -412 124 -575 159 -744 160 l-67 0 2 482 3 482 75 24 c121 38 189 50 290 51 80 1 107 -4 175 -28z m2684 -12 c24 -24 31 -39 31 -70 0 -78 2 -78 -615 -307 l-560 -208 -12 58 c-6 32 -22 76 -34 98 -12 22 -20 42 -18 45 3 2 250 97 550 209 368 138 557 205 586 205 34 1 47 -5 72 -30z" fill-rule="evenodd"/></g></svg>'
-};
-function catIconHtml(key){
-  if(CAT_ICONS[key])return `<span class="cat-icon-vec">${CAT_ICONS[key]}</span>`;
-  return CATS[key]?.emoji||'';
-}
 const CATS={
   dispo:{emoji:'🟢',label:'Disponible'},
   revision:{emoji:'📚',label:'En révision'},
   aide:{emoji:'🙋',label:"Besoin d'aide"},
   session:{emoji:'🎯',label:'Session en cours'},
   pause:{emoji:'☕',label:'Pause'},
-  objectif:{emoji:'✅',label:'Objectif atteint'},
-  give_help:{emoji:'🤝',label:"Offre d'aide"}
+  objectif:{emoji:'✅',label:'Objectif atteint'}
 };
 const STATUS_THEME_KEYS=['photo','text',...Object.keys(CATS)];
 function statusThemeFor(category,photo,message){
@@ -86,50 +49,11 @@ function applyStatusTheme(root,theme){
   const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
   root.classList.add('status-theme-'+next);
   root.dataset.statusTheme=next;
-  if(root.id==='statusCreate'||root.id==='statusView')updateStatusCompanionTheme(next);
 }
 function updateStatusCreateTheme(){
   const msg=el('stMsg')?.value?.trim()||'';
   applyStatusTheme(el('statusCreate'),statusThemeFor(selStatusCat,statusPhotoUrl,msg));
-  updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,msg));
 }
-const STATUS_COMPANION_LABELS={photo:'Photo uniquement',text:'Message',dispo:'Disponible',revision:'Révision',aide:"Besoin d'aide",session:'Session en cours',pause:'Pause',objectif:'Objectif atteint'};
-function updateStatusCompanionTheme(theme){
-  const next=STATUS_THEME_KEYS.includes(theme)?theme:'text';
-  ['stColorCompanion'].forEach(id=>{
-    const bar=el(id);if(!bar)return;
-    bar.dataset.statusTheme=next;
-    const label=bar.querySelector('[data-companion-label]')||bar.querySelector('#stCompanionLabel');
-    const dot=bar.querySelector('[data-companion-dot]')||bar.querySelector('#stCompanionDot');
-    if(label)label.textContent=STATUS_COMPANION_LABELS[next]||'Message';
-    if(dot)dot.style.background='var(--status-accent)';
-  });
-}
-function syncStatusCompanionViewport(){
-  const vv=window.visualViewport;
-  const offset=vv?Math.max(0,window.innerHeight-vv.height-vv.offsetTop):0;
-  document.documentElement.style.setProperty('--status-keyboard-offset',Math.round(offset)+'px');
-}
-function showStatusCompanion(id){
-  const bar=el(id);if(!bar)return;
-  syncStatusCompanionViewport();
-  bar.classList.add('is-visible');
-}
-function showStatusColorCompanion(){showStatusCompanion('stColorCompanion');updateStatusCompanionTheme(statusThemeFor(selStatusCat,statusPhotoUrl,v('stMsg')));}
-function scheduleStatusCompanionHide(id){
-  setTimeout(()=>{
-    const active=document.activeElement;if(active?.id==='stMsg')return;
-    el(id)?.classList.remove('is-visible');
-  },180);
-}
-function insertStatusText(inputId,text){
-  const input=el(inputId);if(!input)return;
-  const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
-  input.value=input.value.slice(0,start)+text+input.value.slice(end);
-  input.selectionStart=input.selectionEnd=start+text.length;
-  input.dispatchEvent(new Event('input',{bubbles:true}));input.focus();
-}
-function insertStatusCompanionEmoji(emoji){insertStatusText('stMsg',emoji);showStatusColorCompanion();}
 let selStatusCat=null,selStatusSubject=null,statusPhotoUrl=null,statusUploading=false,selStatusGroup=null,forwardedFromDraft=null;
 let statusAutoCloseTimer=null;
 let statusRemainingMs=STATUS_VIEW_MS;
@@ -649,7 +573,6 @@ function hideEF(){el('EF').style.display='none';}
 function openProfile(uid){
   const u=allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
-  pushModalState();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
   el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
@@ -661,10 +584,10 @@ function openProfile(uid){
   el('pvSkills').innerHTML=(u.skills||[]).map(s=>`<span class="tbadge" style="background:#fff3e0;color:#e65100;">${esc(s)}</span>`).join('');
   const isSelf=uid===CU?.uid;
   el('pvMsgBtn').style.display=isSelf?'none':'block';
-  el('pvMsgBtn').onclick=()=>{closeProfileView(true);openChat(u.name||'',uid);};
+  el('pvMsgBtn').onclick=()=>{closeProfileView();openChat(u.name||'',uid);};
   el('profileView').style.display='flex';
 }
-function closeProfileView(preserveHistory=false){el('profileView').style.display='none';if(!preserveHistory)consumeModalState();}
+function closeProfileView(){el('profileView').style.display='none';}
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
@@ -911,32 +834,22 @@ function renderStatusBar(){
 }
 
 // ── STATUS CREATE ──
-function openStatusCreate(arg){
+function openStatusCreate(draftPhoto){
   if(!MP?.name)return showToast('❌ Complete your profile first');
-  pushModalState();
-  let draft=null;
-  if(arg&&typeof arg==='object')draft=arg;
-  else if(typeof arg==='string')draft={photo:arg};
-  selStatusCat=draft?.category||null;
-  selStatusSubject=draft?.subject||null;
-  selStatusGroup=null;
-  statusPhotoUrl=draft?.photo||null;
-  forwardedFromDraft=draft?.from||null;
-  el('stMsg').value=draft?.message||'';
-  el('stCharCount').textContent=(draft?.message||'').length+' / 100';
+  selStatusCat=null;selStatusSubject=null;selStatusGroup=null;
+  if(draftPhoto){statusPhotoUrl=draftPhoto;}
+  else{statusPhotoUrl=null;forwardedFromDraft=null;}
+  el('stMsg').value='';el('stCharCount').textContent='0 / 100';
   updateStatusCreateTheme();
   if(statusPhotoUrl){el('stPhotoPreview').src=statusPhotoUrl;el('stPhotoPreviewWrap').style.display='block';el('stPhotoEmpty').style.display='none';}
   else{el('stPhotoPreviewWrap').style.display='none';el('stPhotoEmpty').style.display='block';}
   const grid=el('stCatGrid');
   grid.innerHTML=Object.keys(CATS).map(k=>{
-    const selCls=k===selStatusCat?' sel':'';
-    return `<div class="stCatCard cat-${k}${selCls}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${catIconHtml(k)}</div><div class="nm">${catLabel(k)}</div></div>`;
+    const c=CATS[k];
+    return `<div class="stCatCard cat-${k}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${c.emoji}</div><div class="nm">${c.label}</div></div>`;
   }).join('');
   const subjWrap=el('stSubjSel');
-  subjWrap.innerHTML=SUBJECTS.map(s=>{
-    const selCls=s===selStatusSubject?' sel':'';
-    return `<button type="button" class="tag${selCls}" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`;
-  }).join('');
+  subjWrap.innerHTML=SUBJECTS.map(s=>`<button type="button" class="tag" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`).join('');
   const myGroups=cachedPosts.filter(p=>p.type==='Group'&&p.uid===CU.uid);
   const grpWrap=el('stGroupSel');
   if(myGroups.length===0){
@@ -947,7 +860,7 @@ function openStatusCreate(arg){
   updateStatusPreview();
   el('statusCreate').style.display='flex';
 }
-function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');consumeModalState();}
+function closeStatusCreate(){el('statusCreate').style.display='none';applyStatusTheme(el('statusCreate'),'photo');}
 function selectStatusCat(k){
   selStatusCat=k;
   document.querySelectorAll('.stCatCard').forEach(c=>c.classList.remove('sel'));
@@ -996,7 +909,7 @@ function updateStatusPreview(){
   const c=selStatusCat?CATS[selStatusCat]:null;
   const av=statusPhotoUrl?`<img class="stThumb" src="${statusPhotoUrl}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
   const ringCls=selStatusCat?('ring-'+selStatusCat):'ring-photo';
-  const desc=c?(`${catIconHtml(selStatusCat)} ${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
+  const desc=c?(`${c.emoji} ${c.label}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
   p.innerHTML=`<div class="stRing ${ringCls}" style="width:52px;height:52px;flex-shrink:0;">${av}</div>
     <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
 }
@@ -1025,7 +938,6 @@ function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
-  pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
@@ -1037,7 +949,7 @@ function viewStatus(uid){
   const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
   el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
-  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').innerHTML=`${catIconHtml(sp.category)} <span>${catLabel(sp.category)}</span>`;}
+  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${c.label}`;}
   else{el('stVBadge').style.display='none';}
   if(sp.message){el('stVMsg').style.display='block';el('stVMsg').textContent=sp.message;}
   else{el('stVMsg').style.display='none';}
@@ -1074,7 +986,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
+function closeStatusView(){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1085,20 +997,20 @@ function toggleStatusMenu(){
     const sp=activeStatusOf(mine);
     const isForward=!!sp?.forwardedFrom;
     menu.innerHTML=`
-      <button onclick="showSeenBy()">${t('st_menu_seenby')}</button>
-      ${isForward?`<button onclick="showForwardSource()">${t('st_menu_forward')}</button>`:''}
-      <button onclick="shareStatus()">${t('st_menu_share')}</button>
-      <button onclick="saveStatusMedia()">${t('st_menu_save')}</button>
-      <button class="danger" onclick="deleteStatus()">${t('st_menu_delete')}</button>
+      <button onclick="showSeenBy()">Vu par</button>
+      ${isForward?`<button onclick="showForwardSource()">Transféré</button>`:''}
+      <button onclick="shareStatus()">Partager</button>
+      <button onclick="saveStatusMedia()">Enregistrer</button>
+      <button class="danger" onclick="deleteStatus()">Supprimer</button>
     `;
   }else{
     menu.innerHTML=`
-      <button onclick="forwardStatus()">${t('st_menu_forward')}</button>
-      <button onclick="replyToStatus()">${t('st_menu_message')}</button>
-      <button onclick="viewStatusProfile()">${t('st_menu_viewprofile')}</button>
-      <button onclick="toggleStatusNotif()">${t('st_menu_notif')}</button>
-      <button onclick="hideStatusUser()">${t('st_menu_hide')}</button>
-      <button class="danger" onclick="reportStatus()">${t('st_menu_report')}</button>
+      <button onclick="forwardStatus()">Transférer</button>
+      <button onclick="replyToStatus()">Message</button>
+      <button onclick="viewStatusProfile()">Voir profil</button>
+      <button onclick="toggleStatusNotif()">Notifications</button>
+      <button onclick="hideStatusUser()">Masquer</button>
+      <button class="danger" onclick="reportStatus()">Signaler</button>
     `;
   }
   menu.style.display='block';
@@ -1110,14 +1022,14 @@ function showSeenBy(){
   const seenUids=(sp?.viewedBy||[]);
   const list=el('stVSeenList');
   if(seenUids.length===0){
-    list.innerHTML=`<div class="stVSeenHdr">${t('st_seen_none')}</div>`;
+    list.innerHTML=`<div class="stVSeenHdr">Vu par personne pour l'instant</div>`;
   }else{
     const rows=seenUids.map(uid=>{
       const su=allUsers.find(x=>x.uid===uid);
       const av=su?.photo?`<img src="${su.photo}">`:esc((su?.name||'?')[0]||'?').toUpperCase();
       return `<div class="stVSeenRow" onclick="openSeenProfile('${uid}')"><div class="stVSeenAv">${av}</div><div class="stVSeenName">${esc(su?.name||'Utilisateur')}</div></div>`;
     }).join('');
-    list.innerHTML=`<div class="stVSeenHdr">${t('st_seen_count')} ${seenUids.length}</div>${rows}`;
+    list.innerHTML=`<div class="stVSeenHdr">Vu par ${seenUids.length}</div>${rows}`;
   }
   list.style.display='block';
 }
@@ -1131,15 +1043,10 @@ function forwardStatus(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
   if(!sp)return;
-  const draft={
-    photo:sp.photo||null,
-    message:sp.message||null,
-    category:sp.category||null,
-    subject:sp.subject||null,
-    from:{uid:curStatusUid,name:u.name||'Utilisateur'}
-  };
+  forwardedFromDraft={uid:curStatusUid,name:u.name||'Utilisateur'};
+  const draftPhoto=sp.photo||null;
   closeStatusView();
-  openStatusCreate(draft);
+  openStatusCreate(draftPhoto);
 }
 function shareStatus(){
   el('stVMenu').style.display='none';
@@ -1160,51 +1067,44 @@ function showForwardSource(){
 function saveStatusMedia(){
   const u=allUsers.find(x=>x.uid===curStatusUid);
   const sp=activeStatusOf(u);
+  if(sp?.photo)window.open(sp.photo,'_blank');
+  else showToast('Rien à enregistrer, statut texte seul');
   el('stVMenu').style.display='none';
-  if(!sp?.photo){showToast('Rien à enregistrer, statut texte seul');return;}
-  const a=document.createElement('a');
-  a.href=sp.photo;
-  a.download='studylink-statut-'+Date.now()+'.jpg';
-  a.target='_blank';
-  a.rel='noopener';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
 }
 async function deleteStatus(){
   el('stVMenu').style.display='none';
-  if(!confirm(t('st_confirm_delete')))return;
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'));}
+  if(!confirm('Supprimer ton statut ?'))return;
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast('Statut supprimé');}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
   el('stVMenu').style.display='none';
   const uid=curStatusUid;
-  closeStatusView(true);
+  closeStatusView();
   if(typeof openProfile==='function')openProfile(uid);
   else showToast('Profil');
 }
 function toggleStatusNotif(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
-  if(confirm(t('st_confirm_notif').replace('{name}',u?.name||'cet utilisateur'))){
-    showToast(t('st_toast_notif_on'));
+  if(confirm(`Tu seras notifié quand ${u?.name||'cet utilisateur'} ajoute un nouveau statut.`)){
+    showToast('Notifications activées');
   }
 }
 function hideStatusUser(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
-  if(confirm(t('st_confirm_hide').replace('{name}',u?.name||'cet utilisateur'))){
+  if(confirm(`Les statuts de ${u?.name||'cet utilisateur'} n'apparaîtront plus dans tes mises à jour.`)){
     let hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
     if(!hidden.includes(curStatusUid))hidden.push(curStatusUid);
     localStorage.setItem('hiddenStatusUids',JSON.stringify(hidden));
-    closeStatusView();renderStatusBar();showToast(t('st_toast_hidden'));
+    closeStatusView();renderStatusBar();showToast('Masqué');
   }
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
   if(confirm('Signaler ce statut pour contenu inapproprié ?')){
-    showToast(t('st_toast_reported'));
+    showToast('Signalement envoyé');
   }
 }
 async function sendQuickStatusReply(toUid,text){
@@ -1340,10 +1240,7 @@ async function sendStatusReply(){
 }
 function replyToStatus(){
   el('stVMenu').style.display='none';
-  const uid=curStatusUid;
-  const u=allUsers.find(x=>x.uid===uid);
-  closeStatusView(true);
-  openChat(u?.name||'',uid);
+  sendStatusReply();
 }
 
 function statusPressStart(e){
@@ -1463,7 +1360,6 @@ function openChat(name,uid){
   curChat=null;replyMsg=null;
   const mb=el('msgB');if(mb)mb.innerHTML='';
   curChat={name,uid};
-  pushModalState();
   el('chatT').textContent=name;
   const other=allUsers.find(u=>u.uid===uid);
   const st=getStatusInfo(other?.status,other?.lastSeen);
@@ -1574,7 +1470,6 @@ function closeChat(){
   curChat=null;replyMsg=null;
   el('rplybar').style.display='none';
   closeMediaPanel();closeStickers();clearSelection();
-  consumeModalState();
 }
 function onMsgInput(){
   if(!curChat)return;
@@ -1771,7 +1666,6 @@ async function openGroup(postId,name){
     if(!gs.exists){showToast('❌ Group not found');showOv(false);return;}
     if(!(gs.data().members||[]).includes(CU.uid))await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
     curGrp={id:postId,name};
-    pushModalState();
     el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
@@ -1798,7 +1692,6 @@ function closeGroup(){
   el('gTypebar').style.display='none';el('groupW').style.display='none';
   if(grpUnsub){grpUnsub();grpUnsub=null;}if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
   curGrp=null;closeGStickers();clearSelection();
-  consumeModalState();
 }
 async function sendGMsg(){
   const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
@@ -2911,60 +2804,6 @@ function setupNotifL(){
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>b.delete(d.ref));return b.commit();});}
 
-// ── I18N (merged from user branch) ──
-const I18N={
-  fr:{
-    st_new_title:'Nouveau statut',st_publish:'Publier',st_photo_label:'Photo (optionnel)',
-    st_add_photo:'Ajouter une photo',st_photo_hint:'Notes, bureau de révision, selfie...',
-    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',
-    st_subject_label:'Matière (optionnel)',st_link_group_label:'Lier un groupe (optionnel)',
-    st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
-    st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
-    st_reply_placeholder:'Répondre...',st_cat_dispo:'Disponible',st_cat_revision:'En révision',
-    st_cat_aide:"Besoin d'aide",st_cat_session:'Session en cours',st_cat_pause:'Pause',st_cat_objectif:'Objectif atteint',st_cat_give_help:"Offre d'aide",
-    st_menu_seenby:'Vu par',st_menu_share:'Partager',st_menu_save:'Enregistrer',st_menu_delete:'Supprimer',
-    st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
-    st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
-    st_toast_published:'✅ Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
-    st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
-    st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',
-    st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',
-    st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
-    st_confirm_notif:'Tu seras notifié quand {name} ajoute un nouveau statut.',
-    st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
-  },
-  en:{
-    st_new_title:'New status',st_publish:'Post',st_photo_label:'Photo (optional)',st_add_photo:'Add a photo',
-    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',
-    st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
-    st_msg_placeholder:'Free to study now, who wants to join?',st_preview_label:'Preview',
-    st_expiry_note:'⏱ Your status disappears automatically after 24h',st_reply_placeholder:'Reply...',
-    st_cat_dispo:'Available',st_cat_revision:'Studying',st_cat_aide:'Need help',st_cat_session:'In session',
-    st_cat_pause:'Break',st_cat_objectif:'Goal reached',st_cat_give_help:'Offering help',st_menu_seenby:'Seen by',st_menu_share:'Share',st_menu_save:'Save',
-    st_menu_delete:'Delete',st_menu_forward:'Forward',st_menu_message:'Message',st_menu_viewprofile:'View profile',
-    st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
-    st_toast_published:'✅ Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
-    st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
-    st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',
-    st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",
-    st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
-    st_confirm_notif:'You will be notified when {name} adds a new status.',
-    st_confirm_hide:"{name}'s statuses will no longer appear in your updates."
-  }
-};
-let appLang=localStorage.getItem('appLang')||'fr';
-function t(key){return I18N[appLang]?.[key]||I18N.fr[key]||key;}
-const STATUS_I18N_KEYS={dispo:'st_cat_dispo',revision:'st_cat_revision',aide:'st_cat_aide',session:'st_cat_session',pause:'st_cat_pause',objectif:'st_cat_objectif',give_help:'st_cat_give_help'};
-function catLabel(key){return t(STATUS_I18N_KEYS[key])||CATS[key]?.label||key;}
-function applyTranslations(){
-  document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=t(node.getAttribute('data-i18n'));});
-  document.querySelectorAll('[data-i18n-ph]').forEach(node=>{node.placeholder=t(node.getAttribute('data-i18n-ph'));});
-  const langBtn=document.getElementById('langBtn');if(langBtn)langBtn.textContent=appLang.toUpperCase();
-  document.querySelectorAll('#stCatGrid .stCatCard .nm').forEach((node,index)=>{const key=Object.keys(CATS)[index];if(key)node.textContent=catLabel(key);});
-  if(document.getElementById('statusCreate')?.style.display==='flex'){updateStatusPreview();}
-}
-function toggleLang(){appLang=appLang==='fr'?'en':'fr';localStorage.setItem('appLang',appLang);applyTranslations();if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);}
-
 // ── HELPERS ──
 function el(id){return document.getElementById(id);}
 function v(id){return(el(id)?.value||'').trim();}
@@ -3032,7 +2871,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v38.js?v=studylink-pwa-38',location.href).href;
+  const workerUrl=new URL('sw-v24.js?v=studylink-pwa-24',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -3060,7 +2899,6 @@ function setupPWA(){
   window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
 }
 function bootstrapStudyLink(){
-  applyTranslations();
   setupNavigation();
   setupPWA();
   const disconnectButton=el('disconnectBtn');
@@ -3078,12 +2916,6 @@ function bootstrapStudyLink(){
   el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
   el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
   el('stVReplyInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartStatusReply();}});
-  el('stMsg')?.addEventListener('focus',showStatusColorCompanion);
-  el('stMsg')?.addEventListener('blur',()=>scheduleStatusCompanionHide('stColorCompanion'));
-  window.visualViewport?.addEventListener('resize',syncStatusCompanionViewport);
-  window.visualViewport?.addEventListener('scroll',syncStatusCompanionViewport);
-  window.addEventListener('resize',syncStatusCompanionViewport);
-  syncStatusCompanionViewport();
   setupVoiceSwipe('stVReplyBtn',startStatusVoice,stopAndSendStatusVoice,cancelStatusVoice);
 }
 const startStudyLink=()=>{
