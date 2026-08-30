@@ -189,3 +189,10 @@
 - [x] Reduce the Give Help black ring so it sits directly against the avatar and matches the other category ring geometry.
 - [x] Add or update regression coverage, cache-bust, publish, and verify the tightened ring live.
 - [x] Advance the tightened Give Help ring to pwa-54 with a fresh service worker so the corrected geometry reaches installed clients.
+
+## Give Help ring overflow correction (2026-08-30)
+
+- [x] Tighten the Give Help black ring so no visible halo extends beyond the avatar edge on mobile.
+- [x] Add regression coverage for the final ring geometry and publish the corrected PWA release.
+- [ ] Verify the corrected ring visually on the live mobile layout.
+
