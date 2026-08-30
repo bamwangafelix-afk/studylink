@@ -59,7 +59,7 @@ const CATS={
   dispo:{emoji:'🟢',label:'Disponible'},
   revision:{emoji:'📚',label:'En révision'},
   aide:{emoji:'🙋',label:"Besoin d'aide"},
-  givehelp:{emoji:'🧑‍🏫',label:'Aide proposée'},
+  givehelp:{emoji:'🧑‍🏫',label:"Apporter de l'aide"},
   session:{emoji:'🎯',label:'Session en cours'},
   pause:{emoji:'☕',label:'Pause'},
   objectif:{emoji:'✅',label:'Objectif atteint'}
@@ -1167,9 +1167,11 @@ async function deleteStatus(){
 function viewStatusProfile(){
   el('stVMenu').style.display='none';
   const uid=curStatusUid;
+  const profileUser=allUsers.find(x=>x.uid===uid);
   closeStatusView(true);
-  if(typeof openProfile==='function')openProfile(uid);
-  else showToast('Profil');
+  if(!uid||!profileUser){showToast('Profil introuvable');return;}
+  // Wait one frame so the status viewer is fully hidden before opening the profile.
+  requestAnimationFrame(()=>openProfile(uid));
 }
 function toggleStatusNotif(){
   el('stVMenu').style.display='none';
@@ -2908,7 +2910,7 @@ const I18N={
     st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
     st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
     st_reply_placeholder:'Répondre...',st_cat_dispo:'Disponible',st_cat_revision:'En révision',
-    st_cat_aide:"Besoin d'aide",st_cat_givehelp:'Aide proposée',st_cat_session:'Session en cours',st_cat_pause:'Pause',st_cat_objectif:'Objectif atteint',
+    st_cat_aide:"Besoin d'aide",st_cat_givehelp:"Apporter de l'aide",st_cat_session:'Session en cours',st_cat_pause:'Pause',st_cat_objectif:'Objectif atteint',
     st_menu_seenby:'Vu par',st_menu_share:'Partager',st_menu_save:'Enregistrer',st_menu_delete:'Supprimer',
     st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
     st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
@@ -3019,7 +3021,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-46',location.href).href;
+  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-47',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
