@@ -5,7 +5,7 @@
   "description": "StudyLink — Connect, Learn, Grow.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "./?source=pwa-57",
+  "start_url": "./?source=pwa-58",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
@@ -15,25 +15,25 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/studylink-192.png?v=studylink-pwa-57",
+      "src": "icons/studylink-192.png?v=studylink-pwa-58",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/studylink-512.png?v=studylink-pwa-57",
+      "src": "icons/studylink-512.png?v=studylink-pwa-58",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icons/studylink-192.png?v=studylink-pwa-57",
+      "src": "icons/studylink-192.png?v=studylink-pwa-58",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icons/studylink-512.png?v=studylink-pwa-57",
+      "src": "icons/studylink-512.png?v=studylink-pwa-58",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

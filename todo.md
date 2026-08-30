@@ -200,11 +200,23 @@
 ## Uniform Status avatar sizing (2026-08-30)
 
 - [x] Match the Give Help Status avatar circle dimensions to every other Status avatar.
-- [ ] Add regression coverage, publish the sizing correction, and verify the live mobile layout.
+- [x] Add regression coverage, publish the sizing correction, and verify the live mobile layout.
 
 
 ## Give Help inner avatar reduction (2026-08-30)
 
 - [x] Reduce only the Give Help Status avatar image circle so it matches the visible size of the other category avatars.
 - [x] Add regression coverage, publish the next PWA version, and verify the live mobile result.
+
+
+## Status row scale and header spacing (2026-08-30)
+
+- [x] Reduce the visible Status avatar circles uniformly so the row does not appear oversized on mobile.
+- [x] Test the header spacing and retain the original flush alignment after user review; update regression coverage and verify the mobile layout.
+
+
+## Flush Status band alignment (2026-08-30)
+
+- [x] Keep the Status band directly attached to the header while retaining the smaller 48-pixel circles.
+- [x] Update the regression expectation, publish the next PWA version, and verify the live mobile layout.
 
