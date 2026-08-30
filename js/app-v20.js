@@ -59,6 +59,7 @@ const CATS={
   dispo:{emoji:'🟢',label:'Disponible'},
   revision:{emoji:'📚',label:'En révision'},
   aide:{emoji:'🙋',label:"Besoin d'aide"},
+  givehelp:{emoji:'🧑‍🏫',label:'Aide proposée'},
   session:{emoji:'🎯',label:'Session en cours'},
   pause:{emoji:'☕',label:'Pause'},
   objectif:{emoji:'✅',label:'Objectif atteint'}
@@ -650,7 +651,10 @@ function openProfile(uid){
   const isSelf=uid===CU?.uid;
   el('pvMsgBtn').style.display=isSelf?'none':'block';
   el('pvMsgBtn').onclick=()=>{closeProfileView(true);openChat(u.name||'',uid);};
+  el('statusView').style.display='none';
+  el('stVMenu').style.display='none';
   el('profileView').style.display='flex';
+  el('profileView').scrollTop=0;
 }
 function closeProfileView(preserveHistory=false){el('profileView').style.display='none';if(!preserveHistory)consumeModalState();}
 function getFlag(country){
@@ -900,7 +904,7 @@ function renderStatusBar(){
 
 // ── STATUS CREATE ──
 function statusVectorIcon(key){
-  const paths={text:'<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 8h8M8 11h5"/>',dispo:'<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-3 2.5-4.5 6-4.5S14.5 16 15 19M14 14.5c3.5-.5 6 1 7 4.5"/>',revision:'<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 12h6M9 16h6"/>',aide:'<path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/>',session:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M13 14h3"/>',pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',objectif:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>'};
+  const paths={text:'<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 8h8M8 11h5"/>',dispo:'<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-3 2.5-4.5 6-4.5S14.5 16 15 19M14 14.5c3.5-.5 6 1 7 4.5"/>',revision:'<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 12h6M9 16h6"/>',aide:'<path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/>',session:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M13 14h3"/>',pause:'<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',    objectif:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>',givehelp:'<circle cx="9" cy="8" r="3"/><path d="M3 19c.5-3 2.5-4.5 6-4.5s5.5 1.5 6 4.5M17 13v6M14 16h6"/>'};
   return `<svg class="stVectorIcon" viewBox="0 0 24 24" aria-hidden="true">${paths[key]||paths.text}</svg>`;
 }
 function openStatusCreate(draftPhoto){
@@ -2904,7 +2908,7 @@ const I18N={
     st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
     st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
     st_reply_placeholder:'Répondre...',st_cat_dispo:'Disponible',st_cat_revision:'En révision',
-    st_cat_aide:"Besoin d'aide",st_cat_session:'Session en cours',st_cat_pause:'Pause',st_cat_objectif:'Objectif atteint',
+    st_cat_aide:"Besoin d'aide",st_cat_givehelp:'Aide proposée',st_cat_session:'Session en cours',st_cat_pause:'Pause',st_cat_objectif:'Objectif atteint',
     st_menu_seenby:'Vu par',st_menu_share:'Partager',st_menu_save:'Enregistrer',st_menu_delete:'Supprimer',
     st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
     st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
@@ -2922,7 +2926,7 @@ const I18N={
     st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
     st_msg_placeholder:'Free to study now, who wants to join?',st_preview_label:'Preview',
     st_expiry_note:'⏱ Your status disappears automatically after 24h',st_reply_placeholder:'Reply...',
-    st_cat_dispo:'Available',st_cat_revision:'Studying',st_cat_aide:'Need help',st_cat_session:'In session',
+    st_cat_dispo:'Available',st_cat_revision:'Studying',st_cat_aide:'Need help',st_cat_givehelp:'Give help',st_cat_session:'In session',
     st_cat_pause:'Break',st_cat_objectif:'Goal reached',st_menu_seenby:'Seen by',st_menu_share:'Share',st_menu_save:'Save',
     st_menu_delete:'Delete',st_menu_forward:'Forward',st_menu_message:'Message',st_menu_viewprofile:'View profile',
     st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
@@ -2937,7 +2941,7 @@ const I18N={
 };
 let appLang=localStorage.getItem('appLang')||'fr';
 function t(key){return I18N[appLang]?.[key]||I18N.fr[key]||key;}
-const STATUS_I18N_KEYS={dispo:'st_cat_dispo',revision:'st_cat_revision',aide:'st_cat_aide',session:'st_cat_session',pause:'st_cat_pause',objectif:'st_cat_objectif'};
+const STATUS_I18N_KEYS={dispo:'st_cat_dispo',revision:'st_cat_revision',aide:'st_cat_aide',givehelp:'st_cat_givehelp',session:'st_cat_session',pause:'st_cat_pause',objectif:'st_cat_objectif'};
 function catLabel(key){return t(STATUS_I18N_KEYS[key])||CATS[key]?.label||key;}
 function applyTranslations(){
   document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=t(node.getAttribute('data-i18n'));});
@@ -3015,7 +3019,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-45',location.href).href;
+  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-46',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
