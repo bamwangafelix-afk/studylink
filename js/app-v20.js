@@ -635,8 +635,8 @@ async function loadPro(){
 }
 function showEF(){el('EF').style.display='block';el('EF').scrollIntoView({behavior:'smooth'});}
 function hideEF(){el('EF').style.display='none';}
-function openProfile(uid){
-  const u=allUsers.find(x=>x.uid===uid);
+function openProfile(uid,profileData=null){
+  const u=profileData||allUsers.find(x=>x.uid===uid);
   if(!u)return showToast('Profil introuvable');
   pushModalState();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
@@ -1036,7 +1036,7 @@ function viewStatus(uid){
   applyStatusTheme(view,statusThemeFor(sp.category,sp.photo,sp.message));
   if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='100% 100%,contain';view.style.backgroundPosition='center';}
   else{
-    const grad={dispo:'#27ae60,#1e8a4c',revision:'#2563eb,#16357a',aide:'#f5730a,#c2570a',session:'#7b2ff7,#4b1f99',pause:'#8a93ab,#5c6478',objectif:'#f5b301,#a67c00'}[sp.category]||'#4a5a8f,#16357a';
+    const grad={dispo:'#27ae60,#1e8a4c',revision:'#2563eb,#16357a',aide:'#f5730a,#c2570a',givehelp:'#000000,#000000',session:'#7b2ff7,#4b1f99',pause:'#8a93ab,#5c6478',objectif:'#f5b301,#a67c00'}[sp.category]||'#4a5a8f,#16357a';
     view.style.backgroundImage=`linear-gradient(160deg,${grad})`;
     view.style.backgroundSize='';view.style.backgroundPosition='';
   }
@@ -1171,7 +1171,7 @@ function viewStatusProfile(){
   closeStatusView(true);
   if(!uid||!profileUser){showToast('Profil introuvable');return;}
   // Wait one frame so the status viewer is fully hidden before opening the profile.
-  requestAnimationFrame(()=>openProfile(uid));
+  setTimeout(()=>openProfile(uid,profileUser),0);
 }
 function toggleStatusNotif(){
   el('stVMenu').style.display='none';
@@ -3021,7 +3021,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-47',location.href).href;
+  const workerUrl=new URL('sw-v39.js?v=studylink-pwa-48',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
