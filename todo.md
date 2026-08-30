@@ -175,3 +175,10 @@
 - [x] Make the profile name below the avatar white in dark mode.
 - [x] Add regression coverage, cache-bust the release, publish, and verify the live result.
 - [x] Advance the profile styling correction to pwa-52 with a fresh service worker cache.
+
+
+## Give Help ring follow-up (2026-08-30)
+
+- [x] Diagnose why the Give Help category ring is still not visible around the profile avatar.
+- [x] Apply the ring through the actual profile rendering path and add targeted regression coverage.
+- [x] Cache-bust, publish, and verify the corrected ring on the live StudyLink release.

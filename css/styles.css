@@ -173,7 +173,7 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .pcard-av .avatar{width:66px;height:66px;font-size:24px;border-color:rgba(255,255,255,.5);}
 .pcard-av .odot{width:15px;height:15px;bottom:1px;right:1px;border:2px solid #fff;}
 /* AUTH */
-#auth{position:fixed;top:0;left:0;width:100%;height:100%;background-color:#0d2f4d;background-image:url('../icons/studylink-login-full-logo.png?v=studylink-pwa-52');background-repeat:no-repeat;background-size:cover;background-position:center;color:#fff;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
+#auth{position:fixed;top:0;left:0;width:100%;height:100%;background-color:#0d2f4d;background-image:url('../icons/studylink-login-full-logo.png?v=studylink-pwa-53');background-repeat:no-repeat;background-size:cover;background-position:center;color:#fff;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
 #auth h1{color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.28);font-size:26px;margin-bottom:4px;}
 #auth>p{color:rgba(255,255,255,.86);text-shadow:0 1px 5px rgba(0,0,0,.24);margin-bottom:18px;font-size:14px;}
 .af{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;}
@@ -383,3 +383,19 @@ body.dark #profileView #pvName{color:#fff!important;}
 .ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
 #profileView #pvAvatar.ring-outline-givehelp{box-shadow:0 0 0 4px #000;}
 body.dark #profileView .chdr .profile-back-btn,body.dark #profileView .chdr .profile-header-title{color:#fff!important;}
+
+
+/* Give Help is rendered as ring-givehelp in the Status carousel. */
+.stRing.ring-givehelp{background:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72)!important;}
+body.dark .stRing.ring-givehelp{box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
+#profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
+body.dark #profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 6px #000!important;}
+body.dark #profileView #pvName{color:#fff!important;}
+
+
+/* Give Help category ring: the carousel renders this exact class. */
+.stRing.ring-givehelp{background:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72)!important;}
+body.dark .stRing.ring-givehelp{box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
+#profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
+body.dark #profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 6px #000!important;}
+body.dark #profileView #pvName{color:#fff!important;}
