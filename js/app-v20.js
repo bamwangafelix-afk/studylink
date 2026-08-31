@@ -1044,7 +1044,7 @@ function viewStatus(uid){
   const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
   el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
-  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${catLabel(sp.category)}`;}
+  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').innerHTML=`${statusVectorIcon(sp.category)}<span>${catLabel(sp.category)}</span>`;}
   else{el('stVBadge').style.display='none';}
   if(sp.message){el('stVMsg').style.display='block';el('stVMsg').textContent=sp.message;}
   else{el('stVMsg').style.display='none';}
