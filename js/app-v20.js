@@ -1003,7 +1003,7 @@ function updateStatusPreview(){
   const c=selStatusCat?CATS[selStatusCat]:null;
   const av=statusPhotoUrl?`<img class="stThumb" src="${statusPhotoUrl}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
   const ringCls=selStatusCat?('ring-'+selStatusCat):'ring-photo';
-  const desc=c?(`${c.emoji} ${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
+  const desc=c?(`${statusVectorIcon(selStatusCat)} <span>${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}</span>`):'📷 Photo';
   p.innerHTML=`<div class="stRing ${ringCls}" style="width:52px;height:52px;flex-shrink:0;">${av}</div>
     <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
 }
