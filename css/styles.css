@@ -236,6 +236,20 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .stCatCard{border-radius:12px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;border:2px solid transparent;cursor:pointer;}
 .stCatCard .em{font-size:20px;display:flex;align-items:center;justify-content:center;height:30px;}
 .stVectorIcon,.stPhotoVector svg{width:26px;height:26px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.stCatCard .stVectorIcon,.stVBadge .stVectorIcon{width:1em;height:1em;}
+/* Illustrated icons (Révision, Session, Objectif, Pause, Give Help) are filled traces, not line-strokes */
+.em .stVectorIcon[viewBox="0 0 429.819299 511.627946"],
+.em .stVectorIcon[viewBox="0 0 417.505327 467.921033"],
+.em .stVectorIcon[viewBox="0 0 479.912538 479.817243"],
+.em .stVectorIcon[viewBox="0 0 454.753047 457.438900"],
+.em .stVectorIcon[viewBox="0 0 511.873876 422.344605"],
+.em .stVectorIcon[viewBox="0 0 479.978439 479.970603"],
+.stVBadge .stVectorIcon[viewBox="0 0 429.819299 511.627946"],
+.stVBadge .stVectorIcon[viewBox="0 0 417.505327 467.921033"],
+.stVBadge .stVectorIcon[viewBox="0 0 479.912538 479.817243"],
+.stVBadge .stVectorIcon[viewBox="0 0 454.753047 457.438900"],
+.stVBadge .stVectorIcon[viewBox="0 0 511.873876 422.344605"],
+.stVBadge .stVectorIcon[viewBox="0 0 479.978439 479.970603"]{fill:currentColor;stroke:none;}
 .stPhotoVector{display:flex;align-items:center;justify-content:center;height:32px;color:var(--btnB);}
 .stCatCard .nm{font-weight:800;font-size:13px;}
 .stCatCard.sel{border-color:currentColor;}
