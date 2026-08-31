@@ -236,7 +236,9 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .stCatCard{border-radius:12px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;border:2px solid transparent;cursor:pointer;}
 .stCatCard .em{font-size:20px;display:flex;align-items:center;justify-content:center;height:30px;}
 .stVectorIcon,.stPhotoVector svg{width:26px;height:26px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-.stCatCard .stVectorIcon,.stVBadge .stVectorIcon{width:1em;height:1em;}
+.stCatCard .stVectorIcon,.stVBadge .stVectorIcon{width:1em;height:1em;flex:0 0 1em;display:inline-block;visibility:visible;opacity:1;}
+.intent-badge .stVectorIcon,#eNeedBtn .stVectorIcon,#eHelpBtn .stVectorIcon{width:1.15em;height:1.15em;flex:0 0 1.15em;display:inline-block;visibility:visible;opacity:1;fill:currentColor;stroke:currentColor;}
+.intent-badge .stVectorIcon[viewBox="0 0 479.978439 479.970603"],#eNeedBtn .stVectorIcon[viewBox="0 0 479.978439 479.970603"],#eHelpBtn .stVectorIcon[viewBox="0 0 479.978439 479.970603"]{fill:currentColor;stroke:none;}
 /* Illustrated icons (Révision, Session, Objectif, Pause, Give Help) are filled traces, not line-strokes */
 .em .stVectorIcon[viewBox="0 0 429.819299 511.627946"],
 .em .stVectorIcon[viewBox="0 0 417.505327 467.921033"],
