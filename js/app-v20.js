@@ -665,8 +665,8 @@ function getFlag(country){
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
 }
 function getIntentBadge(intent){
-  if(intent==='need')return`<span class="intent-badge intent-need" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#fff1e0;color:#c2570a;margin-top:3px;">${statusVectorIcon('aide')}<span>Needs Help</span></span>`;
-  if(intent==='help')return`<span class="intent-badge intent-help" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e3f8f4;color:#000;margin-top:3px;">${statusVectorIcon('givehelp')}<span>Can Help</span></span>`;
+  if(intent==='need')return`<span class="intent-badge intent-need" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#fff1e0;color:#c2570a;margin-top:3px;">${intentVectorIcon('aide')}<span>Needs Help</span></span>`;
+  if(intent==='help')return`<span class="intent-badge intent-help" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e3f8f4;color:#000;margin-top:3px;">${intentVectorIcon('givehelp')}<span>Can Help</span></span>`;
   return '';
 }
 function updatePC(){
@@ -692,7 +692,7 @@ function setEIntent(v){
   eIntent=v;
   ['need','help','both'].forEach(t=>{
     const b=el('e'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn');
-    if(b){if(t==='need')b.innerHTML=`${statusVectorIcon('aide')}<span>Get Help</span>`;else if(t==='help')b.innerHTML=`${statusVectorIcon('givehelp')}<span>Give Help</span>`;b.style.background=v===t?(t==='need'?'#fff1e0':t==='help'?'#e3f8f4':'var(--btnB)'):'transparent';b.style.color=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'#fff'):'var(--txt)';b.style.borderColor=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'var(--btnB)'):'var(--brd)';}
+    if(b){if(t==='need')b.innerHTML=`${intentVectorIcon('aide')}<span>Get Help</span>`;else if(t==='help')b.innerHTML=`${intentVectorIcon('givehelp')}<span>Give Help</span>`;b.style.background=v===t?(t==='need'?'#fff1e0':t==='help'?'#e3f8f4':'var(--btnB)'):'transparent';b.style.color=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'#fff'):'var(--txt)';b.style.borderColor=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'var(--btnB)'):'var(--brd)';}
   });
 }
 async function savePro(){
@@ -920,6 +920,9 @@ function statusVectorIcon(key){
   if(FULL_STATUS_ICONS[mapped])return FULL_STATUS_ICONS[mapped];
   const paths={text:'<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 8h8M8 11h5"/>',dispo:'<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-3 2.5-4.5 6-4.5S14.5 16 15 19M14 14.5c3.5-.5 6 1 7 4.5"/>',aide:'<path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/>'};
   return `<svg class="stVectorIcon" viewBox="0 0 24 24" aria-hidden="true">${paths[key]||paths.text}</svg>`;
+}
+function intentVectorIcon(key){
+  return statusVectorIcon(key).replace('<svg ','<svg style="display:inline-block!important;width:18px!important;height:18px!important;min-width:18px!important;min-height:18px!important;flex:0 0 18px!important;visibility:visible!important;opacity:1!important;color:currentColor!important;" ');
 }
 function openStatusCreate(arg){
   if(!MP?.name)return showToast('❌ Complete your profile first');
