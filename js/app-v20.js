@@ -666,7 +666,7 @@ function getFlag(country){
 }
 function getIntentBadge(intent){
   if(intent==='need')return`<span class="intent-badge intent-need" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#fff1e0;color:#c2570a;margin-top:3px;">${statusVectorIcon('aide')}<span>Needs Help</span></span>`;
-  if(intent==='help')return`<span class="intent-badge intent-help" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e3f8f4;color:#000;margin-top:3px;">${statusVectorIcon('givehelp')}<span>Can Help</span></span>`;
+  if(intent==='help')return'<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e8f8ef;color:#1a7a3c;margin-top:3px;">🧑‍🏫 Can Help</span>';
   return '';
 }
 function updatePC(){
@@ -692,7 +692,7 @@ function setEIntent(v){
   eIntent=v;
   ['need','help','both'].forEach(t=>{
     const b=el('e'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn');
-    if(b){const icon=t==='need'?'aide':t==='help'?'givehelp':'text';const label=t==='need'?'Get Help':t==='help'?'Give Help':'Both';b.innerHTML=`${statusVectorIcon(icon)}<span>${label}</span>`;b.style.background=v===t?(t==='need'?'#fff1e0':t==='help'?'#e3f8f4':'var(--btnB)'):'transparent';b.style.color=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'#fff'):'var(--txt)';b.style.borderColor=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'var(--btnB)'):'var(--brd)';}
+    if(b){if(t==='need')b.innerHTML=`${statusVectorIcon('aide')}<span>Get Help</span>`;b.style.background=v===t?'var(--btnB)':'transparent';b.style.color=v===t?'#fff':'var(--txt)';b.style.borderColor=v===t?'var(--btnB)':'var(--brd)';}
   });
 }
 async function savePro(){
