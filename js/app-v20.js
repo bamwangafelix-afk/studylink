@@ -884,14 +884,14 @@ function renderStatusBar(){
   const myStatus=activeStatusOf(mine);
   let html=`<div class="stItem" onclick="openStatusCreate()">
     <div class="stRing ring-add"><div class="stAvatar">+</div></div>
-    <div class="stLabel">Statut</div>
+    <div class="stLabel">${t('st_status')}</div>
   </div>`;
   if(myStatus){
     const av=myStatus.photo?`<img class="stThumb" src="${myStatus.photo}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
     const ringCls=myStatus.category?('ring-'+myStatus.category):'ring-photo';
     html+=`<div class="stItem" onclick="viewStatus('${CU.uid}')">
       <div class="stRing ${ringCls}">${av}</div>
-      <div class="stLabel">Toi</div>
+      <div class="stLabel">${t('st_you')}</div>
     </div>`;
   }
   const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
@@ -1045,12 +1045,12 @@ function viewStatus(uid){
   el('stVSeenList').style.display='none';
   const c=sp.category?CATS[sp.category]:null;
   el('stVAvatar').innerHTML=u.photo?`<img src="${u.photo}">`:esc((u.name||'?')[0]||'?').toUpperCase();
-  el('stVName').textContent=uid===CU.uid?'Toi':(u.name||'?');
+  el('stVName').textContent=uid===CU.uid?t('st_you'):(u.name||'?');
   const createdMs=statusMillis(sp.createdAt)||Date.now();
   const mins=Math.max(1,Math.round((Date.now()-createdMs)/60000));
-  const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
+  const ago=mins<60?t('st_time_ago_min').replace('{n}',mins):t('st_time_ago_hour').replace('{n}',Math.round(mins/60));
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
-  el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
+  el('stVTime').textContent=`${ago} · ${t('st_time_remaining').replace('{n}',left)}`;
   if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').innerHTML=`${statusVectorIcon(sp.category)}<span>${catLabel(sp.category)}</span>`;}
   else{el('stVBadge').style.display='none';}
   if(sp.message){el('stVMsg').style.display='block';el('stVMsg').textContent=sp.message;}
@@ -2987,7 +2987,7 @@ const I18N={
     st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
     st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',st_preview_empty:'Choisis une catégorie, ou ajoute une photo, pour voir l’aperçu',st_preview_photo:'Photo',st_toast_photo_uploading:'❌ Photo en cours d’envoi, patiente',
     st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',st_toast_msg_sent:'Message envoyé',st_toast_audio_sent:'Vocal envoyé',
-    st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
+    st_you:'Toi',st_status:'Statut',st_time_ago_min:'Il y a {n} min',st_time_ago_hour:'Il y a {n} h',st_time_remaining:'disparaît dans {n} h',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
     st_confirm_notif:'Tu seras notifié quand {name} ajoute un nouveau statut.',
     st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
   },
@@ -3039,7 +3039,7 @@ const I18N={
     st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
     st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',st_preview_empty:'Choose a category, or add a photo, to see the preview',st_preview_photo:'Photo',st_toast_photo_uploading:'❌ Photo uploading, please wait',
     st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",st_toast_msg_sent:'Message sent',st_toast_audio_sent:'Voice sent',
-    st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
+    st_you:'You',st_status:'Status',st_time_ago_min:'{n} min ago',st_time_ago_hour:'{n} h ago',st_time_remaining:'disappears in {n} h',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
     st_confirm_notif:'You will be notified when {name} adds a new status.',
     st_confirm_hide:"{name}'s statuses will no longer appear in your updates."
   }
@@ -3055,7 +3055,15 @@ function applyTranslations(){
   document.querySelectorAll('#stCatGrid .stCatCard .nm').forEach((node,index)=>{const key=Object.keys(CATS)[index];if(key)node.textContent=catLabel(key);});
   if(document.getElementById('statusCreate')?.style.display==='flex'){updateStatusPreview();}
 }
-function toggleLang(){appLang=appLang==='fr'?'en':'fr';localStorage.setItem('appLang',appLang);applyTranslations();if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);}
+function toggleLang(){
+  appLang=appLang==='fr'?'en':'fr';
+  localStorage.setItem('appLang',appLang);
+  applyTranslations();
+  renderStatusBar();
+  if(typeof updatePC==='function'&&MP)updatePC();
+  if(typeof renderHome==='function'&&Array.isArray(cachedPosts)&&cachedPosts.length&&el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
+  if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);
+}
 
 // ── HELPERS ──
 function el(id){return document.getElementById(id);}
