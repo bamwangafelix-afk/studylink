@@ -102,50 +102,50 @@
 <div id="Phome" class="page" style="display:block;padding-top:0;">
   <div class="statusStrip"><div class="statusScroll" id="statusScroll"></div></div>
   <div style="padding:14px 0 0;">
-  <h3 style="margin-bottom:12px;">Community Feed <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></h3>
-  <div id="feed"><p style="text-align:center;color:#888;">Loading...</p></div>
+  <h3 style="margin-bottom:12px;"><span data-i18n="home_feed_title">Community Feed</span> <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></h3>
+  <div id="feed"><p style="text-align:center;color:#888;" data-i18n="loading">Loading...</p></div>
   </div>
 </div>
 
 <!-- FIND -->
 <div id="Pfind" class="page">
-  <h3 style="margin-bottom:10px;">Find & Match <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></h3>
-  <input placeholder="Search name or country..." oninput="renderFind(this.value)" id="findQ" style="margin-bottom:8px;">
+  <h3 style="margin-bottom:10px;"><span data-i18n="find_title">Find &amp; Match</span> <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></h3>
+  <input placeholder="Search name or country..." data-i18n-ph="find_search_ph" oninput="renderFind(this.value)" id="findQ" style="margin-bottom:8px;">
   <div class="stabs">
-    <button class="stab on" onclick="switchFT('all',this)">All</button>
-    <button class="stab" onclick="switchFT('match',this)"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="margin-right:3px;vertical-align:middle;"><path d="M11 14H9C9 9.03 13.03 5 18 5v2c-3.87 0-7 3.13-7 7zm8-7v2c-2.76 0-5 2.24-5 5h-2c0-3.87 3.13-7 7-7zM7 4c0 1.1-.9 2-2 2S3 5.1 3 4s.9-2 2-2 2 .9 2 2zm4.45 3.2A3.003 3.003 0 0 0 8.5 5H8C6.34 5 5 6.34 5 8v5H3v6h8v-4.68l3.41 1.23C15.07 15.96 16 15.07 16 14c0-.66-.34-1.24-.85-1.57L11.45 7.2z"/></svg> Match</button>
-    <button class="stab" onclick="switchFT('fav',this)">⭐ Favs</button>
+    <button class="stab on" onclick="switchFT('all',this)" data-i18n="find_tab_all">All</button>
+    <button class="stab" onclick="switchFT('match',this)"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="margin-right:3px;vertical-align:middle;"><path d="M11 14H9C9 9.03 13.03 5 18 5v2c-3.87 0-7 3.13-7 7zm8-7v2c-2.76 0-5 2.24-5 5h-2c0-3.87 3.13-7 7-7zM7 4c0 1.1-.9 2-2 2S3 5.1 3 4s.9-2 2-2 2 .9 2 2zm4.45 3.2A3.003 3.003 0 0 0 8.5 5H8C6.34 5 5 6.34 5 8v5H3v6h8v-4.68l3.41 1.23C15.07 15.96 16 15.07 16 14c0-.66-.34-1.24-.85-1.57L11.45 7.2z"/></svg> <span data-i18n="find_tab_match">Match</span></button>
+    <button class="stab" onclick="switchFT('fav',this)">⭐ <span data-i18n="find_tab_favs">Favs</span></button>
   </div>
   <div id="findL"></div>
 </div>
 
 <!-- POST -->
 <div id="Ppost" class="page">
-  <h3 style="margin-bottom:12px;">Create Post <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></h3>
+  <h3 style="margin-bottom:12px;"><span data-i18n="post_title">Create Post</span> <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></h3>
   <div class="card">
-    <label style="font-size:13px;font-weight:bold;">Post As:</label>
+    <label style="font-size:13px;font-weight:bold;" data-i18n="post_as_label">Post As:</label>
     <select id="pType" onchange="toggleGN(this.value)">
-      <option value="Individual">Individual</option>
-      <option value="Group">Study Group</option>
+      <option value="Individual" data-i18n="post_individual">Individual</option>
+      <option value="Group" data-i18n="post_study_group">Study Group</option>
     </select>
     <div id="gnW" style="display:none;">
-      <label style="font-size:13px;font-weight:bold;">Group Name:</label>
-      <input id="gName" placeholder="e.g. Python Coders...">
+      <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_name_label">Group Name:</label>
+      <input id="gName" placeholder="e.g. Python Coders..." data-i18n-ph="post_group_name_ph">
     </div>
-    <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;">Subject Tags:</label>
+    <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
     <div id="tagSel" style="display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;"></div>
-    <label style="font-size:13px;font-weight:bold;">Your Message:</label>
-    <textarea id="pText" rows="4" placeholder="Write your study request..."></textarea>
-    <button class="btn" onclick="addPost()">📢 Post to Feed</button>
+    <label style="font-size:13px;font-weight:bold;" data-i18n="post_message_label">Your Message:</label>
+    <textarea id="pText" rows="4" placeholder="Write your study request..." data-i18n-ph="post_message_ph"></textarea>
+    <button class="btn" onclick="addPost()">📢 <span data-i18n="post_submit">Post to Feed</span></button>
   </div>
 </div>
 
 <!-- MESSAGES -->
 <div id="Pmsgs" class="page">
-  <h3 style="margin-bottom:10px;">Messages 💬</h3>
-  <input id="inboxQ" placeholder="🔍 Search conversations..." oninput="renderInbox(this.value)" style="margin-bottom:8px;">
+  <h3 style="margin-bottom:10px;"><span data-i18n="msgs_title">Messages</span> 💬</h3>
+  <input id="inboxQ" placeholder="🔍 Search conversations..." data-i18n-ph="msgs_search_ph" oninput="renderInbox(this.value)" style="margin-bottom:8px;">
   <div class="card" style="padding:0;overflow:hidden;" id="inboxL">
-    <p style="text-align:center;color:#888;padding:20px;">No conversations yet.</p>
+    <p style="text-align:center;color:#888;padding:20px;" data-i18n="msgs_no_convos">No conversations yet.</p>
   </div>
 </div>
 
@@ -160,7 +160,7 @@
 
 <!-- ME -->
 <div id="Pme" class="page">
-  <h3 style="margin-bottom:12px;">My Profile</h3>
+  <h3 style="margin-bottom:12px;" data-i18n="me_title">My Profile</h3>
   <div id="pcardEl" style="display:none;" class="pcard">
     <div class="pcard-av">
       <div class="avatar" id="pcPic">👤</div>
@@ -174,12 +174,12 @@
     </div>
   </div>
   <div class="card">
-    <p style="font-weight:bold;margin-bottom:8px;">Account</p>
-    <button type="button" class="btn g" id="disconnectBtn">Disconnect</button>
-    <button class="btn" style="margin-top:6px;" onclick="showEF()">Edit Profile</button>
+    <p style="font-weight:bold;margin-bottom:8px;" data-i18n="me_account">Account</p>
+    <button type="button" class="btn g" id="disconnectBtn" data-i18n="me_disconnect">Disconnect</button>
+    <button class="btn" style="margin-top:6px;" onclick="showEF()" data-i18n="me_edit_profile">Edit Profile</button>
   </div>
   <div id="EF" class="card" style="display:none;text-align:center;">
-    <p style="font-weight:bold;text-align:left;margin-bottom:10px;">Edit Profile</p>
+    <p style="font-weight:bold;text-align:left;margin-bottom:10px;" data-i18n="me_edit_profile">Edit Profile</p>
     <div class="ppwrap">
       <div class="avatar" id="myPic">👤</div>
       <div class="odot online" id="myDot"></div>
@@ -188,39 +188,39 @@
       </button>
     </div>
     <input type="file" id="uPh" style="display:none;" accept="image/*" onchange="loadPic(event)">
-    <input id="uN" placeholder="Full Name">
-    <textarea id="uBio" rows="2" placeholder="Bio / About you..." style="resize:none;"></textarea>
-    <select id="uC"><option value="" disabled selected>Select Country</option></select>
-    <input id="uU" placeholder="University / School">
-    <input id="uCo" placeholder="Course / Major">
-    <input id="uY" placeholder="Year of Study">
-    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;">Languages</label>
-    <input id="uL" placeholder="e.g. English, French...">
-    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;">Skills</label>
-    <input id="uSk" placeholder="e.g. Python, Math...">
-    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:8px;">I am here to:</label>
+    <input id="uN" placeholder="Full Name" data-i18n-ph="me_full_name_ph">
+    <textarea id="uBio" rows="2" placeholder="Bio / About you..." style="resize:none;" data-i18n-ph="me_bio_ph"></textarea>
+    <select id="uC"><option value="" disabled selected data-i18n="me_select_country">Select Country</option></select>
+    <input id="uU" placeholder="University / School" data-i18n-ph="me_university_ph">
+    <input id="uCo" placeholder="Course / Major" data-i18n-ph="me_course_ph">
+    <input id="uY" placeholder="Year of Study" data-i18n-ph="me_year_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;" data-i18n="me_languages_label">Languages</label>
+    <input id="uL" placeholder="e.g. English, French..." data-i18n-ph="me_languages_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;" data-i18n="me_skills_label">Skills</label>
+    <input id="uSk" placeholder="e.g. Python, Math..." data-i18n-ph="me_skills_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:8px;" data-i18n="me_here_to_label">I am here to:</label>
     <div style="display:flex;gap:6px;margin:4px 0 8px;">
       <button type="button" id="eNeedBtn" onclick="setEIntent('need')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--brd);background:transparent;color:var(--txt);font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
-        <svg class="stVectorIcon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/></svg><span>Get Help</span>
+        <svg class="stVectorIcon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/></svg><span data-i18n="me_get_help">Get Help</span>
       </button>
       <button type="button" id="eHelpBtn" onclick="setEIntent('help')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--brd);background:transparent;color:var(--txt);font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>Give Help
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg><span data-i18n="me_give_help">Give Help</span>
       </button>
       <button type="button" id="eBothBtn" onclick="setEIntent('both')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--brd);background:transparent;color:var(--txt);font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Both
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span data-i18n="me_both">Both</span>
       </button>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px;">
       <button class="btn" style="flex:1;" onclick="savePro()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px;"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>Save
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px;"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg><span data-i18n="me_save">Save</span>
       </button>
       <button class="btn" style="flex:1;background:var(--btnB);" onclick="hideEF()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Cancel
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg><span data-i18n="me_cancel">Cancel</span>
       </button>
     </div>
     <button class="btn" style="margin-top:8px;background:var(--btnB);display:flex;align-items:center;justify-content:center;gap:6px;width:100%;" onclick="openPhoneSettings()">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.02 7.02 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.47.47 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>
-      App Settings
+      <span data-i18n="me_app_settings">App Settings</span>
     </button>
   </div>
 </div>
@@ -315,7 +315,7 @@
 <div class="cwin" id="profileView" style="z-index:280;">
   <div class="chdr" style="align-items:center;">
     <button class="profile-back-btn" onclick="closeProfileView()" aria-label="Retour">←</button>
-    <div class="profile-header-title">Profil</div>
+    <div class="profile-header-title" data-i18n="profile_title">Profil</div>
     <div style="width:24px;"></div>
   </div>
   <div style="overflow-y:auto;flex:1;padding:24px 20px 40px;text-align:center;">
@@ -327,7 +327,7 @@
     <div id="pvIntent" style="margin-bottom:10px;"></div>
     <div id="pvLangs" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:10px;"></div>
     <div id="pvSkills" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:20px;"></div>
-    <button id="pvMsgBtn" class="btn" style="width:100%;padding:13px;">Message</button>
+    <button id="pvMsgBtn" class="btn" style="width:100%;padding:13px;" data-i18n="home_message">Message</button>
   </div>
 </div>
 
@@ -343,7 +343,7 @@
       <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff;"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
     </button>
   </div>
-  <div id="csBar"><input id="csQ" placeholder="Search messages..." oninput="searchMsgs(this.value)" style="margin:0;"></div>
+  <div id="csBar"><input id="csQ" placeholder="Search messages..." data-i18n-ph="chat_search_ph" oninput="searchMsgs(this.value)" style="margin:0;"></div>
   <div id="typebar"></div>
   <div class="cmsgbox" id="msgB"></div>
   <div class="cbottom">
@@ -353,7 +353,7 @@
       <span style="font-size:11px;color:#1976d2;font-weight:600;white-space:nowrap;">● REC</span>
       <span id="vTimer" style="font-size:13px;font-weight:bold;color:#333;min-width:38px;">0:00</span>
       <canvas id="vWave" width="160" height="32" style="flex:1;max-width:200px;"></canvas>
-      <span data-voice-hint style="font-size:10px;color:#1976d2;white-space:nowrap;">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
+      <span data-voice-hint style="font-size:10px;color:#1976d2;white-space:nowrap;" data-i18n="chat_voice_hint">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
     </div>
     <!-- STICKER/EMOJI PANEL -->
     <div id="stickerPanel">
@@ -382,43 +382,43 @@
       <div class="media-grid">
         <button class="mpbtn" onclick="openCamera('p');closeMediaPanel()">
           <div class="mp-icon" style="background:#e8f4fd;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#1565c0"><path d="M12 15.2A3.2 3.2 0 1 1 15.2 12 3.2 3.2 0 0 1 12 15.2zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg></div>
-          <span>Camera</span>
+          <span data-i18n="media_camera">Camera</span>
         </button>
         <button class="mpbtn" onclick="pickF('image/*','image','p');closeMediaPanel()">
           <div class="mp-icon" style="background:#fef9e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#f39c12"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
-          <span>Image</span>
+          <span data-i18n="media_image">Image</span>
         </button>
         <button class="mpbtn" onclick="pickF('video/*','video','p');closeMediaPanel()">
           <div class="mp-icon" style="background:#fdecea;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e74c3c"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></div>
-          <span>Video</span>
+          <span data-i18n="media_video">Video</span>
         </button>
         <button class="mpbtn" onclick="pickF('audio/*','audio','p');closeMediaPanel()">
           <div class="mp-icon" style="background:#e8f8ef;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#27ae60"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
-          <span>Music</span>
+          <span data-i18n="media_music">Music</span>
         </button>
         <button class="mpbtn" onclick="openGDrivePicker('p');closeMediaPanel()">
           <div class="mp-icon" style="background:#f4ecf7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#8e44ad"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></div>
-          <span>Drive</span>
+          <span data-i18n="media_drive">Drive</span>
         </button>
         <button class="mpbtn" onclick="pickF('application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation','doc','p');closeMediaPanel()">
           <div class="mp-icon" style="background:#fef5e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e67e22"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h8v2H8zm0-4h8v2H8z"/></svg></div>
-          <span>Document</span>
+          <span data-i18n="media_document">Document</span>
         </button>
         <button class="mpbtn" onclick="sendSpecial('poll');closeMediaPanel()">
           <div class="mp-icon" style="background:#eaf4fb;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#2980b9"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></div>
-          <span>Poll</span>
+          <span data-i18n="media_poll">Poll</span>
         </button>
         <button class="mpbtn" onclick="sendSpecial('event');closeMediaPanel()">
           <div class="mp-icon" style="background:#fef5e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e67e22"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></div>
-          <span>Event</span>
+          <span data-i18n="media_event">Event</span>
         </button>
         <button class="mpbtn" onclick="sendSpecial('location');closeMediaPanel()">
           <div class="mp-icon" style="background:#fdedec;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e74c3c"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></div>
-          <span>Location</span>
+          <span data-i18n="media_location">Location</span>
         </button>
         <button class="mpbtn" onclick="sendSpecial('link');closeMediaPanel()">
           <div class="mp-icon" style="background:#e8f8ef;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#27ae60"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></div>
-          <span>Link</span>
+          <span data-i18n="media_link">Link</span>
         </button>
       </div>
     </div>
@@ -427,7 +427,7 @@
       <button class="cin-emoji" id="kbToggle" onclick="toggleKbSticker()" title="Emoji/Stickers/GIF">
         <svg id="kbIcon" viewBox="0 0 48 48" style="width:24px;height:24px;fill:var(--sub);display:block;"><path d="M34 4H14C8.477 4 4 8.477 4 14v20c0 5.523 4.477 10 10 10h20c5.523 0 10-4.477 10-10V14C44 8.477 39.523 4 34 4zm0 4c3.309 0 6 2.691 6 6v20c0 3.309-2.691 6-6 6H14c-3.309 0-6-2.691-6-6V14c0-3.309 2.691-6 6-6h20zM17 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 8c-3.5 0-6.5 2-8 5h16c-1.5-3-4.5-5-8-5z"/></svg>
       </button>
-      <input class="cin-input" id="mIn" placeholder="Message..." oninput="onMsgInput()">
+      <input class="cin-input" id="mIn" placeholder="Message..." data-i18n-ph="chat_msg_ph" oninput="onMsgInput()">
       <button class="cin-attach" onclick="toggleMediaPanel()" title="Media">
         <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
       </button>
@@ -462,7 +462,7 @@
       <span id="gRecIndicator" style="font-size:11px;color:#e67e22;font-weight:600;white-space:nowrap;">● REC</span>
       <span id="gvTimer" style="font-size:13px;font-weight:bold;color:#333;min-width:38px;">0:00</span>
       <canvas id="gvWave" width="160" height="32" style="flex:1;max-width:200px;"></canvas>
-      <span data-voice-hint style="font-size:10px;color:#e67e22;white-space:nowrap;">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
+      <span data-voice-hint style="font-size:10px;color:#e67e22;white-space:nowrap;" data-i18n="chat_voice_hint">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
     </div>
     <!-- GROUP STICKER/EMOJI PANEL -->
     <div id="gStickerPanel" style="display:none;background:var(--card);border-top:1px solid var(--brd);padding:0 10px 10px;max-height:240px;overflow-y:auto;">
@@ -489,19 +489,19 @@
     <div class="media-panel" id="gMediaPanel">
       <div class="media-grid">
         <button class="mpbtn" onclick="pickF('image/*','image','g');closeGMediaPanel()">
-          <div class="mp-icon" style="background:#fef9e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#f39c12"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div><span>Image</span>
+          <div class="mp-icon" style="background:#fef9e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#f39c12"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div><span data-i18n="media_image">Image</span>
         </button>
         <button class="mpbtn" onclick="pickF('video/*','video','g');closeGMediaPanel()">
-          <div class="mp-icon" style="background:#fdecea;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e74c3c"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></div><span>Video</span>
+          <div class="mp-icon" style="background:#fdecea;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e74c3c"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></div><span data-i18n="media_video">Video</span>
         </button>
         <button class="mpbtn" onclick="pickF('audio/*','audio','g');closeGMediaPanel()">
-          <div class="mp-icon" style="background:#e8f8ef;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#27ae60"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><span>Music</span>
+          <div class="mp-icon" style="background:#e8f8ef;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#27ae60"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><span data-i18n="media_music">Music</span>
         </button>
         <button class="mpbtn" onclick="openGDrivePicker('g');closeGMediaPanel()">
-          <div class="mp-icon" style="background:#f4ecf7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#8e44ad"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></div><span>Drive</span>
+          <div class="mp-icon" style="background:#f4ecf7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#8e44ad"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></div><span data-i18n="media_drive">Drive</span>
         </button>
         <button class="mpbtn" onclick="pickF('application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation','doc','g');closeGMediaPanel()">
-          <div class="mp-icon" style="background:#fef5e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e67e22"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h8v2H8zm0-4h8v2H8z"/></svg></div><span>Document</span>
+          <div class="mp-icon" style="background:#fef5e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e67e22"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h8v2H8zm0-4h8v2H8z"/></svg></div><span data-i18n="media_document">Document</span>
         </button>
       </div>
     </div>
@@ -509,7 +509,7 @@
       <button class="cin-emoji" id="gKbToggle" onclick="toggleGKbSticker()" title="Keyboard/Stickers" style="color:#e67e22;">
         <svg viewBox="0 0 48 48" style="width:22px;height:22px;fill:#e67e22;display:block;"><path d="M34 4H14C8.477 4 4 8.477 4 14v20c0 5.523 4.477 10 10 10h20c5.523 0 10-4.477 10-10V14C44 8.477 39.523 4 34 4zm0 4c3.309 0 6 2.691 6 6v20c0 3.309-2.691 6-6 6H14c-3.309 0-6-2.691-6-6V14c0-3.309 2.691-6 6-6h20zM17 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 8c-3.5 0-6.5 2-8 5h16c-1.5-3-4.5-5-8-5z"/></svg>
       </button>
-      <input class="cin-input" id="gIn" placeholder="Message..." oninput="onGMsgInput()" style="border-color:#e67e22;">
+      <input class="cin-input" id="gIn" placeholder="Message..." data-i18n-ph="chat_msg_ph" oninput="onGMsgInput()" style="border-color:#e67e22;">
       <button class="cin-attach" onclick="toggleGMediaPanel()" title="Media" style="color:#e67e22;">
         <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
       </button>

@@ -394,33 +394,9 @@ body.dark #profileView .chdr .profile-header-title,
 body.dark #profileView #pvName{color:#fff!important;}
 .stVMain #stVMsg + #stVBadge{margin-top:16px;margin-bottom:0;}
 
-
-/* pwa-50 profile refinements: Give Help status ring and dark header contrast */
+/* Give Help ring: consolidated to match the exact size/weight of every other category ring. */
+.stRing.ring-givehelp{background:#000;box-shadow:0 0 0 3px #000;}
 .ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
-#profileView #pvAvatar.ring-outline-givehelp{box-shadow:0 0 0 4px #000;}
+#profileView #pvAvatar.ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
 body.dark #profileView .chdr .profile-back-btn,body.dark #profileView .chdr .profile-header-title{color:#fff!important;}
-
-
-/* Give Help is rendered as ring-givehelp in the Status carousel. */
-.stRing.ring-givehelp{background:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72)!important;}
-body.dark .stRing.ring-givehelp{box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
-#profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
-body.dark #profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 6px #000!important;}
 body.dark #profileView #pvName{color:#fff!important;}
-
-
-/* Give Help category ring: the carousel renders this exact class. */
-.stRing.ring-givehelp{background:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72)!important;}
-body.dark .stRing.ring-givehelp{box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
-#profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 5px #000!important;}
-body.dark #profileView #pvAvatar.ring-outline-givehelp{border-color:#000!important;box-shadow:0 0 0 2px rgba(255,255,255,.72),0 0 0 6px #000!important;}
-body.dark #profileView #pvName{color:#fff!important;}
-
-/* pwa-54: match the other category rings with no oversized outer halo. */
-.stRing.ring-givehelp{background:#000!important;box-shadow:none!important;}
-#profileView #pvAvatar.ring-outline-givehelp{border-color:var(--bg)!important;box-shadow:0 0 0 3px #000!important;}
-body.dark #profileView #pvAvatar.ring-outline-givehelp{border-color:var(--bg)!important;box-shadow:0 0 0 3px #000!important;}
-
-/* pwa-58: match the Give Help avatar circle size to the shared 48-pixel Status circles. */
-.stRing.ring-givehelp{width:48px;height:48px;padding:3px;background:#000!important;box-shadow:none!important;}
-.stRing.ring-givehelp>img,.stRing.ring-givehelp>.stThumb,.stRing.ring-givehelp>.stAvatar,.stRing.ring-givehelp>.stFallback{border:2px solid var(--bg)!important;}
