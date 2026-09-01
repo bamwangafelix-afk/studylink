@@ -664,9 +664,11 @@ function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
 }
+function bothIntentIcon(){return `<svg class="intent-vector intent-vector-both" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="display:block;flex:0 0 16px;fill:currentColor;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`;}
 function getIntentBadge(intent){
   if(intent==='need')return`<span class="intent-badge intent-need" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#fff1e0;color:#c2570a;margin-top:3px;">${intentVectorIcon('aide')}<span>${t('badge_needs_help')}</span></span>`;
   if(intent==='help')return`<span class="intent-badge intent-help" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e3f8f4;color:#000;margin-top:3px;">${intentVectorIcon('givehelp')}<span>${t('badge_can_help')}</span></span>`;
+  if(intent==='both')return`<span class="intent-badge intent-both" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e8f0ff;color:#2563eb;margin-top:3px;">${bothIntentIcon()}<span>${t('me_both')}</span></span>`;
   return '';
 }
 function updatePC(){
