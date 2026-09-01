@@ -394,9 +394,9 @@ body.dark #profileView .chdr .profile-header-title,
 body.dark #profileView #pvName{color:#fff!important;}
 .stVMain #stVMsg + #stVBadge{margin-top:16px;margin-bottom:0;}
 
-/* Give Help ring: consolidated to match the exact size/weight of every other category ring. */
-.stRing.ring-givehelp{background:#000;box-shadow:0 0 0 3px #000;}
-.ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
-#profileView #pvAvatar.ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
+/* Give Help ring: same dimensions as every other category ring. */
+.stRing.ring-givehelp{background:#000;box-shadow:none;}
+.ring-outline-givehelp{box-shadow:none;}
+#profileView #pvAvatar.ring-outline-givehelp{box-shadow:none;}
 body.dark #profileView .chdr .profile-back-btn,body.dark #profileView .chdr .profile-header-title{color:#fff!important;}
 body.dark #profileView #pvName{color:#fff!important;}
