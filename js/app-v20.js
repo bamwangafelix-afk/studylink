@@ -789,16 +789,17 @@ async function addPost(){
   if(!MP?.name)return alert('Complete your profile first');
   const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
+  const visibility=el('pVisibility')?.value||'anyone';
   const gname=type==='Group'?v('gName'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
   showOv(true);
   try{
-    const ref=await db.collection('posts').add({type,text,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const ref=await db.collection('posts').add({type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];document.querySelectorAll('#tagSel .tag').forEach(b=>b.classList.remove('sel'));
-    el('pText').value='';el('pType').value='Individual';el('gName').value='';el('gnW').style.display='none';
+    el('pText').value='';el('pType').value='Individual';if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gnW').style.display='none';
     showToast('📢 Posted!');tab('home');
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
@@ -2946,7 +2947,7 @@ const I18N={
     find_tab_all:'Tous',find_tab_match:'Match',find_tab_favs:'Favoris',
     find_loading:'Chargement des étudiants...',find_no_results:'Aucun étudiant trouvé.',
     find_you_badge:'Toi',find_match_label:'Match',find_own_profile:'C’est ton profil',
-    post_title:'Créer une publication',post_as_label:'Publier en tant que :',
+    post_title:'Créer une publication',post_as_label:'Publier en tant que :',post_visibility_label:'Qui peut voir ta publication ?',post_visibility_anyone:'Tout le monde',post_visibility_country:'Uniquement mon pays',post_visibility_university:'Uniquement mon université',post_visibility_major:'Uniquement ma filière / mon cours',
     post_individual:'Individuel',post_study_group:'Groupe d’étude',
     post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',
     post_tags_label:'Matières :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',
@@ -3000,7 +3001,7 @@ const I18N={
     find_tab_all:'All',find_tab_match:'Match',find_tab_favs:'Favs',
     find_loading:'Loading students...',find_no_results:'No students found.',
     find_you_badge:'You',find_match_label:'Match',find_own_profile:'This is your profile',
-    post_title:'Create Post',post_as_label:'Post As:',
+    post_title:'Create Post',post_as_label:'Post As:',post_visibility_label:'Who can see your post?',post_visibility_anyone:'Anyone',post_visibility_country:'Only my Country',post_visibility_university:'Only my University',post_visibility_major:'Only my Major/Course',
     post_individual:'Individual',post_study_group:'Study Group',
     post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',
     post_tags_label:'Subject Tags:',post_message_label:'Your Message:',post_message_ph:'Write your study request...',
