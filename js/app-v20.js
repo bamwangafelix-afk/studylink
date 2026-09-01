@@ -1436,7 +1436,7 @@ function renderFind(q=""){
   let list=ftab==='fav'?allUsers.filter(u=>favs.has(u.uid)):[...allUsers];
   if(q)list=list.filter(u=>{
     const s=q.toLowerCase();
-    return(u.name||'').toLowerCase().includes(s)||(u.country||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s)||(u.course||'').toLowerCase().includes(s);
+    return(u.name||'').toLowerCase().includes(s)||(u.major||'').toLowerCase().includes(s)||(u.country||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s)||(u.course||'').toLowerCase().includes(s);
   });
   if(ftab==='match')list=list.filter(u=>u.uid!==CU?.uid).sort((a,b)=>mscore(b)-mscore(a));
   if(!list.length){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_no_results')}</p>`;return;}
@@ -2942,7 +2942,7 @@ const I18N={
     home_join_group:'Rejoindre le groupe',home_message:'Message',home_load_more:'Voir plus',
     badge_needs_help:'Besoin d’aide',badge_can_help:'Peut aider',
     status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
-    find_title:'Recherche & Match',find_search_ph:'Rechercher un nom ou un pays...',
+    find_title:'Recherche & Match',find_search_ph:'Rechercher un nom, une filière ou un cours, une université ou un pays...',
     find_tab_all:'Tous',find_tab_match:'Match',find_tab_favs:'Favoris',
     find_loading:'Chargement des étudiants...',find_no_results:'Aucun étudiant trouvé.',
     find_you_badge:'Toi',find_match_label:'Match',find_own_profile:'C’est ton profil',
@@ -2996,7 +2996,7 @@ const I18N={
     home_join_group:'Join Group',home_message:'Message',home_load_more:'Load more',
     badge_needs_help:'Needs Help',badge_can_help:'Can Help',
     status_online:'🟢 Online',status_busy:'🔴 Busy',
-    find_title:'Find & Match',find_search_ph:'Search name or country...',
+    find_title:'Find & Match',find_search_ph:'Search name, major or course, university or country...',
     find_tab_all:'All',find_tab_match:'Match',find_tab_favs:'Favs',
     find_loading:'Loading students...',find_no_results:'No students found.',
     find_you_badge:'You',find_match_label:'Match',find_own_profile:'This is your profile',
