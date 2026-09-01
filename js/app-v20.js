@@ -758,13 +758,18 @@ function sameAudienceField(owner,viewer,kind){
   const viewerValue=kind==='country'?viewer?.country:(kind==='university'?viewer?.uni:viewer?.course);
   return sameAudienceValue(ownerValue,viewerValue,kind);
 }
-function rememberStatusVisibility(value){if(['anyone','country','university','major'].includes(value))localStorage.setItem('statusVisibility',value);}
+function rememberStatusVisibility(value){
+  if(!['anyone','country','university','major'].includes(value))return;
+  localStorage.setItem('statusVisibility',value);
+  if(MP)MP.statusVisibility=value;
+  if(CU)db.collection('users').doc(CU.uid).set({statusVisibility:value},{merge:true}).catch(()=>{});
+}
 function canViewVisibility(content,viewer,owner){
   if(!viewer||!owner)return false;
   if(content?.uid&&content.uid===viewer.uid)return true;
   const rule=visibilityText(content?.visibility);
   if(!rule||rule==='anyone'||rule==='public')return true;
-  const vp=(viewer.uid===CU?.uid&&MP)?MP:(viewer.profile||viewer);
+  const vp=viewer.uid===CU?.uid?(allUsers.find(u=>u.uid===viewer.uid)||MP):(viewer.profile||viewer);
   if(rule==='country')return sameAudienceField(owner,vp,'country');
   if(rule==='university'||rule==='uni')return sameAudienceField(owner,vp,'university');
   if(rule==='major'||rule==='course'||rule==='major/course')return sameAudienceField(owner,vp,'major');
@@ -965,7 +970,7 @@ function openStatusCreate(arg){
   if(arg&&typeof arg==='object')draft=arg;
   else if(typeof arg==='string')draft={photo:arg};
   selStatusCat=draft?.category||null;selStatusSubject=draft?.subject||null;selStatusGroup=null;
-  if(el('stVisibility'))el('stVisibility').value=localStorage.getItem('statusVisibility')||'anyone';
+  if(el('stVisibility'))el('stVisibility').value=MP?.statusVisibility||MP?.statusPost?.visibility||localStorage.getItem('statusVisibility')||'anyone';
   statusPhotoUrl=draft?.photo||null;
   forwardedFromDraft=draft?.from||null;
   el('stMsg').value=draft?.message||'';el('stCharCount').textContent=(draft?.message||'').length+' / 100';
@@ -1054,12 +1059,12 @@ async function publishStatus(){
     if(!msg)return showToast(t('st_toast_write_message'));
   }
   const visibility=el('stVisibility')?.value||'anyone';
-  localStorage.setItem('statusVisibility',visibility);
+  rememberStatusVisibility(visibility);
   const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,visibility,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   const col=creatingCategoryColor();
   el('ov').style.display='flex';
   try{
-    await db.collection('users').doc(CU.uid).update({statusPost:payload});
+    await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility});
     showToast(t('st_toast_published'),col);
     forwardedFromDraft=null;
     closeStatusCreate();
