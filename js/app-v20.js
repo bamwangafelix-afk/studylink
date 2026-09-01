@@ -746,6 +746,12 @@ function listenUsers(){
 // ── VISIBILITY ──
 function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
 function sameAudienceValue(a,b){const left=visibilityText(a),right=visibilityText(b);return left!==''&&left===right;}
+function audienceValues(profile,kind){
+  const p=profile||{},nested=p.profile||{};
+  const fields=kind==='country'?['country']:(kind==='university'?['uni','university','school']:['course','major','majorCourse','program','fieldOfStudy','field']);
+  return [...new Set(fields.flatMap(key=>[p[key],nested[key]]).map(visibilityText).filter(Boolean))];
+}
+function sameAudienceField(owner,viewer,kind){const left=audienceValues(owner,kind),right=audienceValues(viewer,kind);return left.some(value=>right.includes(value));}
 function rememberStatusVisibility(value){if(['anyone','country','university','major'].includes(value))localStorage.setItem('statusVisibility',value);}
 function canViewVisibility(content,viewer,owner){
   if(!viewer||!owner)return false;
@@ -753,9 +759,9 @@ function canViewVisibility(content,viewer,owner){
   const rule=visibilityText(content?.visibility);
   if(!rule||rule==='anyone'||rule==='public')return true;
   const vp=(viewer.uid===CU?.uid&&MP)?MP:(viewer.profile||viewer);
-  if(rule==='country')return sameAudienceValue(owner.country,vp.country);
-  if(rule==='university'||rule==='uni')return sameAudienceValue(owner.uni||owner.university,vp.uni||vp.university);
-  if(rule==='major'||rule==='course'||rule==='major/course')return sameAudienceValue(owner.course||owner.major,vp.course||vp.major);
+  if(rule==='country')return sameAudienceField(owner,vp,'country');
+  if(rule==='university'||rule==='uni')return sameAudienceField(owner,vp,'university');
+  if(rule==='major'||rule==='course'||rule==='major/course')return sameAudienceField(owner,vp,'major');
   return true;
 }
 function visiblePosts(posts){return (posts||[]).filter(p=>canViewVisibility(p,CU,allUsers.find(u=>u.uid===p.uid)||p.user||{}));}
