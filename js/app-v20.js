@@ -743,6 +743,22 @@ function listenUsers(){
   },e=>console.log('users:',e));
 }
 
+// ── VISIBILITY ──
+function visibilityText(value){return String(value||'').trim().toLowerCase();}
+function sameAudienceValue(a,b){return visibilityText(a)!==''&&visibilityText(a)===visibilityText(b);}
+function canViewVisibility(content,viewer,owner){
+  if(!viewer||!owner)return false;
+  if(content?.uid&&content.uid===viewer.uid)return true;
+  const rule=visibilityText(content?.visibility);
+  if(!rule||rule==='anyone'||rule==='public')return true;
+  const vp=viewer.profile||viewer;
+  if(rule==='country')return sameAudienceValue(owner.country,vp.country);
+  if(rule==='university'||rule==='uni')return sameAudienceValue(owner.uni||owner.university,vp.uni||vp.university);
+  if(rule==='major'||rule==='course'||rule==='major/course')return sameAudienceValue(owner.course||owner.major,vp.course||vp.major);
+  return true;
+}
+function visiblePosts(posts){return (posts||[]).filter(p=>canViewVisibility(p,CU,allUsers.find(u=>u.uid===p.uid)||p.user||{}));}
+
 // ── POSTS ──
 let cachedPosts=[],lastPostCount=0,_feedShown=10;
 function listenPosts(){
@@ -826,6 +842,7 @@ function getStatusInfo(status,lastSeen){
 }
 function renderHome(posts,limit){
   const f=el('feed');
+  posts=visiblePosts(posts);
   if(!posts?.length){f.innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('home_no_posts')}</p>`;return;}
   const shown=posts.slice(0,limit||10);
   const hasMore=posts.length>(limit||10);
@@ -895,7 +912,7 @@ function renderStatusBar(){
       <div class="stLabel">${t('st_you')}</div>
     </div>`;
   }
-  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
+  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
   others.forEach(u=>{
     const sp=u.statusPost;
     const seen=(sp.viewedBy||[]).includes(CU.uid);
@@ -935,6 +952,7 @@ function openStatusCreate(arg){
   if(arg&&typeof arg==='object')draft=arg;
   else if(typeof arg==='string')draft={photo:arg};
   selStatusCat=draft?.category||null;selStatusSubject=draft?.subject||null;selStatusGroup=null;
+  if(el('stVisibility'))el('stVisibility').value='anyone';
   statusPhotoUrl=draft?.photo||null;
   forwardedFromDraft=draft?.from||null;
   el('stMsg').value=draft?.message||'';el('stCharCount').textContent=(draft?.message||'').length+' / 100';
@@ -1022,7 +1040,8 @@ async function publishStatus(){
     if(!selStatusCat)return showToast(t('st_toast_choose_category'));
     if(!msg)return showToast(t('st_toast_write_message'));
   }
-  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const visibility=el('stVisibility')?.value||'anyone';
+  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,visibility,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   const col=creatingCategoryColor();
   el('ov').style.display='flex';
   try{
@@ -1040,6 +1059,7 @@ function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
+  if(!canViewVisibility(sp,CU,u))return showToast('❌ Ce statut n’est pas visible pour toi');
   pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
@@ -2975,7 +2995,7 @@ const I18N={
     group_member:'membre',group_members:'membres',
     st_new_title:'Nouveau statut',st_publish:'Publier',st_photo_label:'Photo (optionnel)',
     st_add_photo:'Ajouter une photo',st_photo_hint:'Notes, bureau de révision, selfie...',
-    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',
+    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',stWhoCanSee:'Qui peut voir ton statut ?',stAnyone:'Tout le monde',stCountry:'Uniquement mon pays',stUniversity:'Uniquement mon université',stMajorCourse:'Uniquement ma filière / mon cours',
     st_subject_label:'Matière (optionnel)',st_link_group_label:'Lier un groupe (optionnel)',
     st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
     st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
@@ -3028,7 +3048,7 @@ const I18N={
     prompt_location:'Location:',prompt_enter_url:'Enter URL:',
     group_member:'member',group_members:'members',
     st_new_title:'New status',st_publish:'Post',st_photo_label:'Photo (optional)',st_add_photo:'Add a photo',
-    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',
+    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',stWhoCanSee:'Who can see your status?',stAnyone:'Anyone',stCountry:'Only my country',stUniversity:'Only my university',stMajorCourse:'Only my major/Course',
     st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
     st_msg_placeholder:'Free to study now, who wants to join?',st_preview_label:'Preview',
     st_expiry_note:'⏱ Your status disappears automatically after 24h',st_reply_placeholder:'Reply...',
