@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#021841">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="StudyLink">
+<meta name="description" content="StudyLink — Connect, Learn, Grow.">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-58">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-58">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-58">
+<title>StudyLink Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-58">
+</head>
+<body>
+<div class="ov" id="ov"><div class="spin"></div></div>
+<div id="toast" style="display:none;"></div>
+<div id="installBanner" role="status" aria-live="polite">
+  <img src="icons/studylink-192.png?v=studylink-pwa-58" alt="StudyLink" width="42" height="42">
+  <div class="install-copy"><strong>Installer l’application StudyLink</strong><span>Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
+  <button type="button" id="installBtn">Installer l’app</button>
+  <button type="button" id="installDismiss" aria-label="Fermer">×</button>
+</div>
+
+<!-- AUTH -->
+<div id="auth" style="display:none;">
+  <p id="asub" style="color:#405a78;margin-bottom:18px;font-size:14px;font-style:italic;visibility:hidden;">Connect &bull; Learn &bull; Grow</p>
+  <div class="af" id="loginF">
+    <input id="lE" type="email" placeholder="Email">
+    <input id="lP" type="password" placeholder="Password">
+    <div class="aerr" id="lErr"></div>
+    <button class="abtn" onclick="doLogin()">🔐 Login</button>
+    <div class="adiv">or</div>
+    <button class="abtn g" onclick="doGoogle()"><img src="https://www.google.com/favicon.ico" width="16">Continue with Google</button>
+    <div class="alink" onclick="showReset()">Forgot password?</div>
+    <div class="aswitch" onclick="showReg()">No account? Register →</div>
+  </div>
+  <div class="af" id="regF" style="display:none;">
+    <input id="rN" placeholder="Full Name">
+    <input id="rE" type="email" placeholder="Email">
+    <input id="rP" type="password" placeholder="Password (min 6 chars)">
+    <div class="aerr" id="rErr"></div>
+    <button class="abtn" onclick="doReg()">✅ Create Account</button>
+    <div class="adiv">or</div>
+    <button class="abtn g" onclick="doGoogle()"><img src="https://www.google.com/favicon.ico" width="16">Sign up with Google</button>
+    <div class="aswitch" onclick="showLogin()">← Back to Login</div>
+  </div>
+  <div class="af" id="resetF" style="display:none;">
+    <input id="resetE" type="email" placeholder="Your email">
+    <div class="aerr" id="resetErr"></div>
+    <button class="abtn" onclick="doReset()">📧 Send Reset Link</button>
+    <div class="aswitch" onclick="showLogin()">← Back to Login</div>
+  </div>
+
+  <!-- STEP 2: Profile Completion -->
+  <div class="af" id="step2F" style="display:none;">
+    <p style="color:rgba(255,255,255,.9);font-size:13px;margin-bottom:10px;text-align:center;">Almost there! Tell us about yourself so students can find you 🎯</p>
+    <select id="s2C" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;"><option value="" disabled selected>🌍 Select Country</option></select>
+    <input id="s2U" placeholder="🏛️ University / School" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;">
+    <input id="s2Co" placeholder="📖 Course / Major (e.g. Software Engineering)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;">
+    <input id="s2Y" placeholder="📅 Year of Study (e.g. Year 2)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;">
+    <p style="color:rgba(255,255,255,.7);font-size:12px;margin:8px 0 4px;">🏷️ Subject Tags — what do you study?</p>
+    <div id="s2Tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;max-height:120px;overflow-y:auto;"></div>
+    <p style="color:rgba(255,255,255,.7);font-size:12px;margin:4px 0;">🤝 I am here to:</p>
+    <div style="display:flex;gap:8px;margin:4px 0 8px;">
+      <button id="s2NeedBtn" onclick="setIntent('need')" style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:bold;cursor:pointer;">🙋 Get Help</button>
+      <button id="s2HelpBtn" onclick="setIntent('help')" style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:bold;cursor:pointer;">🧑‍🏫 Give Help</button>
+      <button id="s2BothBtn" onclick="setIntent('both')" style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:bold;cursor:pointer;">🔄 Both</button>
+    </div>
+    <div class="aerr" id="s2Err"></div>
+    <button class="abtn" onclick="completeProfile()">🚀 Enter StudyLink</button>
+    <p style="color:rgba(255,255,255,.5);font-size:11px;margin-top:8px;text-align:center;">You can update this anytime from your profile</p>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-58" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+    <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button type="button" class="dark-btn" id="langBtn" title="Change language" onclick="toggleLang()" style="font-size:11px;font-weight:800;width:auto;padding:0 8px;">FR</button>
+      <button type="button" class="dark-btn" id="darkModeBtn" title="Toggle dark mode">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+      </button>
+      <button type="button" class="dark-btn" id="alertsBtn" title="Alerts" style="position:relative;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        <span id="notifB" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:bold;line-height:16px;text-align:center;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="Phome" class="page" style="display:block;padding-top:0;">
+  <div class="statusStrip"><div class="statusScroll" id="statusScroll"></div></div>
+  <div style="padding:14px 0 0;">
+  <h3 style="margin-bottom:12px;"><span data-i18n="home_feed_title">Community Feed</span> <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></h3>
+  <div id="feed"><p style="text-align:center;color:#888;" data-i18n="loading">Loading...</p></div>
+  </div>
+</div>
+
+<!-- FIND -->
+<div id="Pfind" class="page">
+  <h3 style="margin-bottom:10px;"><span data-i18n="find_title">Find &amp; Match</span> <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></h3>
+  <input placeholder="Search name or country..." data-i18n-ph="find_search_ph" oninput="renderFind(this.value)" id="findQ" style="margin-bottom:8px;">
+  <div class="stabs">
+    <button class="stab on" onclick="switchFT('all',this)" data-i18n="find_tab_all">All</button>
+    <button class="stab" onclick="switchFT('match',this)"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="margin-right:3px;vertical-align:middle;"><path d="M11 14H9C9 9.03 13.03 5 18 5v2c-3.87 0-7 3.13-7 7zm8-7v2c-2.76 0-5 2.24-5 5h-2c0-3.87 3.13-7 7-7zM7 4c0 1.1-.9 2-2 2S3 5.1 3 4s.9-2 2-2 2 .9 2 2zm4.45 3.2A3.003 3.003 0 0 0 8.5 5H8C6.34 5 5 6.34 5 8v5H3v6h8v-4.68l3.41 1.23C15.07 15.96 16 15.07 16 14c0-.66-.34-1.24-.85-1.57L11.45 7.2z"/></svg> <span data-i18n="find_tab_match">Match</span></button>
+    <button class="stab" onclick="switchFT('fav',this)">⭐ <span data-i18n="find_tab_favs">Favs</span></button>
+  </div>
+  <div id="findL"></div>
+</div>
+
+<!-- POST -->
+<div id="Ppost" class="page">
+  <h3 style="margin-bottom:12px;"><span data-i18n="post_title">Create Post</span> <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></h3>
+  <div class="card">
+    <label style="font-size:13px;font-weight:bold;" data-i18n="post_as_label">Post As:</label>
+    <select id="pType" onchange="toggleGN(this.value)">
+      <option value="Individual" data-i18n="post_individual">Individual</option>
+      <option value="Group" data-i18n="post_study_group">Study Group</option>
+    </select>
+    <div id="gnW" style="display:none;">
+      <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_name_label">Group Name:</label>
+      <input id="gName" placeholder="e.g. Python Coders..." data-i18n-ph="post_group_name_ph">
+    </div>
+    <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
+    <div id="tagSel" style="display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;"></div>
+    <label style="font-size:13px;font-weight:bold;" data-i18n="post_message_label">Your Message:</label>
+    <textarea id="pText" rows="4" placeholder="Write your study request..." data-i18n-ph="post_message_ph"></textarea>
+    <button class="btn" onclick="addPost()">📢 <span data-i18n="post_submit">Post to Feed</span></button>
+  </div>
+</div>
+
+<!-- MESSAGES -->
+<div id="Pmsgs" class="page">
+  <h3 style="margin-bottom:10px;"><span data-i18n="msgs_title">Messages</span> 💬</h3>
+  <input id="inboxQ" placeholder="🔍 Search conversations..." data-i18n-ph="msgs_search_ph" oninput="renderInbox(this.value)" style="margin-bottom:8px;">
+  <div class="card" style="padding:0;overflow:hidden;" id="inboxL">
+    <p style="text-align:center;color:#888;padding:20px;" data-i18n="msgs_no_convos">No conversations yet.</p>
+  </div>
+</div>
+
+<!-- ALERTS -->
+<div id="Palerts" class="page">
+  <h3 style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">Notifications <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg></h3>
+  <div style="text-align:right;margin-bottom:8px;">
+    <button onclick="clearNotifs()" style="background:none;border:none;color:var(--btnB);font-weight:bold;cursor:pointer;font-size:13px;">Clear all</button>
+  </div>
+  <div class="card" id="notifL"><p style="text-align:center;color:#888;">No notifications</p></div>
+</div>
+
+<!-- ME -->
+<div id="Pme" class="page">
+  <h3 style="margin-bottom:12px;" data-i18n="me_title">My Profile</h3>
+  <div id="pcardEl" style="display:none;" class="pcard">
+    <div class="pcard-av">
+      <div class="avatar" id="pcPic">👤</div>
+      <div class="odot" id="pcDot"></div>
+    </div>
+    <div style="flex:1;overflow:hidden;">
+      <b id="pcName" style="font-size:16px;display:block;"></b>
+      <p id="pcBio" style="font-size:11px;opacity:.8;font-style:italic;"></p>
+      <p id="pcInfo" style="font-size:12px;opacity:.85;"></p>
+      <div id="pcIntent"></div>
+    </div>
+  </div>
+  <div class="card">
+    <p style="font-weight:bold;margin-bottom:8px;" data-i18n="me_account">Account</p>
+    <button type="button" class="btn g" id="disconnectBtn" data-i18n="me_disconnect">Disconnect</button>
+    <button class="btn" style="margin-top:6px;" onclick="showEF()" data-i18n="me_edit_profile">Edit Profile</button>
+  </div>
+  <div id="EF" class="card" style="display:none;text-align:center;">
+    <p style="font-weight:bold;text-align:left;margin-bottom:10px;" data-i18n="me_edit_profile">Edit Profile</p>
+    <div class="ppwrap">
+      <div class="avatar" id="myPic">👤</div>
+      <div class="odot online" id="myDot"></div>
+      <button class="ephoto" onclick="document.getElementById('uPh').click()" title="Change photo">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 15.2A3.2 3.2 0 1 1 15.2 12 3.2 3.2 0 0 1 12 15.2zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 5-5 5 5 0 0 1-5 5z"/></svg>
+      </button>
+    </div>
+    <input type="file" id="uPh" style="display:none;" accept="image/*" onchange="loadPic(event)">
+    <input id="uN" placeholder="Full Name" data-i18n-ph="me_full_name_ph">
+    <textarea id="uBio" rows="2" placeholder="Bio / About you..." style="resize:none;" data-i18n-ph="me_bio_ph"></textarea>
+    <select id="uC"><option value="" disabled selected data-i18n="me_select_country">Select Country</option></select>
+    <input id="uU" placeholder="University / School" data-i18n-ph="me_university_ph">
+    <input id="uCo" placeholder="Course / Major" data-i18n-ph="me_course_ph">
+    <input id="uY" placeholder="Year of Study" data-i18n-ph="me_year_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;" data-i18n="me_languages_label">Languages</label>
+    <input id="uL" placeholder="e.g. English, French..." data-i18n-ph="me_languages_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;" data-i18n="me_skills_label">Skills</label>
+    <input id="uSk" placeholder="e.g. Python, Math..." data-i18n-ph="me_skills_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:8px;" data-i18n="me_here_to_label">I am here to:</label>
+    <div style="display:flex;gap:6px;margin:4px 0 8px;">
+      <button type="button" id="eNeedBtn" onclick="setEIntent('need')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--brd);background:transparent;color:var(--txt);font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+        <svg class="stVectorIcon" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/></svg><span data-i18n="me_get_help">Get Help</span>
+      </button>
+      <button type="button" id="eHelpBtn" onclick="setEIntent('help')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--brd);background:transparent;color:var(--txt);font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg><span data-i18n="me_give_help">Give Help</span>
+      </button>
+      <button type="button" id="eBothBtn" onclick="setEIntent('both')" style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--brd);background:transparent;color:var(--txt);font-size:12px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span data-i18n="me_both">Both</span>
+      </button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn" style="flex:1;" onclick="savePro()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px;"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg><span data-i18n="me_save">Save</span>
+      </button>
+      <button class="btn" style="flex:1;background:var(--btnB);" onclick="hideEF()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="margin-right:4px;"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg><span data-i18n="me_cancel">Cancel</span>
+      </button>
+    </div>
+    <button class="btn" style="margin-top:8px;background:var(--btnB);display:flex;align-items:center;justify-content:center;gap:6px;width:100%;" onclick="openPhoneSettings()">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.02 7.02 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.47.47 0 0 0-.59.22L2.74 8.87a.47.47 0 0 0 .12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.37 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.47.47 0 0 0-.12-.61l-2.01-1.58zM12 15.6a3.6 3.6 0 1 1 0-7.2 3.6 3.6 0 0 1 0 7.2z"/></svg>
+      <span data-i18n="me_app_settings">App Settings</span>
+    </button>
+  </div>
+</div>
+
+<!-- STATUS CREATE -->
+<div class="stCreate" id="statusCreate">
+  <div class="stCHdr">
+    <button onclick="closeStatusCreate()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">✕</button>
+    <div style="font-size:16px;font-weight:800;color:#fff;" data-i18n="st_new_title">Nouveau statut</div>
+    <button class="stPubBtn" onclick="publishStatus()" data-i18n="st_publish">Publier</button>
+  </div>
+  <div class="stCBody">
+    <p class="stSection" data-i18n="st_photo_label">Photo (optionnel)</p>
+    <div id="stPhotoZone" class="stPhotoZone" onclick="document.getElementById('fStatus').click()">
+      <div id="stPhotoPreviewWrap" style="display:none;position:relative;">
+        <img id="stPhotoPreview" style="width:100%;border-radius:12px;display:block;max-height:160px;object-fit:cover;">
+        <button type="button" onclick="event.stopPropagation();removeStatusPhoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;">✕</button>
+      </div>
+      <div id="stPhotoEmpty">
+        <div class="stPhotoVector st-photo-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M8 6l1.5-3h5L16 6"/><circle cx="12" cy="13" r="3.5"/></svg></div>
+        <div class="st-photo-add-label" data-i18n="st_add_photo">Ajouter une photo</div>
+        <div style="font-size:12px;color:var(--sub);margin-top:2px;" data-i18n="st_photo_hint">Notes, bureau de révision, selfie...</div>
+      </div>
+    </div>
+    <input type="file" id="fStatus" accept="image/*" style="display:none;" onchange="handleStatusPhoto(event)">
+
+    <p class="stSection"><span data-i18n="st_category_label">Catégorie</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;" data-i18n="st_required_unless_photo">(obligatoire sauf si tu ajoutes une photo)</span></p>
+    <div class="stCatGrid" id="stCatGrid"></div>
+
+    <p class="stSection" data-i18n="st_subject_label">Matière (optionnel)</p>
+    <div id="stSubjSel" style="display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;max-height:110px;overflow-y:auto;"></div>
+
+    <p class="stSection" data-i18n="st_link_group_label">Lier un groupe (optionnel)</p>
+    <div id="stGroupSel" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+    <p class="stSection"><span data-i18n="st_message_label">Message</span> <span style="font-weight:400;text-transform:none;letter-spacing:0;" data-i18n="st_required_unless_photo">(obligatoire sauf si tu ajoutes une photo)</span></p>
+    <textarea id="stMsg" rows="3" maxlength="100" placeholder="Dispo pour étudier maintenant, qui veut rejoindre ?" data-i18n-ph="st_msg_placeholder" oninput="el('stCharCount').textContent=this.value.length+' / 100';updateStatusCreateTheme()"></textarea>
+    <div id="stCharCount" style="text-align:right;font-size:11px;color:var(--sub);">0 / 100</div>
+    <div class="status-color-companion" id="stColorCompanion" aria-live="polite" aria-label="Barre d’outils StudyLink liée à la catégorie">
+      <span class="sccIdentity"><span class="sccDot" id="stCompanionDot"></span><span id="stCompanionLabel">Mode texte</span></span>
+      <div class="sccActions">
+        <button type="button" class="sccButton" onclick="insertStatusCompanionEmoji('✨')" title="Ajouter une touche">✨</button>
+        <button type="button" class="sccPublish" onclick="publishStatus()" title="Publier le statut">Publier</button>
+      </div>
+    </div>
+
+    <p class="stSection" data-i18n="st_preview_label">Aperçu</p>
+    <div id="stPreview" class="stPreviewWrap"></div>
+
+    <p style="text-align:center;font-size:12px;color:var(--sub);margin-top:14px;" data-i18n="st_expiry_note">⏱ Ton statut disparaît automatiquement après 24h</p>
+  </div>
+</div>
+
+<!-- STATUS VIEW -->
+<div class="stView" id="statusView" onpointerdown="statusPressStart(event)" onpointerup="statusPressEnd(event)" onpointercancel="statusPressEnd(event)">
+  <div class="stVProgress" id="stVProgress"><div class="stVProgFill"></div></div>
+  <div class="stVTop">
+    <div class="stVAvatar" id="stVAvatar"></div>
+    <div style="flex:1;">
+      <div style="color:#fff;font-weight:800;font-size:15px;" id="stVName"></div>
+      <div style="color:rgba(255,255,255,.75);font-size:12px;" id="stVTime"></div>
+    </div>
+    <button onclick="toggleStatusMenu()" style="color:#fff;background:none;border:none;font-size:20px;cursor:pointer;padding:4px 10px;">⋮</button>
+    <button onclick="closeStatusView()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;padding:4px 8px;">✕</button>
+  </div>
+  <div class="stVMenu" id="stVMenu"></div>
+  <div class="stVSeenList" id="stVSeenList"></div>
+  <div class="stVMain" id="stVMain">
+    <div class="stVMsg" id="stVMsg"></div>
+    <div class="stVBadge" id="stVBadge"></div>
+    <div class="stVSubject" id="stVSubject" style="display:none;"></div>
+    <button id="stVJoinGroupBtn" onclick="joinStatusGroup()" style="display:none;margin-top:18px;background:#fff;color:#16357a;border:none;padding:11px 22px;border-radius:22px;font-weight:800;font-size:14px;cursor:pointer;">Rejoindre le groupe</button>
+  </div>
+  <div class="stVBottom" id="stVBottom">
+    <div id="stVReplyBar" class="stVReplyBar" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:18px;width:100%;box-sizing:border-box;">
+      <button type="button" onclick="cancelStatusVoice()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;" title="Annuler">✕</button>
+      <span style="font-size:11px;color:#fff;font-weight:700;white-space:nowrap;">● REC</span>
+      <span id="stVReplyTimer" style="font-size:13px;font-weight:bold;color:#fff;min-width:38px;">0:00</span>
+      <canvas id="stVReplyWave" width="150" height="28" style="flex:1;max-width:200px;"></canvas>
+      <span data-status-voice-hint style="font-size:10px;color:rgba(255,255,255,.88);white-space:nowrap;">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
+    </div>
+    <div class="stVReplyRow">
+      <input class="stVReplyInput" id="stVReplyInput" placeholder="Répondre..." data-i18n-ph="st_reply_placeholder" oninput="onStatusReplyInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();smartStatusReply()}">
+      <button type="button" class="cin-action stVReplyBtn" id="stVReplyBtn" onclick="smartStatusReply()" title="Maintenez et glissez vers le haut pour enregistrer">
+        <svg id="stVReplyIcon" viewBox="0 0 48 48" width="26" height="26" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE VIEW -->
+<div class="cwin" id="profileView" style="z-index:280;">
+  <div class="chdr" style="align-items:center;">
+    <button class="profile-back-btn" onclick="closeProfileView()" aria-label="Retour">←</button>
+    <div class="profile-header-title" data-i18n="profile_title">Profil</div>
+    <div style="width:24px;"></div>
+  </div>
+  <div style="overflow-y:auto;flex:1;padding:24px 20px 40px;text-align:center;">
+    <div id="pvAvatar" style="width:110px;height:110px;border-radius:50%;margin:0 auto 14px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#6b7db3;overflow:hidden;"></div>
+    <div id="pvName" style="font-size:20px;font-weight:800;color:var(--btnB);"></div>
+    <div id="pvMeta" style="font-size:13px;color:var(--sub);margin:6px 0 2px;"></div>
+    <div id="pvMeta2" style="font-size:13px;color:var(--sub);margin-bottom:10px;"></div>
+    <div id="pvBio" style="font-size:14px;font-style:italic;color:var(--sub);margin-bottom:14px;"></div>
+    <div id="pvIntent" style="margin-bottom:10px;"></div>
+    <div id="pvLangs" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:10px;"></div>
+    <div id="pvSkills" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:20px;"></div>
+    <button id="pvMsgBtn" class="btn" style="width:100%;padding:13px;" data-i18n="home_message">Message</button>
+  </div>
+</div>
+
+<!-- PRIVATE CHAT -->
+<div class="cwin" id="chatW">
+  <div class="chdr" style="background:var(--hdr);">
+    <button onclick="closeChat()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button>
+    <div style="text-align:center;cursor:pointer;">
+      <b id="chatT"></b>
+      <div id="chatSt" style="font-size:10px;opacity:.8;"></div>
+    </div>
+    <button onclick="toggleCS()" style="color:#fff;background:none;border:none;cursor:pointer;">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff;"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </div>
+  <div id="csBar"><input id="csQ" placeholder="Search messages..." data-i18n-ph="chat_search_ph" oninput="searchMsgs(this.value)" style="margin:0;"></div>
+  <div id="typebar"></div>
+  <div class="cmsgbox" id="msgB"></div>
+  <div class="cbottom">
+    <div id="rplybar"><span id="rplyT"></span><button onclick="cancelRply()">✕</button></div>
+    <div id="vbar" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,#e3f2fd,#f5fbff);border-top:1px solid #90caf9;">
+      <button onclick="cancelVoice()" style="background:none;border:none;color:#1976d2;font-size:22px;cursor:pointer;padding:0 4px;" title="Cancel">✕</button>
+      <span style="font-size:11px;color:#1976d2;font-weight:600;white-space:nowrap;">● REC</span>
+      <span id="vTimer" style="font-size:13px;font-weight:bold;color:#333;min-width:38px;">0:00</span>
+      <canvas id="vWave" width="160" height="32" style="flex:1;max-width:200px;"></canvas>
+      <span data-voice-hint style="font-size:10px;color:#1976d2;white-space:nowrap;" data-i18n="chat_voice_hint">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
+    </div>
+    <!-- STICKER/EMOJI PANEL -->
+    <div id="stickerPanel">
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--brd);margin-bottom:6px;">
+        <button onclick="switchStickerTab('emoji')" id="stab_emoji" style="flex:1;padding:8px 4px;border:none;background:var(--btnB);color:#fff;cursor:pointer;border-radius:8px 0 0 0;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-3-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm-6.5 4.5h7a3.5 3.5 0 0 0-7 0z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">Emoji</span>
+        </button>
+        <button onclick="switchStickerTab('stickers')" id="stab_stickers" style="flex:1;padding:8px 4px;border:none;background:var(--card);color:var(--sub);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2h15A2.5 2.5 0 0 1 22 4.5v15a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 19.5v-15zm2.5-.5a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5h-15zM9 8.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm6 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-7.5 5h9a4.5 4.5 0 0 1-9 0z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">Stickers</span>
+        </button>
+        <button onclick="switchStickerTab('flags')" id="stab_flags" style="flex:1;padding:8px 4px;border:none;background:var(--card);color:var(--sub);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">Flags</span>
+        </button>
+        <button onclick="switchStickerTab('gif')" id="stab_gif" style="flex:1;padding:8px 4px;border:none;background:var(--card);color:var(--sub);cursor:pointer;border-radius:0 8px 0 0;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M11.5 9H13v6h-1.5V9zM9 9H6a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-2H8.5v1.5h-2v-3H10V10a1 1 0 0 0-1-1zm10 1.5V9h-4.5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1H19v-1.5h-3V13h2v-1.5h-2v-1H19z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">GIF</span>
+        </button>
+      </div>
+      <div id="stickerGrid" class="sticker-grid"></div>
+    </div>
+    <!-- MEDIA PANEL -->
+    <div class="media-panel" id="mediaPanel">
+      <div class="media-grid">
+        <button class="mpbtn" onclick="openCamera('p');closeMediaPanel()">
+          <div class="mp-icon" style="background:#e8f4fd;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#1565c0"><path d="M12 15.2A3.2 3.2 0 1 1 15.2 12 3.2 3.2 0 0 1 12 15.2zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9z"/></svg></div>
+          <span data-i18n="media_camera">Camera</span>
+        </button>
+        <button class="mpbtn" onclick="pickF('image/*','image','p');closeMediaPanel()">
+          <div class="mp-icon" style="background:#fef9e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#f39c12"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
+          <span data-i18n="media_image">Image</span>
+        </button>
+        <button class="mpbtn" onclick="pickF('video/*','video','p');closeMediaPanel()">
+          <div class="mp-icon" style="background:#fdecea;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e74c3c"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></div>
+          <span data-i18n="media_video">Video</span>
+        </button>
+        <button class="mpbtn" onclick="pickF('audio/*','audio','p');closeMediaPanel()">
+          <div class="mp-icon" style="background:#e8f8ef;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#27ae60"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div>
+          <span data-i18n="media_music">Music</span>
+        </button>
+        <button class="mpbtn" onclick="openGDrivePicker('p');closeMediaPanel()">
+          <div class="mp-icon" style="background:#f4ecf7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#8e44ad"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></div>
+          <span data-i18n="media_drive">Drive</span>
+        </button>
+        <button class="mpbtn" onclick="pickF('application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation','doc','p');closeMediaPanel()">
+          <div class="mp-icon" style="background:#fef5e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e67e22"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h8v2H8zm0-4h8v2H8z"/></svg></div>
+          <span data-i18n="media_document">Document</span>
+        </button>
+        <button class="mpbtn" onclick="sendSpecial('poll');closeMediaPanel()">
+          <div class="mp-icon" style="background:#eaf4fb;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#2980b9"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></div>
+          <span data-i18n="media_poll">Poll</span>
+        </button>
+        <button class="mpbtn" onclick="sendSpecial('event');closeMediaPanel()">
+          <div class="mp-icon" style="background:#fef5e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e67e22"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg></div>
+          <span data-i18n="media_event">Event</span>
+        </button>
+        <button class="mpbtn" onclick="sendSpecial('location');closeMediaPanel()">
+          <div class="mp-icon" style="background:#fdedec;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e74c3c"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></div>
+          <span data-i18n="media_location">Location</span>
+        </button>
+        <button class="mpbtn" onclick="sendSpecial('link');closeMediaPanel()">
+          <div class="mp-icon" style="background:#e8f8ef;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#27ae60"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg></div>
+          <span data-i18n="media_link">Link</span>
+        </button>
+      </div>
+    </div>
+    <!-- INPUT ROW -->
+    <div class="cin-wrap">
+      <button class="cin-emoji" id="kbToggle" onclick="toggleKbSticker()" title="Emoji/Stickers/GIF">
+        <svg id="kbIcon" viewBox="0 0 48 48" style="width:24px;height:24px;fill:var(--sub);display:block;"><path d="M34 4H14C8.477 4 4 8.477 4 14v20c0 5.523 4.477 10 10 10h20c5.523 0 10-4.477 10-10V14C44 8.477 39.523 4 34 4zm0 4c3.309 0 6 2.691 6 6v20c0 3.309-2.691 6-6 6H14c-3.309 0-6-2.691-6-6V14c0-3.309 2.691-6 6-6h20zM17 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 8c-3.5 0-6.5 2-8 5h16c-1.5-3-4.5-5-8-5z"/></svg>
+      </button>
+      <input class="cin-input" id="mIn" placeholder="Message..." data-i18n-ph="chat_msg_ph" oninput="onMsgInput()">
+      <button class="cin-attach" onclick="toggleMediaPanel()" title="Media">
+        <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+      </button>
+      <button class="cin-camera" onclick="openCamera('p')" title="Take Photo">
+        <svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 0 1 8.8 12 3.2 3.2 0 0 1 12 8.8 3.2 3.2 0 0 1 15.2 12 3.2 3.2 0 0 1 12 15.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
+      </button>
+      <!-- Single smart send button: mic when idle, send when typing, stop+send when recording -->
+      <button type="button" class="cin-action" id="sendB" onclick="smartSend()" style="display:flex;" title="Hold and slide up to record">
+        <svg id="sendIcon" viewBox="0 0 48 48" width="26" height="26" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+  </div>
+  <input type="file" id="fPrv" style="display:none;" accept="image/*" onchange="handleF(event,'p')">
+  <input type="file" id="fCam" style="display:none;" accept="image/*" capture="environment" onchange="handleF(event,'p')">
+</div>
+
+<!-- GROUP CHAT -->
+<div class="cwin" id="groupW">
+  <div class="chdr" style="background:#e67e22;">
+    <button onclick="closeGroup()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button>
+    <div style="text-align:center;">
+      <b id="grpT"></b>
+      <div id="grpM" style="font-size:10px;opacity:.85;"></div>
+    </div>
+    <span style="width:30px;"></span>
+  </div>
+  <div id="gTypebar"></div>
+  <div class="cmsgbox" id="grpB"></div>
+  <div class="cbottom">
+    <div id="gvbar" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:linear-gradient(90deg,#fff3e0,#fffaf5);border-top:1px solid #e67e22;">
+      <button onclick="cancelGVoice()" style="background:none;border:none;color:#e67e22;font-size:22px;cursor:pointer;padding:0 4px;" title="Cancel">✕</button>
+      <span id="gRecIndicator" style="font-size:11px;color:#e67e22;font-weight:600;white-space:nowrap;">● REC</span>
+      <span id="gvTimer" style="font-size:13px;font-weight:bold;color:#333;min-width:38px;">0:00</span>
+      <canvas id="gvWave" width="160" height="32" style="flex:1;max-width:200px;"></canvas>
+      <span data-voice-hint style="font-size:10px;color:#e67e22;white-space:nowrap;" data-i18n="chat_voice_hint">Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer</span>
+    </div>
+    <!-- GROUP STICKER/EMOJI PANEL -->
+    <div id="gStickerPanel" style="display:none;background:var(--card);border-top:1px solid var(--brd);padding:0 10px 10px;max-height:240px;overflow-y:auto;">
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--brd);margin-bottom:6px;">
+        <button onclick="switchGStickerTab('emoji')" id="gstab_emoji" style="flex:1;padding:8px 4px;border:none;background:#e67e22;color:#fff;cursor:pointer;border-radius:8px 0 0 0;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-3-9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm-6.5 4.5h7a3.5 3.5 0 0 0-7 0z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">Emoji</span>
+        </button>
+        <button onclick="switchGStickerTab('stickers')" id="gstab_stickers" style="flex:1;padding:8px 4px;border:none;background:var(--card);color:var(--sub);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2h15A2.5 2.5 0 0 1 22 4.5v15a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 19.5v-15zm2.5-.5a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5h-15zM9 8.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm6 0a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm-7.5 5h9a4.5 4.5 0 0 1-9 0z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">Stickers</span>
+        </button>
+        <button onclick="switchGStickerTab('flags')" id="gstab_flags" style="flex:1;padding:8px 4px;border:none;background:var(--card);color:var(--sub);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">Flags</span>
+        </button>
+        <button onclick="switchGStickerTab('gif')" id="gstab_gif" style="flex:1;padding:8px 4px;border:none;background:var(--card);color:var(--sub);cursor:pointer;border-radius:0 8px 0 0;display:flex;flex-direction:column;align-items:center;gap:2px;">
+          <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;"><path d="M11.5 9H13v6h-1.5V9zM9 9H6a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-2H8.5v1.5h-2v-3H10V10a1 1 0 0 0-1-1zm10 1.5V9h-4.5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1H19v-1.5h-3V13h2v-1.5h-2v-1H19z"/></svg>
+          <span style="font-size:9px;font-weight:bold;">GIF</span>
+        </button>
+      </div>
+      <div id="gStickerGrid" class="sticker-grid"></div>
+    </div>
+    <div class="media-panel" id="gMediaPanel">
+      <div class="media-grid">
+        <button class="mpbtn" onclick="pickF('image/*','image','g');closeGMediaPanel()">
+          <div class="mp-icon" style="background:#fef9e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#f39c12"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div><span data-i18n="media_image">Image</span>
+        </button>
+        <button class="mpbtn" onclick="pickF('video/*','video','g');closeGMediaPanel()">
+          <div class="mp-icon" style="background:#fdecea;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e74c3c"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg></div><span data-i18n="media_video">Video</span>
+        </button>
+        <button class="mpbtn" onclick="pickF('audio/*','audio','g');closeGMediaPanel()">
+          <div class="mp-icon" style="background:#e8f8ef;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#27ae60"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></div><span data-i18n="media_music">Music</span>
+        </button>
+        <button class="mpbtn" onclick="openGDrivePicker('g');closeGMediaPanel()">
+          <div class="mp-icon" style="background:#f4ecf7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#8e44ad"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></div><span data-i18n="media_drive">Drive</span>
+        </button>
+        <button class="mpbtn" onclick="pickF('application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation','doc','g');closeGMediaPanel()">
+          <div class="mp-icon" style="background:#fef5e7;"><svg viewBox="0 0 24 24" width="26" height="26" fill="#e67e22"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11zM8 15h8v2H8zm0-4h8v2H8z"/></svg></div><span data-i18n="media_document">Document</span>
+        </button>
+      </div>
+    </div>
+    <div class="cin-wrap">
+      <button class="cin-emoji" id="gKbToggle" onclick="toggleGKbSticker()" title="Keyboard/Stickers" style="color:#e67e22;">
+        <svg viewBox="0 0 48 48" style="width:22px;height:22px;fill:#e67e22;display:block;"><path d="M34 4H14C8.477 4 4 8.477 4 14v20c0 5.523 4.477 10 10 10h20c5.523 0 10-4.477 10-10V14C44 8.477 39.523 4 34 4zm0 4c3.309 0 6 2.691 6 6v20c0 3.309-2.691 6-6 6H14c-3.309 0-6-2.691-6-6V14c0-3.309 2.691-6 6-6h20zM17 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm14 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-7 8c-3.5 0-6.5 2-8 5h16c-1.5-3-4.5-5-8-5z"/></svg>
+      </button>
+      <input class="cin-input" id="gIn" placeholder="Message..." data-i18n-ph="chat_msg_ph" oninput="onGMsgInput()" style="border-color:#e67e22;">
+      <button class="cin-attach" onclick="toggleGMediaPanel()" title="Media" style="color:#e67e22;">
+        <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+      </button>
+      <button class="cin-camera" onclick="openCamera('g')" title="Take Photo" style="color:#e67e22;">
+        <svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 0 1 8.8 12 3.2 3.2 0 0 1 12 8.8 3.2 3.2 0 0 1 15.2 12 3.2 3.2 0 0 1 12 15.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
+      </button>
+      <button type="button" class="cin-action" id="gSendB" onclick="smartGSend()" style="display:flex;background:#e67e22;" title="Hold and slide up to record">
+        <svg id="gSendIcon" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>
+      </button>
+    </div>
+  </div>
+  <input type="file" id="fGrp" style="display:none;" onchange="handleF(event,'g')">
+  <input type="file" id="fGCam" style="display:none;" accept="image/*" capture="environment" onchange="handleF(event,'g')">
+</div>
+
+<!-- EMOJI PICKER -->
+<div id="emojiP" style="position:fixed;z-index:3000;display:none;background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:8px;box-shadow:0 4px 20px rgba(0,0,0,.2);">
+  <div style="display:flex;flex-wrap:wrap;gap:4px;max-width:240px;max-height:200px;overflow-y:auto;">
+    <button onclick="pickEmoji('👍')" style="background:none;border:none;font-size:22px;cursor:pointer;">👍</button>
+    <button onclick="pickEmoji('👎')" style="background:none;border:none;font-size:22px;cursor:pointer;">👎</button>
+    <button onclick="pickEmoji('❤️')" style="background:none;border:none;font-size:22px;cursor:pointer;">❤️</button>
+    <button onclick="pickEmoji('😂')" style="background:none;border:none;font-size:22px;cursor:pointer;">😂</button>
+    <button onclick="pickEmoji('😮')" style="background:none;border:none;font-size:22px;cursor:pointer;">😮</button>
+    <button onclick="pickEmoji('🔥')" style="background:none;border:none;font-size:22px;cursor:pointer;">🔥</button>
+    <button onclick="pickEmoji('✅')" style="background:none;border:none;font-size:22px;cursor:pointer;">✅</button>
+    <button onclick="pickEmoji('🙏')" style="background:none;border:none;font-size:22px;cursor:pointer;">🙏</button>
+    <button onclick="pickEmoji('😢')" style="background:none;border:none;font-size:22px;cursor:pointer;">😢</button>
+    <button onclick="pickEmoji('😍')" style="background:none;border:none;font-size:22px;cursor:pointer;">😍</button>
+    <button onclick="pickEmoji('🥰')" style="background:none;border:none;font-size:22px;cursor:pointer;">🥰</button>
+    <button onclick="pickEmoji('😎')" style="background:none;border:none;font-size:22px;cursor:pointer;">😎</button>
+    <button onclick="pickEmoji('🤩')" style="background:none;border:none;font-size:22px;cursor:pointer;">🤩</button>
+    <button onclick="pickEmoji('🥳')" style="background:none;border:none;font-size:22px;cursor:pointer;">🥳</button>
+    <button onclick="pickEmoji('😭')" style="background:none;border:none;font-size:22px;cursor:pointer;">😭</button>
+    <button onclick="pickEmoji('😤')" style="background:none;border:none;font-size:22px;cursor:pointer;">😤</button>
+    <button onclick="pickEmoji('🤔')" style="background:none;border:none;font-size:22px;cursor:pointer;">🤔</button>
+    <button onclick="pickEmoji('😱')" style="background:none;border:none;font-size:22px;cursor:pointer;">😱</button>
+    <button onclick="pickEmoji('🤗')" style="background:none;border:none;font-size:22px;cursor:pointer;">🤗</button>
+    <button onclick="pickEmoji('💪')" style="background:none;border:none;font-size:22px;cursor:pointer;">💪</button>
+    <button onclick="pickEmoji('👏')" style="background:none;border:none;font-size:22px;cursor:pointer;">👏</button>
+    <button onclick="pickEmoji('🎉')" style="background:none;border:none;font-size:22px;cursor:pointer;">🎉</button>
+    <button onclick="pickEmoji('💯')" style="background:none;border:none;font-size:22px;cursor:pointer;">💯</button>
+    <button onclick="pickEmoji('🚀')" style="background:none;border:none;font-size:22px;cursor:pointer;">🚀</button>
+    <button onclick="pickEmoji('💡')" style="background:none;border:none;font-size:22px;cursor:pointer;">💡</button>
+    <button onclick="pickEmoji('📚')" style="background:none;border:none;font-size:22px;cursor:pointer;">📚</button>
+    <button onclick="pickEmoji('😏')" style="background:none;border:none;font-size:22px;cursor:pointer;">😏</button>
+    <button onclick="pickEmoji('🙄')" style="background:none;border:none;font-size:22px;cursor:pointer;">🙄</button>
+    <button onclick="pickEmoji('😴')" style="background:none;border:none;font-size:22px;cursor:pointer;">😴</button>
+    <button onclick="pickEmoji('🥺')" style="background:none;border:none;font-size:22px;cursor:pointer;">🥺</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div data-tab="home" id="nhome" class="ni on" role="button" tabindex="0">
+    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home
+    <span id="feedB" class="nbadge" style="display:none;"></span>
+  </div>
+  <div data-tab="find" id="nfind" class="ni" role="button" tabindex="0">
+    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Find
+  </div>
+  <div data-tab="post" id="npost" class="ni" role="button" tabindex="0">
+    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Post
+  </div>
+  <div data-tab="msgs" id="nmsgs" class="ni" role="button" tabindex="0">
+    <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>Msgs
+    <span id="msgB2" class="nbadge" style="display:none;"></span>
+  </div>
+  <div data-tab="me" id="nme" class="ni" role="button" tabindex="0">
+    <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Me
+  </div>
+</div>
+
+<script defer src="js/app-v20.js?v=studylink-pwa-58"></script>
+</body>
+</html>
