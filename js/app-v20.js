@@ -744,12 +744,19 @@ function listenUsers(){
 }
 
 // ── VISIBILITY ──
-function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
-function sameAudienceValue(a,b){const left=visibilityText(a),right=visibilityText(b);return left!==''&&left===right;}
+function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+function visibilityWords(value,kind){
+  const ignored=kind==='university'?new Set(['university','uni','college','school','institution','institute']):new Set();
+  return visibilityText(value).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(word=>word&&!ignored.has(word));
+}
+function sameAudienceValue(a,b,kind){
+  const left=visibilityWords(a,kind),right=visibilityWords(b,kind);
+  return left.length>0&&right.length>0&&left.some(word=>right.includes(word));
+}
 function sameAudienceField(owner,viewer,kind){
   const ownerValue=kind==='country'?owner?.country:(kind==='university'?owner?.uni:owner?.course);
   const viewerValue=kind==='country'?viewer?.country:(kind==='university'?viewer?.uni:viewer?.course);
-  return sameAudienceValue(ownerValue,viewerValue);
+  return sameAudienceValue(ownerValue,viewerValue,kind);
 }
 function rememberStatusVisibility(value){if(['anyone','country','university','major'].includes(value))localStorage.setItem('statusVisibility',value);}
 function canViewVisibility(content,viewer,owner){
