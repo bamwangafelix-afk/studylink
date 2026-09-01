@@ -2936,7 +2936,7 @@ function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid)
 // ── I18N (merged from user branch) ──
 const I18N={
   fr:{
-    home_feed_title:'Fil communautaire',loading:'Chargement...',home_no_posts:'Aucune publication pour l’instant. Sois le premier ! 🎓',
+    nav_home:'Accueil',nav_find:'Rechercher',nav_post:'Publier',nav_msgs:'Messages',nav_me:'Moi',home_feed_title:'Fil communautaire',loading:'Chargement...',home_no_posts:'Aucune publication pour l’instant. Sois le premier ! 🎓',
     home_join_group:'Rejoindre le groupe',home_message:'Message',home_load_more:'Voir plus',
     badge_needs_help:'Besoin d’aide',badge_can_help:'Peut aider',
     status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
@@ -2990,7 +2990,7 @@ const I18N={
     st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
   },
   en:{
-    home_feed_title:'Community Feed',loading:'Loading...',home_no_posts:'No posts yet. Be the first to post! 🎓',
+    nav_home:'Home',nav_find:'Find',nav_post:'Post',nav_msgs:'Msgs',nav_me:'Me',home_feed_title:'Community Feed',loading:'Loading...',home_no_posts:'No posts yet. Be the first to post! 🎓',
     home_join_group:'Join Group',home_message:'Message',home_load_more:'Load more',
     badge_needs_help:'Needs Help',badge_can_help:'Can Help',
     status_online:'🟢 Online',status_busy:'🔴 Busy',
