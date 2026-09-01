@@ -258,7 +258,7 @@
     <div class="stCatGrid" id="stCatGrid"></div>
 
     <p class="stSection" data-i18n="stWhoCanSee">Who can see your post?</p>
-    <select id="stVisibility" class="stVisibilitySelect">
+    <select id="stVisibility" class="stVisibilitySelect" onchange="rememberStatusVisibility(this.value)">
       <option value="anyone" data-i18n="stAnyone">Anyone</option>
       <option value="country" data-i18n="stCountry">Only my country</option>
       <option value="university" data-i18n="stUniversity">Only my university</option>

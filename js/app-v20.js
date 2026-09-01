@@ -744,8 +744,9 @@ function listenUsers(){
 }
 
 // ── VISIBILITY ──
-function visibilityText(value){return String(value||'').trim().toLowerCase();}
-function sameAudienceValue(a,b){return visibilityText(a)!==''&&visibilityText(a)===visibilityText(b);}
+function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
+function sameAudienceValue(a,b){const left=visibilityText(a),right=visibilityText(b);return left!==''&&left===right;}
+function rememberStatusVisibility(value){if(['anyone','country','university','major'].includes(value))localStorage.setItem('statusVisibility',value);}
 function canViewVisibility(content,viewer,owner){
   if(!viewer||!owner)return false;
   if(content?.uid&&content.uid===viewer.uid)return true;
@@ -952,7 +953,7 @@ function openStatusCreate(arg){
   if(arg&&typeof arg==='object')draft=arg;
   else if(typeof arg==='string')draft={photo:arg};
   selStatusCat=draft?.category||null;selStatusSubject=draft?.subject||null;selStatusGroup=null;
-  if(el('stVisibility'))el('stVisibility').value='anyone';
+  if(el('stVisibility'))el('stVisibility').value=localStorage.getItem('statusVisibility')||'anyone';
   statusPhotoUrl=draft?.photo||null;
   forwardedFromDraft=draft?.from||null;
   el('stMsg').value=draft?.message||'';el('stCharCount').textContent=(draft?.message||'').length+' / 100';
@@ -1041,6 +1042,7 @@ async function publishStatus(){
     if(!msg)return showToast(t('st_toast_write_message'));
   }
   const visibility=el('stVisibility')?.value||'anyone';
+  localStorage.setItem('statusVisibility',visibility);
   const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,visibility,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   const col=creatingCategoryColor();
   el('ov').style.display='flex';
