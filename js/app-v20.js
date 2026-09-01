@@ -746,12 +746,11 @@ function listenUsers(){
 // ── VISIBILITY ──
 function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');}
 function sameAudienceValue(a,b){const left=visibilityText(a),right=visibilityText(b);return left!==''&&left===right;}
-function audienceValues(profile,kind){
-  const p=profile||{},nested=p.profile||{};
-  const fields=kind==='country'?['country']:(kind==='university'?['uni','university','school']:['course','major','majorCourse','program','fieldOfStudy','field']);
-  return [...new Set(fields.flatMap(key=>[p[key],nested[key]]).map(visibilityText).filter(Boolean))];
+function sameAudienceField(owner,viewer,kind){
+  const ownerValue=kind==='country'?owner?.country:(kind==='university'?owner?.uni:owner?.course);
+  const viewerValue=kind==='country'?viewer?.country:(kind==='university'?viewer?.uni:viewer?.course);
+  return sameAudienceValue(ownerValue,viewerValue);
 }
-function sameAudienceField(owner,viewer,kind){const left=audienceValues(owner,kind),right=audienceValues(viewer,kind);return left.some(value=>right.includes(value));}
 function rememberStatusVisibility(value){if(['anyone','country','university','major'].includes(value))localStorage.setItem('statusVisibility',value);}
 function canViewVisibility(content,viewer,owner){
   if(!viewer||!owner)return false;
