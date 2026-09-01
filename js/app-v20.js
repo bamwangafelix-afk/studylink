@@ -751,7 +751,7 @@ function canViewVisibility(content,viewer,owner){
   if(content?.uid&&content.uid===viewer.uid)return true;
   const rule=visibilityText(content?.visibility);
   if(!rule||rule==='anyone'||rule==='public')return true;
-  const vp=viewer.profile||viewer;
+  const vp=(viewer.uid===CU?.uid&&MP)?MP:(viewer.profile||viewer);
   if(rule==='country')return sameAudienceValue(owner.country,vp.country);
   if(rule==='university'||rule==='uni')return sameAudienceValue(owner.uni||owner.university,vp.uni||vp.university);
   if(rule==='major'||rule==='course'||rule==='major/course')return sameAudienceValue(owner.course||owner.major,vp.course||vp.major);
@@ -1059,7 +1059,7 @@ function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
-  if(!canViewVisibility(sp,CU,u))return showToast('❌ Ce statut n’est pas visible pour toi');
+  if(!canViewVisibility(sp,CU,u))return showToast(t('st_not_available'));
   pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
@@ -2995,7 +2995,7 @@ const I18N={
     group_member:'membre',group_members:'membres',
     st_new_title:'Nouveau statut',st_publish:'Publier',st_photo_label:'Photo (optionnel)',
     st_add_photo:'Ajouter une photo',st_photo_hint:'Notes, bureau de révision, selfie...',
-    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',stWhoCanSee:'Qui peut voir ton statut ?',stAnyone:'Tout le monde',stCountry:'Uniquement mon pays',stUniversity:'Uniquement mon université',stMajorCourse:'Uniquement ma filière / mon cours',
+    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',stWhoCanSee:'Qui peut voir votre statut ?',stAnyone:'Tout le monde',stCountry:'Uniquement mon pays',stUniversity:'Uniquement mon université',stMajorCourse:'Uniquement ma filière / mon cours',st_not_available:'❌ Ce statut n’est pas disponible pour vous',
     st_subject_label:'Matière (optionnel)',st_link_group_label:'Lier un groupe (optionnel)',
     st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
     st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
@@ -3048,7 +3048,7 @@ const I18N={
     prompt_location:'Location:',prompt_enter_url:'Enter URL:',
     group_member:'member',group_members:'members',
     st_new_title:'New status',st_publish:'Post',st_photo_label:'Photo (optional)',st_add_photo:'Add a photo',
-    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',stWhoCanSee:'Who can see your status?',stAnyone:'Anyone',stCountry:'Only my country',stUniversity:'Only my university',stMajorCourse:'Only my major/Course',
+    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',stWhoCanSee:'Who can see your status?',stAnyone:'Anyone',stCountry:'Only my country',stUniversity:'Only my university',stMajorCourse:'Only my major/Course',st_not_available:'❌ This status is not available to you',
     st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
     st_msg_placeholder:'Free to study now, who wants to join?',st_preview_label:'Preview',
     st_expiry_note:'⏱ Your status disappears automatically after 24h',st_reply_placeholder:'Reply...',
