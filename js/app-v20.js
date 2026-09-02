@@ -363,6 +363,19 @@ async function uploadVoiceToFirebase(file){
   });
   return ref.getDownloadURL();
 }
+async function uploadDocument(file){
+  const cloudUrl=await uploadCloud(file,'doc');
+  if(cloudUrl)return {url:cloudUrl,storage:'cloudinary'};
+  if(!voiceStorage||!CU||!file)return null;
+  try{
+    const ext=(file.name||'document.bin').split('.').pop()||'bin';
+    const key=`documents/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const ref=voiceStorage.ref().child(key);
+    const task=ref.put(file,{contentType:file.type||'application/octet-stream'});
+    await new Promise((resolve,reject)=>task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},reject,resolve));
+    return {url:await ref.getDownloadURL(),storage:'firebase-storage'};
+  }catch(e){uploadDocument.lastError=e?.message||'Document storage upload failed';return null;}
+}
 function readVoiceAsDataUrl(file,maxBytes=300000){
   return new Promise(resolve=>{
     if(!file||file.size>maxBytes||typeof FileReader==='undefined'){resolve(null);return;}
@@ -1902,7 +1915,7 @@ function toggleSelectMsg(id,isGrp){
   if(selectedMsgs.size>0){
     let bar=document.getElementById('selBar');
     if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
-    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#e74c3c;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">🗑️ Everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#e67e22;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">🙈 For Me</button><button onclick="clearSelection()" style="background:rgba(255,255,255,.15);color:#fff;border:none;padding:9px 12px;border-radius:20px;font-size:13px;cursor:pointer;">✕</button>`;
+    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
   }else{clearSelection();}
 }
 function clearSelection(){
@@ -1954,10 +1967,12 @@ async function execDelMsgs(scope,isGrp){
   clearSelection();
   showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
+const pendingMedia={};
 function buildBbl(m,isGrp){
   if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
   const type=m.type||'text';
+  const pendingSrc=pendingMedia[m.id]||'';
   const nameTag=isGrp&&!self?`<div class="bname">${esc(m.senderName||'')}</div>`:'';
   const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
@@ -1989,11 +2004,11 @@ function buildBbl(m,isGrp){
     inner=`${nameTag}${rq}${textPart}${linkCards}${!isGrp?`<div class="mar">${repBtn}</div>`:''} ${rcHtml}${receipt}`;
   }
   else if(type==='image'){
-    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;}
+    if(!m.data){inner=pendingSrc?`${nameTag}${rq}<img src="${pendingSrc}" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;opacity:.82;">${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;}
     else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','image')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','img.jpg')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='video'){
-    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
+    if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
     else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','video.mp4')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='audio'){
@@ -2239,20 +2254,17 @@ async function handleF(e,dest){
       _fRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
       db.collection('users').doc(curChat.uid).update(_fRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_fRecvUpd,{merge:true}).catch(()=>{});});
     }
+    // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
+    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){pendingMedia[msgRef.id]=URL.createObjectURL(file);}
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
-      const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
-      fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${rtype}/upload`,{method:'POST',body:fd})
-        .then(r=>r.json())
-        .then(d=>{
-          if(d.secure_url){
-            msgRef.update({data:d.secure_url,status:'sent'});
-          }else{
-            msgRef.update({status:'failed'});
-            showToast('❌ Upload failed');
-          }
-        })
-        .catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
+      const uploadPromise=fType==='doc'?uploadDocument(file):uploadCloud(file,localType);
+      uploadPromise.then(result=>{
+        const url=typeof result==='string'?result:result?.url;
+        if(url){msgRef.update({data:url,status:'sent',...(fType==='doc'?{storage:result?.storage||'document-storage'}:{})});}
+        else{msgRef.update({status:'failed'});}
+        if(pendingMedia[msgRef.id]){URL.revokeObjectURL(pendingMedia[msgRef.id]);delete pendingMedia[msgRef.id];}
+      }).catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
     }
   }catch(ex){showToast('❌ '+ex.message);}
 }
@@ -2299,13 +2311,15 @@ async function sendPreviewImg(){
   try{
     if(_previewDest==='g'&&curGrp){
       const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
       // ✅ BACKGROUND UPLOAD
-      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});});
+      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
     }else if(_previewDest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
       const ref=await db.collection('chats').doc(cid).collection('messages').add(m);
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
       // ✅ BACKGROUND UPLOAD
-      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});});
+      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
       await db.collection('chats').doc(cid).set(_upd,{merge:true});
@@ -3202,7 +3216,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-65',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-66',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
