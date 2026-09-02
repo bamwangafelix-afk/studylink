@@ -1968,6 +1968,12 @@ async function execDelMsgs(scope,isGrp){
   showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
 const pendingMedia={};
+function refreshPendingBubble(m,isGrp){
+  const old=document.querySelector(`.bw[data-id="${m.id}"]`);
+  if(!old)return;
+  const tmp=document.createElement('div');tmp.innerHTML=buildBbl(m,isGrp);
+  const next=tmp.firstElementChild;if(next)old.replaceWith(next);
+}
 function buildBbl(m,isGrp){
   if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
@@ -2255,7 +2261,7 @@ async function handleF(e,dest){
       db.collection('users').doc(curChat.uid).update(_fRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_fRecvUpd,{merge:true}).catch(()=>{});});
     }
     // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
-    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){pendingMedia[msgRef.id]=URL.createObjectURL(file);}
+    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){pendingMedia[msgRef.id]=URL.createObjectURL(file);refreshPendingBubble({...m,id:msgRef.id},isGrp);}
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
       const uploadPromise=fType==='doc'?uploadDocument(file):uploadCloud(file,localType);
@@ -2311,13 +2317,13 @@ async function sendPreviewImg(){
   try{
     if(_previewDest==='g'&&curGrp){
       const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
-      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);refreshPendingBubble({...m,id:ref.id},true);
       // ✅ BACKGROUND UPLOAD
       fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
     }else if(_previewDest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
       const ref=await db.collection('chats').doc(cid).collection('messages').add(m);
-      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);refreshPendingBubble({...m,id:ref.id},false);
       // ✅ BACKGROUND UPLOAD
       fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
@@ -3216,7 +3222,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-66',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-67',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
