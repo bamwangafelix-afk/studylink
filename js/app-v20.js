@@ -2978,6 +2978,7 @@ function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid)
 // ── I18N (merged from user branch) ──
 const I18N={
   fr:{
+    install_title:'Installer l’application StudyLink',install_hint:'Installez-la comme une vraie application, pas comme un simple raccourci.',install_button:'Installer l’app',install_close:'Fermer',install_manual:'Pour une vraie application : ouvrez ⋮ → « Install and create shortcut » → « Install ». Ne choisissez pas « Create shortcut ».',install_success:'StudyLink est en cours d’installation comme application.',install_error:'Utilisez le menu Chrome et choisissez « Install », pas « Create shortcut ».',install_done:'StudyLink est installé comme application sur votre écran d’accueil.',
     home_feed_title:'Fil communautaire',loading:'Chargement...',home_no_posts:'Aucune publication pour l’instant. Sois le premier ! 🎓',
     home_join_group:'Rejoindre le groupe',home_message:'Message',home_load_more:'Voir plus',
     badge_needs_help:'Besoin d’aide',badge_can_help:'Peut aider',
@@ -3032,6 +3033,7 @@ const I18N={
     st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
   },
   en:{
+    install_title:'Install the StudyLink app',install_hint:'Install it as a real app, not as a simple shortcut.',install_button:'Install app',install_close:'Close',install_manual:'For a real app: open ⋮ → “Install and create shortcut” → “Install”. Do not choose “Create shortcut”.',install_success:'StudyLink is being installed as an app.',install_error:'Open the Chrome menu and choose “Install”, not “Create shortcut”.',install_done:'StudyLink is installed as an app on your home screen.',
     home_feed_title:'Community Feed',loading:'Loading...',home_no_posts:'No posts yet. Be the first to post! 🎓',
     home_join_group:'Join Group',home_message:'Message',home_load_more:'Load more',
     badge_needs_help:'Needs Help',badge_can_help:'Can Help',
@@ -3091,6 +3093,7 @@ function catLabel(key){return t(STATUS_I18N_KEYS[key])||CATS[key]?.label||key;}
 function applyTranslations(){
   document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=t(node.getAttribute('data-i18n'));});
   document.querySelectorAll('[data-i18n-ph]').forEach(node=>{node.placeholder=t(node.getAttribute('data-i18n-ph'));});
+  document.querySelectorAll('[data-i18n-aria]').forEach(node=>{node.setAttribute('aria-label',t(node.getAttribute('data-i18n-aria')));});
   const langBtn=document.getElementById('langBtn');if(langBtn)langBtn.textContent=appLang.toUpperCase();
   document.querySelectorAll('#stCatGrid .stCatCard .nm').forEach((node,index)=>{const key=Object.keys(CATS)[index];if(key)node.textContent=catLabel(key);});
   if(document.getElementById('statusCreate')?.style.display==='flex'){updateStatusPreview();}
@@ -3118,9 +3121,17 @@ function openPhoneSettings(){
   else{showToast('⚙️ Open your device Settings app to change language, time, and other preferences.');}
 }
 function toggleDark(){dark=!dark;document.body.classList.toggle('dark',dark);}
+const TOAST_PAIRS=[
+  ['❌ Statut expiré','❌ Status expired'],['Profil','Profile'],['Profil introuvable','Profile not found'],['Groupe introuvable','Group not found'],['Tu ne peux pas répondre à ton propre statut',"You can't reply to your own status"],['Tu ne peux pas te répondre à toi-même',"You can't reply to yourself"],['Transféré depuis un autre statut','Forwarded from another status'],['Rien à enregistrer, statut texte seul','Nothing to save, text-only status'],['📷 Photo prête','📷 Photo ready'],['📁 Fichier partagé !','📁 File shared!'],['✅ Vocal envoyé','✅ Voice sent'],['❌ Impossible de copier','❌ Unable to copy'],['Partage non supporté sur cet appareil','Sharing is not supported on this device'],['❌ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.','❌ Unable to play this audio. The file is unavailable or the network was interrupted.'],['⚠️ Cet audio est indisponible.','⚠️ This audio is unavailable.'],['⚠️ Lecture impossible. Appuyez de nouveau sur lecture.','⚠️ Playback failed. Press play again.'],['⚠️ Lecture audio interrompue.','⚠️ Audio playback interrupted.'],['⚠️ Rien n’a été enregistré.','⚠️ Nothing was recorded.'],['⚠️ L’audio n’a pas pu être envoyé. Réessayez.','⚠️ The audio could not be sent. Try again.'],['⚠️ Envoi vocal impossible. Réessayez.','⚠️ Voice message could not be sent. Try again.'],['🎙️ Erreur du microphone. Réessayez.','🎙️ Microphone error. Try again.'],['🎙️ Microphone non supporté. Utilisez Chrome.','🎙️ Microphone not supported. Use Chrome.'],['⚠️ Vidéo trop volumineuse. Maximum 200 Mo.','⚠️ Video too large. Maximum 200 MB.'],['⚠️ Audio trop volumineux. Maximum 50 Mo.','⚠️ Audio too large. Maximum 50 MB.'],['⚠️ Document trop volumineux. Maximum 50 Mo.','⚠️ Document too large. Maximum 50 MB.'],['✅ Fil actualisé','✅ Feed refreshed'],['✅ Toutes les publications sont chargées','✅ All posts loaded'],['📢 Publication publiée !','📢 Post published!'],['❌ Veuillez coller un lien d’abord','❌ Please paste a link first'],['❌ Veuillez coller un lien valide','❌ Please paste a valid link'],['🚩 Signalement envoyé. Merci.','🚩 Report submitted. Thank you.'],['❌ Impossible d’envoyer le signalement','❌ Could not submit report'],['⚙️ Ouvrez les Paramètres de votre appareil pour modifier la langue, l’heure et les autres préférences.','⚙️ Open your device Settings app to change language, time, and other preferences.']
+];
+function localizeToastMessage(msg){
+  const raw=String(msg??'');
+  const pair=TOAST_PAIRS.find(([fr,en])=>raw===fr||raw===en);
+  return pair?(appLang==='en'?pair[1]:pair[0]):raw;
+}
 function showToast(msg,color){
   const t=el('toast');
-  t.textContent=msg;
+  t.textContent=localizeToastMessage(msg);
   t.style.background=color||'';
   t.style.display='block';
   clearTimeout(t._t);
@@ -3187,7 +3198,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-60',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-61',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -3203,16 +3214,16 @@ function setupPWA(){
   });
   window.setTimeout(show,900);
   installBtn?.addEventListener('click',async()=>{
-    if(!installEvent){showToast('Pour une vraie application : ouvrez ⋮ → « Install and create shortcut » → « Install ». Ne choisissez pas « Create shortcut ».');return;}
+    if(!installEvent){showToast(t('install_manual'));return;}
     const event=installEvent;installEvent=null;hide();
     try{
       await event.prompt();
       const choice=await event.userChoice;
-      if(choice?.outcome==='accepted')showToast('StudyLink est en cours d’installation comme application.');
-    }catch(e){console.warn('Install prompt unavailable:',e);showToast('Utilisez le menu Chrome et choisissez « Install », pas « Create shortcut ».');}
+      if(choice?.outcome==='accepted')showToast(t('install_success'));
+    }catch(e){console.warn('Install prompt unavailable:',e);showToast(t('install_error'));}
   });
   dismiss?.addEventListener('click',()=>{try{localStorage.setItem('studylinkInstallDismissed','1');}catch{}hide();});
-  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
+  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast(t('install_done'));});
 }
 function bootstrapStudyLink(){
   applyTranslations();
