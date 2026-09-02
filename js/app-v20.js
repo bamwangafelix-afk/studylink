@@ -2261,7 +2261,7 @@ async function handleF(e,dest){
       db.collection('users').doc(curChat.uid).update(_fRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_fRecvUpd,{merge:true}).catch(()=>{});});
     }
     // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
-    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){pendingMedia[msgRef.id]=URL.createObjectURL(file);refreshPendingBubble({...m,id:msgRef.id},isGrp);}
+    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){pendingMedia[msgRef.id]=URL.createObjectURL(file);refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
       const uploadPromise=fType==='doc'?uploadDocument(file):uploadCloud(file,localType);
@@ -3222,7 +3222,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-67',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-68',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
