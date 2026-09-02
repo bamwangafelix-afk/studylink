@@ -306,9 +306,13 @@ async function uploadCloud(file,type){
   }
   // Audio is accepted by Cloudinary through auto/upload and video/upload.
   // Try auto first, then video, with one retry for transient mobile failures.
-  const endpoints=(type==='audio'||type==='voice')
-    ? ['auto','video']
-    : [type==='doc'?'raw':'image'];
+  const endpoints=type==='video'
+    ? ['video','auto']
+    : (type==='audio'||type==='voice')
+      ? ['auto','video']
+      : type==='doc'
+        ? []
+        : ['image','auto'];
   let lastError='Upload failed';
   // Keep a mobile upload from leaving the bubble pending indefinitely.
   // Each request gets up to 15 seconds, with a 45-second total ceiling across fallbacks.
@@ -364,8 +368,7 @@ async function uploadVoiceToFirebase(file){
   return ref.getDownloadURL();
 }
 async function uploadDocument(file){
-  const cloudUrl=await uploadCloud(file,'doc');
-  if(cloudUrl)return {url:cloudUrl,storage:'cloudinary'};
+  // Long documents bypass Cloudinary because the unsigned preset is limited to 10 MB.
   if(!voiceStorage||!CU||!file)return null;
   try{
     const ext=(file.name||'document.bin').split('.').pop()||'bin';
@@ -3222,7 +3225,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-68',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-69',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
