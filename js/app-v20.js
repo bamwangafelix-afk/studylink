@@ -1920,9 +1920,9 @@ async function deleteSelectedMsgs(isGrp,scope){
     sheet.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
     sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:18px;">
       <p style="font-weight:bold;font-size:15px;text-align:center;margin-bottom:14px;">Delete ${count} message${count>1?'s':''}?</p>
-      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;border:1px solid rgba(30,136,229,.25);">Delete for Everyone</button>
-      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;border:1px solid rgba(30,136,229,.25);">Delete for Me</button>
-      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:14px;cursor:pointer;border:1px solid rgba(30,136,229,.15);">Cancel</button>
+      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for everyone</button>
+      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for me</button>
+      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;">Cancel</button>
     </div>`;
     sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
     document.body.appendChild(sheet);
@@ -1952,14 +1952,14 @@ async function execDelMsgs(scope,isGrp){
     }catch(e){console.log(e);}
   }
   clearSelection();
-  showToast(scope==='everyone'?'🗑️ Deleted for everyone':'🗑️ Deleted for you');
+  showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
 function buildBbl(m,isGrp){
   if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
   const type=m.type||'text';
   const nameTag=isGrp&&!self?`<div class="bname">${esc(m.senderName||'')}</div>`:'';
-  const repBtn=!isGrp?`<button class="mabtn ${self?'op':''}" ${!self?'style="background:rgba(0,0,0,.08);color:var(--txt);"':''} onclick="startReply('${m.id}')">↩</button>`:'';
+  const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
   const receipt=self&&type==='text'?`<div class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
   const mediaReceipt=self?`<div class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
@@ -2005,8 +2005,8 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
     const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     const audioDur=m.dur||'0:00';
-    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:transparent;">&nbsp;</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${mediaReceipt}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">♫</div><div style="flex:1;"><div style="font-size:11px;color:transparent;">&nbsp;</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">♫</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','audio.mp3')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -2092,8 +2092,8 @@ async function toggleReact(id,emoji,dest){
   rc[CU.uid]=ur.includes(emoji)?ur.filter(e=>e!==emoji):[...ur,emoji];
   await ref.update({reactions:rc});
 }
-function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>🎵</h2><audio src="${src}" controls autoplay style="width:300px;"></audio></div>`:`<iframe src="${src}" style="width:100vw;height:100vh;border:none;"></iframe>`}</body></html>`);w.document.close();}
-function dlM(src,fname){const a=document.createElement('a');a.href=src;a.download=fname||'file';document.body.appendChild(a);a.click();setTimeout(()=>document.body.removeChild(a),200);}
+function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}const docUrl=encodeURIComponent(src);const body=type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>Music</h2><audio src="${src}" controls autoplay style="width:min(90vw,420px);"></audio></div>`:`<iframe src="https://docs.google.com/gview?embedded=1&url=${docUrl}" style="width:100vw;height:calc(100vh - 56px);border:none;background:#fff;"></iframe><a href="${src}" target="_blank" rel="noopener" download style="position:fixed;bottom:10px;right:10px;padding:12px 18px;background:#1e88e5;color:#fff;border-radius:22px;text-decoration:none;font-weight:bold;">Download</a>`;w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${body}</body></html>`);w.document.close();}
+function dlM(src,fname){if(!src)return;const a=document.createElement('a');a.href=src;a.download=fname||'file';a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(()=>document.body.removeChild(a),300);}
 
 async function markVoicePlayed(msgId,senderUid){
   if(!curChat||!CU)return;
@@ -2214,7 +2214,7 @@ async function handleF(e,dest){
   // Size limits
   if(fType==='video'&&file.size>200*1024*1024){showToast('⚠️ Video too large. Max 200MB.');return;}
   if(fType==='audio'&&file.size>50*1024*1024){showToast('⚠️ Audio too large. Max 50MB.');return;}
-  if(fType==='doc'&&file.size>50*1024*1024){showToast('⚠️ Document too large. Max 50MB.');return;}
+  if(fType==='doc'&&file.size>200*1024*1024){showToast('⚠️ Document too large. Max 200MB.');return;}
   const t=now();
   const ext=file.name.split('.').pop().toLowerCase();
   const localType=fType==='video'?'video':fType==='audio'?'audio':'doc';
@@ -2284,8 +2284,8 @@ function showImgPreview(file,dest){
       <img src="${url}" style="width:100%;height:100%;object-fit:contain;">
     </div>
     <div style="background:rgba(0,0,0,.85);padding:16px 20px;display:flex;gap:14px;justify-content:center;align-items:center;flex-shrink:0;">
-      <button onclick="cancelPreview()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:12px 28px;border-radius:24px;font-size:16px;cursor:pointer;font-weight:bold;">✕</button>
-      <button onclick="sendPreviewImg()" style="background:#27ae60;color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(39,174,96,.5);">✅ Send</button>
+      <button onclick="cancelPreview()" style="background:#1e88e5;color:#fff;border:none;padding:12px 28px;border-radius:24px;font-size:16px;cursor:pointer;font-weight:bold;">Cancel</button>
+      <button onclick="sendPreviewImg()" style="background:#1e88e5;color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(30,136,229,.35);">Send</button>
     </div>`;
   document.body.appendChild(modal);
 }
@@ -2293,20 +2293,19 @@ async function sendPreviewImg(){
   const modal=el('imgPreviewModal');if(modal)modal.remove();
   if(!_previewFile)return;
   // ✅ INSTANT: Show image message immediately with sending status
-  let fileToSend=_previewFile;
-  try{fileToSend=await compressImage(_previewFile);}catch(e){}
+  const fileToSendPromise=compressImage(_previewFile).catch(()=>_previewFile);
   const t=now();
   const m={type:'image',data:'',senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     if(_previewDest==='g'&&curGrp){
       const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
       // ✅ BACKGROUND UPLOAD
-      uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
+      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});});
     }else if(_previewDest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
       const ref=await db.collection('chats').doc(cid).collection('messages').add(m);
       // ✅ BACKGROUND UPLOAD
-      uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
+      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});});
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
       await db.collection('chats').doc(cid).set(_upd,{merge:true});
@@ -3203,7 +3202,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-64',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-65',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
