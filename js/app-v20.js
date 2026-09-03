@@ -367,17 +367,20 @@ async function uploadVoiceToFirebase(file){
   });
   return ref.getDownloadURL();
 }
-async function uploadDocument(file){
-  // Long documents bypass Cloudinary because the unsigned preset is limited to 10 MB.
+async function uploadToFirebaseStorage(file,folder){
   if(!voiceStorage||!CU||!file)return null;
   try{
-    const ext=(file.name||'document.bin').split('.').pop()||'bin';
-    const key=`documents/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const ext=(file.name||'media.bin').split('.').pop()||'bin';
+    const key=`${folder}/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const ref=voiceStorage.ref().child(key);
     const task=ref.put(file,{contentType:file.type||'application/octet-stream'});
     await new Promise((resolve,reject)=>task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},reject,resolve));
     return {url:await ref.getDownloadURL(),storage:'firebase-storage'};
-  }catch(e){uploadDocument.lastError=e?.message||'Document storage upload failed';return null;}
+  }catch(e){uploadToFirebaseStorage.lastError=e?.message||'Firebase Storage upload failed';return null;}
+}
+async function uploadDocument(file){
+  // Long documents bypass Cloudinary because the unsigned preset is limited to 10 MB.
+  return uploadToFirebaseStorage(file,'documents');
 }
 function readVoiceAsDataUrl(file,maxBytes=300000){
   return new Promise(resolve=>{
@@ -2267,10 +2270,10 @@ async function handleF(e,dest){
     if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){pendingMedia[msgRef.id]=URL.createObjectURL(file);refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
-      const uploadPromise=fType==='doc'?uploadDocument(file):uploadCloud(file,localType);
+      const uploadPromise=fType==='doc'?uploadDocument(file):fType==='video'?uploadToFirebaseStorage(file,'videos'):uploadCloud(file,localType);
       uploadPromise.then(result=>{
         const url=typeof result==='string'?result:result?.url;
-        if(url){msgRef.update({data:url,status:'sent',...(fType==='doc'?{storage:result?.storage||'document-storage'}:{})});}
+        if(url){msgRef.update({data:url,status:'sent',...((fType==='doc'||fType==='video')?{storage:result?.storage||'firebase-storage'}:{})});}
         else{msgRef.update({status:'failed'});}
         if(pendingMedia[msgRef.id]){URL.revokeObjectURL(pendingMedia[msgRef.id]);delete pendingMedia[msgRef.id];}
       }).catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
@@ -3225,7 +3228,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-69',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-70',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
