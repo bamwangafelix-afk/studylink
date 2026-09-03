@@ -1974,9 +1974,12 @@ async function execDelMsgs(scope,isGrp){
   showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
 const pendingMedia={};
-function refreshPendingBubble(m,isGrp){
+function refreshPendingBubble(m,isGrp,attempt=0){
   const old=document.querySelector(`.bw[data-id="${m.id}"]`);
-  if(!old)return;
+  if(!old){
+    if(attempt<8)setTimeout(()=>refreshPendingBubble(m,isGrp,attempt+1),50*(attempt+1));
+    return;
+  }
   const tmp=document.createElement('div');tmp.innerHTML=buildBbl(m,isGrp);
   const next=tmp.firstElementChild;if(next)old.replaceWith(next);
 }
@@ -2020,7 +2023,8 @@ function buildBbl(m,isGrp){
     else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','image')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','img.jpg')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='video'){
-    if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
+    if(m.status==='failed'){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);text-align:center;min-width:180px;color:#e74c3c;font-size:11px;">Video upload failed</div>${rcHtml}`;}
+    else if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
     else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','video.mp4')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='audio'){
@@ -3228,7 +3232,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-70',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-71',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
