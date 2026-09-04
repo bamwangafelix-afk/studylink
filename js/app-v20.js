@@ -2259,10 +2259,14 @@ async function handleF(e,dest){
   try{
     let msgRef;
     if(dest==='g'&&curGrp){
-      msgRef=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
+      msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
+      pendingMedia[msgRef.id]=URL.createObjectURL(file);
+      await msgRef.set({...m,senderPhoto:myPho||''});
     }else if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      msgRef=await db.collection('chats').doc(cid).collection('messages').add(m);
+      msgRef=db.collection('chats').doc(cid).collection('messages').doc();
+      pendingMedia[msgRef.id]=URL.createObjectURL(file);
+      await msgRef.set(m);
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:_typeLabel,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
       await db.collection('chats').doc(cid).set(_upd,{merge:true});
@@ -2271,7 +2275,7 @@ async function handleF(e,dest){
       db.collection('users').doc(curChat.uid).update(_fRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_fRecvUpd,{merge:true}).catch(()=>{});});
     }
     // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
-    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){pendingMedia[msgRef.id]=URL.createObjectURL(file);refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
+    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
       const uploadPromise=fType==='doc'?uploadDocument(file):fType==='video'?uploadToFirebaseStorage(file,'videos'):uploadCloud(file,localType);
@@ -2326,14 +2330,18 @@ async function sendPreviewImg(){
   const m={type:'image',data:'',senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     if(_previewDest==='g'&&curGrp){
-      const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
-      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);refreshPendingBubble({...m,id:ref.id},true);
+      const ref=db.collection('groups').doc(curGrp.id).collection('messages').doc();
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      await ref.set({...m,senderPhoto:myPho||''});
+      refreshPendingBubble({...m,id:ref.id},true);
       // ✅ BACKGROUND UPLOAD
       fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
     }else if(_previewDest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      const ref=await db.collection('chats').doc(cid).collection('messages').add(m);
-      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);refreshPendingBubble({...m,id:ref.id},false);
+      const ref=db.collection('chats').doc(cid).collection('messages').doc();
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      await ref.set(m);
+      refreshPendingBubble({...m,id:ref.id},false);
       // ✅ BACKGROUND UPLOAD
       fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
@@ -3232,7 +3240,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-71',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-72',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
