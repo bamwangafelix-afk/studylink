@@ -9,21 +9,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyLink">
 <meta name="description" content="StudyLink — Connect, Learn, Grow.">
-<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-74">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-74">
-<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-74">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-75">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-75">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-75">
 <title>StudyLink Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-74">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-75">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
 <div id="toast" style="display:none;"></div>
 <div id="installBanner" role="status" aria-live="polite">
-  <img src="icons/studylink-192.png?v=studylink-pwa-74" alt="StudyLink" width="42" height="42">
+  <img src="icons/studylink-192.png?v=studylink-pwa-75" alt="StudyLink" width="42" height="42">
   <div class="install-copy"><strong data-i18n="install_title">Installer l’application StudyLink</strong><span data-i18n="install_hint">Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
   <button type="button" id="installBtn" data-i18n="install_button">Installer l’app</button>
   <button type="button" id="installDismiss" data-i18n-aria="install_close" aria-label="Fermer">×</button>
@@ -82,7 +82,7 @@
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-74" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-75" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -140,7 +140,12 @@
       <input id="gName" placeholder="e.g. Python Coders..." data-i18n-ph="post_group_name_ph">
     </div>
     <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
-    <div id="tagSel" style="display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;"></div>
+    <div class="subjectPicker" id="postSubjectPicker">
+      <input id="postSubjectSearch" class="subjectSearch" type="search" placeholder="Search subjects..." data-i18n-ph="subject_search_ph" autocomplete="off">
+      <div class="subjectCategoryTabs" id="postSubjectCats" role="tablist"></div>
+      <div class="subjectSelected" id="postSubjectSelected"></div>
+      <div id="tagSel" class="subjectOptions" aria-live="polite"></div>
+    </div>
     <label style="font-size:13px;font-weight:bold;" data-i18n="post_message_label">Your Message:</label>
     <textarea id="pText" rows="4" placeholder="Write your study request..." data-i18n-ph="post_message_ph"></textarea>
     <button class="btn" onclick="addPost()">📢 <span data-i18n="post_submit">Post to Feed</span></button>
@@ -266,7 +271,12 @@
     </select>
 
     <p class="stSection" data-i18n="st_subject_label">Matière (optionnel)</p>
-    <div id="stSubjSel" style="display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;max-height:110px;overflow-y:auto;"></div>
+    <div class="subjectPicker statusSubjectPicker" id="statusSubjectPicker">
+      <input id="statusSubjectSearch" class="subjectSearch" type="search" placeholder="Search subjects..." data-i18n-ph="subject_search_ph" autocomplete="off">
+      <div class="subjectCategoryTabs" id="statusSubjectCats" role="tablist"></div>
+      <div class="subjectSelected" id="statusSubjectSelected"></div>
+      <div id="stSubjSel" class="subjectOptions" aria-live="polite"></div>
+    </div>
 
     <p class="stSection" data-i18n="st_link_group_label">Lier un groupe (optionnel)</p>
     <div id="stGroupSel" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
@@ -597,6 +607,6 @@
   </div>
 </div>
 
-<script defer src="js/app-v20.js?v=studylink-pwa-74"></script>
+<script defer src="js/app-v20.js?v=studylink-pwa-75"></script>
 </body>
 </html>

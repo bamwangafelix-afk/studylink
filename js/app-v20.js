@@ -1,19 +1,14 @@
-const SUBJECTS=[
-  // Mathematics, science and core computing
-  "Math","Algebra","Calculus","Statistics","Physics","Chemistry","Biology","Mathematics","Computer Science","CS","Information Technology","Information Systems","Computer Engineering","Engineering","Algorithms","Data Structures","Object-Oriented Programming","Operating Systems","Distributed Systems","System Design","Software Testing",
-  // Programming languages
-  "Python","JavaScript","TypeScript","Java","C++","C#","C","Rust","Go","Ruby","PHP","Swift","Kotlin","Dart","Scala","Perl","Lua","R","MATLAB","Julia","Assembly","Bash","PowerShell","Objective-C","Visual Basic","Solidity",
-  // Web, mobile and software development
-  "React","Vue","Angular","Node.js","HTML/CSS","Web Development","Frontend Development","Backend Development","Full-Stack Development","Software Engineering","Mobile Development","Android Development","iOS Development","UI/UX Design","DevOps",
-  // Databases, cloud and tools
-  "SQL","MySQL","PostgreSQL","MongoDB","Databases","Firebase","Docker","Linux","Git","AWS","Cloud","Cloud Computing","Big Data","Data Engineering","Data Analytics",
-  // AI, security and networks
-  "AI/ML","Machine Learning","Deep Learning","Natural Language Processing","Computer Vision","Data Science","Cybersecurity","Ethical Hacking","Network Security","Information Security","Digital Forensics","Cryptography","Networks",
-  // Languages and general academic subjects
-  "English","French","Spanish","Arabic","Chinese","Portuguese","History","Economics","Law","Medicine","Nursing","Public Health","Pharmacy","Dentistry","Business","Business Administration","Accounting","Marketing","Human Resources","Psychology","Sociology","Political Science","Communication","Education","Art","Music","Geography","Philosophy",
-  // Engineering and applied sciences
-  "Environmental Science","Geology","Architecture","Mechanical Engineering","Chemical Engineering","Biomedical Engineering"
-];
+const SUBJECT_CATEGORIES={
+  programming:{en:'Programming Languages',fr:'Langages de programmation',items:['Python','JavaScript','TypeScript','Java','C++','C#','C','Rust','Go','Ruby','PHP','Swift','Kotlin','Dart','Scala','Perl','Lua','R','MATLAB','Julia','Assembly','Bash','PowerShell','Objective-C','Visual Basic','Solidity']},
+  frameworks:{en:'Frameworks & Libraries',fr:'Frameworks et bibliothèques',items:['React','Vue','Angular','Node.js','Django','Laravel','Blazor','Spring Boot','Ruby on Rails','Express.js','Next.js','Flutter']},
+  web:{en:'Web & Mobile',fr:'Web et mobile',items:['HTML/CSS','Web Development','Frontend Development','Backend Development','Full-Stack Development','Software Engineering','Mobile Development','Android Development','iOS Development','UI/UX Design','Game Development','Unity','Unreal Engine']},
+  tools:{en:'Tools & DevOps',fr:'Outils et DevOps',items:['Git','Linux','Docker','Kubernetes','AWS','Cloud','Cloud Computing','DevOps','CI/CD','Selenium','Playwright','Firebase','Testing & QA']},
+  data:{en:'Data, AI & Security',fr:'Données, IA et sécurité',items:['SQL','MySQL','PostgreSQL','MongoDB','Databases','Big Data','Data Engineering','Data Analytics','AI/ML','Machine Learning','Deep Learning','Natural Language Processing','Computer Vision','Data Science','Cybersecurity','Ethical Hacking','Network Security','Information Security','Digital Forensics','Cryptography','Networks','Blockchain']},
+  computing:{en:'Computer Science',fr:'Informatique',items:['Computer Science','CS','Information Technology','Information Systems','Computer Engineering','Engineering','Algorithms','Data Structures','Object-Oriented Programming','Operating Systems','Distributed Systems','System Design','Software Testing','Microservices']},
+  sciences:{en:'Sciences & Engineering',fr:'Sciences et ingénierie',items:['Math','Algebra','Calculus','Statistics','Physics','Chemistry','Biology','Mathematics','Environmental Science','Geology','Architecture','Mechanical Engineering','Chemical Engineering','Biomedical Engineering']},
+  general:{en:'Academic & Professional',fr:'Études et professions',items:['English','French','Spanish','Arabic','Chinese','Portuguese','History','Economics','Law','Medicine','Nursing','Public Health','Pharmacy','Dentistry','Business','Business Administration','Accounting','Marketing','Human Resources','Psychology','Sociology','Political Science','Communication','Education','Art','Music','Geography','Philosophy']}
+};
+const SUBJECTS=[...new Set(Object.values(SUBJECT_CATEGORIES).flatMap(c=>c.items))];
 const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahrain","Bangladesh","Belarus","Belgium","Belize","Benin","Bolivia","Bosnia","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cambodia","Cameroon","Canada","Cape Verde","Chad","Chile","China","Colombia","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominican Republic","DR Congo","Ecuador","Egypt","El Salvador","Eritrea","Estonia","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Guatemala","Guinea","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saudi Arabia","Senegal","Serbia","Sierra Leone","Singapore","Slovakia","Slovenia","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Sweden","Switzerland","Syria","Taiwan","Tanzania","Thailand","Togo","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
 const STICKERS=["😀","😁","😂","🤣","😃","😄","😅","😆","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤬","😱","😰","🤔","🙄","😏","🥺","🥹","🫡","🤗","😇","🤓","😴","🤤","🙈","🙉","🙊","🐶","🐱","🐼","🦊","🦁","🐯","🐸","🐧","🐦","🦄","🐉","🦋","🌟","⭐","🔥","💯","🎉","🎊","🏆","💪","👏","🙌","🤜","🤛","✌️","🤞","💡","📚","✏️","🖊️","🎓","🏫","💻","📱","🤖","🚀","🛸","🌈","☀️","🌙","⚡","❄️","🌊","🍕","🍔","🍟","🍣","🍜","🧁","🍰","☕","🧋","🎮","🎵","🎸","🎤","🏀","⚽","🏆","🥇","❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💝","💖","💫","✨","🌸","🌺","🌻","🌹"];
 const FLAGS=["🇦🇫","🇦🇱","🇩🇿","🇦🇩","🇦🇴","🇦🇷","🇦🇲","🇦🇺","🇦🇹","🇦🇿","🇧🇭","🇧🇩","🇧🇾","🇧🇪","🇧🇿","🇧🇯","🇧🇴","🇧🇦","🇧🇼","🇧🇷","🇧🇳","🇧🇬","🇧🇫","🇧🇮","🇰🇭","🇨🇲","🇨🇦","🇨🇻","🇹🇩","🇨🇱","🇨🇳","🇨🇴","🇨🇬","🇨🇷","🇭🇷","🇨🇺","🇨🇾","🇨🇿","🇩🇰","🇩🇯","🇩🇴","🇨🇩","🇪🇨","🇪🇬","🇸🇻","🇪🇷","🇪🇪","🇪🇹","🇫🇯","🇫🇮","🇫🇷","🇬🇦","🇬🇲","🇬🇪","🇩🇪","🇬🇭","🇬🇷","🇬🇹","🇬🇳","🇭🇹","🇭🇳","🇭🇺","🇮🇸","🇮🇳","🇮🇩","🇮🇷","🇮🇶","🇮🇪","🇮🇱","🇮🇹","🇨🇮","🇯🇲","🇯🇵","🇯🇴","🇰🇿","🇰🇪","🇽🇰","🇰🇼","🇰🇬","🇱🇦","🇱🇻","🇱🇧","🇱🇸","🇱🇷","🇱🇾","🇱🇹","🇱🇺","🇲🇬","🇲🇼","🇲🇾","🇲🇻","🇲🇱","🇲🇹","🇲🇷","🇲🇺","🇲🇽","🇲🇩","🇲🇳","🇲🇪","🇲🇦","🇲🇿","🇲🇲","🇳🇦","🇳🇵","🇳🇱","🇳🇿","🇳🇮","🇳🇪","🇳🇬","🇰🇵","🇲🇰","🇳🇴","🇴🇲","🇵🇰","🇵🇸","🇵🇦","🇵🇾","🇵🇪","🇵🇭","🇵🇱","🇵🇹","🇶🇦","🇷🇴","🇷🇺","🇷🇼","🇸🇦","🇸🇳","🇷🇸","🇸🇱","🇸🇬","🇸🇰","🇸🇮","🇸🇴","🇿🇦","🇰🇷","🇸🇸","🇪🇸","🇱🇰","🇸🇩","🇸🇪","🇨🇭","🇸🇾","🇹🇼","🇹🇿","🇹🇭","🇹🇬","🇹🇳","🇹🇷","🇹🇲","🇺🇬","🇺🇦","🇦🇪","🇬🇧","🇺🇸","🇺🇾","🇺🇿","🇻🇪","🇻🇳","🇾🇪","🇿🇲","🇿🇼"];
@@ -501,6 +496,30 @@ function showReg(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.
 function showReset(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('resetF').style.display='flex';}
 
 let s2Intent='both',s2SelTags=[];
+let postSubjectCategory='all',statusSubjectCategory='all';
+function subjectCategoryLabel(key){const c=SUBJECT_CATEGORIES[key];return c?(c[appLang==='en'?'en':'fr']||c.en):key;}
+function subjectMatches(s,q){return !q||s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));}
+function subjectItems(category,q){
+  const pool=category==='all'?SUBJECTS:(SUBJECT_CATEGORIES[category]?.items||[]);
+  return pool.filter(s=>subjectMatches(s,q));
+}
+function renderSubjectPicker(mode){
+  const isPost=mode==='post',prefix=isPost?'post':'status',category=isPost?postSubjectCategory:statusSubjectCategory;
+  const search=el(prefix+'SubjectSearch'),cats=el(prefix+'SubjectCats'),options=el(isPost?'tagSel':'stSubjSel'),selected=el(prefix+'SubjectSelected');
+  if(!cats||!options)return;
+  const q=(search?.value||'').trim();
+  cats.innerHTML=[['all',appLang==='en'?'All':'Tous'],...Object.keys(SUBJECT_CATEGORIES).map(k=>[k,subjectCategoryLabel(k)])].map(([key,label])=>`<button type="button" class="subjectCategoryTab${category===key?' active':''}" onclick="selectSubjectCategory('${mode}','${key}')">${esc(label)}</button>`).join('');
+  const values=isPost?selTags:(selStatusSubject?[selStatusSubject]:[]);
+  selected.innerHTML=values.map(s=>`<span class="subjectChip">${esc(s)} <button type="button" aria-label="Remove ${esc(s)}" onclick="${isPost?`togglePostSubject('${e2(s)}')`:`toggleStatusSubject('${e2(s)}')`}">×</button></span>`).join('');
+  const items=subjectItems(category,q);
+  options.innerHTML=items.length?items.map(s=>`<button type="button" class="tag${values.includes(s)?' sel':''}" onclick="${isPost?`togglePostSubject('${e2(s)}')`:`toggleStatusSubject('${e2(s)}')`}">${esc(s)}</button>`).join(''):`<span class="subjectEmpty">${appLang==='en'?'No subject found':'Aucune matière trouvée'}</span>`;
+}
+function selectSubjectCategory(mode,key){if(mode==='post')postSubjectCategory=key;else statusSubjectCategory=key;renderSubjectPicker(mode);}
+function togglePostSubject(s){if(selTags.includes(s))selTags=selTags.filter(t=>t!==s);else if(selTags.length<5)selTags.push(s);else return showToast(appLang==='en'?'You can select up to 5 subjects':'Tu peux sélectionner au maximum 5 matières');renderSubjectPicker('post');}
+function setupSubjectPicker(){
+  [['post','postSubjectSearch'],['status','statusSubjectSearch']].forEach(([mode,id])=>el(id)?.addEventListener('input',()=>renderSubjectPicker(mode)));
+}
+
 function showStep2(){
   ['loginF','regF','resetF'].forEach(id=>el(id).style.display='none');
   el('step2F').style.display='flex';
@@ -866,7 +885,7 @@ async function addPost(){
     if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
-    selTags=[];document.querySelectorAll('#tagSel .tag').forEach(b=>b.classList.remove('sel'));
+    selTags=[];renderSubjectPicker('post');
     el('pText').value='';el('pType').value='Individual';if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gnW').style.display='none';
     showToast('📢 Posted!');tab('home');
   }catch(e){showToast('❌ '+e.message);}
@@ -1016,11 +1035,7 @@ function openStatusCreate(arg){
     const selCls=k===selStatusCat?' sel':'';
     return `<div class="stCatCard cat-${k}${selCls}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${statusVectorIcon(k)}</div><div class="nm">${catLabel(k)}</div></div>`;
   }).join('');
-  const subjWrap=el('stSubjSel');
-  subjWrap.innerHTML=SUBJECTS.map(s=>{
-    const selCls=s===selStatusSubject?' sel':'';
-    return `<button type="button" class="tag${selCls}" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`;
-  }).join('');
+    renderSubjectPicker('status');
   const myGroups=cachedPosts.filter(p=>p.type==='Group'&&p.uid===CU.uid);
   const grpWrap=el('stGroupSel');
   if(myGroups.length===0){
@@ -1041,8 +1056,7 @@ function selectStatusCat(k){
 }
 function toggleStatusSubject(s){
   selStatusSubject=selStatusSubject===s?null:s;
-  document.querySelectorAll('#stSubjSel .tag').forEach(b=>b.classList.remove('sel'));
-  if(selStatusSubject){const btn=el('stSubj_'+s.replace(/[^a-zA-Z0-9]/g,''));if(btn)btn.classList.add('sel');}
+  renderSubjectPicker('status');
   updateStatusPreview();
 }
 function toggleStatusGroup(id,name){
@@ -3058,7 +3072,7 @@ const I18N={
     post_title:'Créer une publication',post_as_label:'Publier en tant que :',postWhoCanSee:'Qui peut voir ta publication ?',postAnyone:'Tout le monde',postCountry:'Uniquement mon pays',postUniversity:'Uniquement mon université',postMajorCourse:'Uniquement ma filière / mon cours',
     post_individual:'Individuel',post_study_group:'Groupe d’étude',
     post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',
-    post_tags_label:'Matières :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',
+    post_tags_label:'Matières :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
     post_submit:'Publier sur le fil',
     msgs_title:'Messages',msgs_search_ph:'🔍 Rechercher une conversation...',msgs_no_convos:'Aucune conversation pour l’instant.',
     me_title:'Mon profil',me_account:'Compte',me_disconnect:'Déconnexion',me_edit_profile:'Modifier le profil',
@@ -3113,7 +3127,7 @@ const I18N={
     post_title:'Create Post',post_as_label:'Post As:',postWhoCanSee:'Who can see your post?',postAnyone:'Anyone',postCountry:'Only my country',postUniversity:'Only my university',postMajorCourse:'Only my major/Course',
     post_individual:'Individual',post_study_group:'Study Group',
     post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',
-    post_tags_label:'Subject Tags:',post_message_label:'Your Message:',post_message_ph:'Write your study request...',
+    post_tags_label:'Subject Tags:',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
     post_submit:'Post to Feed',
     msgs_title:'Messages',msgs_search_ph:'🔍 Search conversations...',msgs_no_convos:'No conversations yet.',
     me_title:'My Profile',me_account:'Account',me_disconnect:'Disconnect',me_edit_profile:'Edit Profile',
@@ -3164,6 +3178,8 @@ function applyTranslations(){
   document.querySelectorAll('[data-i18n-aria]').forEach(node=>{node.setAttribute('aria-label',t(node.getAttribute('data-i18n-aria')));});
   const langBtn=document.getElementById('langBtn');if(langBtn)langBtn.textContent=appLang.toUpperCase();
   document.querySelectorAll('#stCatGrid .stCatCard .nm').forEach((node,index)=>{const key=Object.keys(CATS)[index];if(key)node.textContent=catLabel(key);});
+  if(el('postSubjectCats'))renderSubjectPicker('post');
+  if(el('statusSubjectCats'))renderSubjectPicker('status');
   if(document.getElementById('statusCreate')?.style.display==='flex'){updateStatusPreview();}
 }
 function toggleLang(){
@@ -3301,13 +3317,9 @@ function bootstrapStudyLink(){
   disconnectButton?.addEventListener('click',()=>{void doOut();});
   // Countries
   const uc=el('uC');COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;uc.appendChild(o);});
-  // Tags
-  const ts=el('tagSel');
-  SUBJECTS.forEach(s=>{
-    const b=document.createElement('button');b.className='tag';b.textContent=s;b.type='button';
-    b.onclick=()=>{selTags.includes(s)?selTags=selTags.filter(t=>t!==s):selTags.push(s);b.classList.toggle('sel');};
-    ts.appendChild(b);
-  });
+  // Categorized subject pickers used by Post and Statut
+  renderSubjectPicker('post');
+  setupSubjectPicker();
   el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartSend();}});
   el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
   el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
