@@ -1974,6 +1974,13 @@ async function execDelMsgs(scope,isGrp){
   showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
 const pendingMedia={};
+function insertPendingBubble(m,isGrp){
+  const box=el(isGrp?'grpB':'msgB');
+  if(!box||box.querySelector(`.bw[data-id="${m.id}"]`))return;
+  const tmp=document.createElement('div');tmp.innerHTML=buildBbl(m,isGrp);
+  const node=tmp.firstElementChild;
+  if(node){box.appendChild(node);box.scrollTop=box.scrollHeight;}
+}
 function refreshPendingBubble(m,isGrp,attempt=0){
   const old=document.querySelector(`.bw[data-id="${m.id}"]`);
   if(!old){
@@ -2261,11 +2268,13 @@ async function handleF(e,dest){
     if(dest==='g'&&curGrp){
       msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
       pendingMedia[msgRef.id]=URL.createObjectURL(file);
+      insertPendingBubble({...m,id:msgRef.id},true);
       await msgRef.set({...m,senderPhoto:myPho||''});
     }else if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
       msgRef=db.collection('chats').doc(cid).collection('messages').doc();
       pendingMedia[msgRef.id]=URL.createObjectURL(file);
+      insertPendingBubble({...m,id:msgRef.id},false);
       await msgRef.set(m);
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:_typeLabel,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
@@ -2332,6 +2341,7 @@ async function sendPreviewImg(){
     if(_previewDest==='g'&&curGrp){
       const ref=db.collection('groups').doc(curGrp.id).collection('messages').doc();
       pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      insertPendingBubble({...m,id:ref.id},true);
       await ref.set({...m,senderPhoto:myPho||''});
       refreshPendingBubble({...m,id:ref.id},true);
       // ✅ BACKGROUND UPLOAD
@@ -2340,6 +2350,7 @@ async function sendPreviewImg(){
       const cid=getCID(CU.uid,curChat.uid);
       const ref=db.collection('chats').doc(cid).collection('messages').doc();
       pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      insertPendingBubble({...m,id:ref.id},false);
       await ref.set(m);
       refreshPendingBubble({...m,id:ref.id},false);
       // ✅ BACKGROUND UPLOAD
@@ -3240,7 +3251,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-72',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-73',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
