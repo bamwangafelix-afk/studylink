@@ -2728,11 +2728,13 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   },{passive:true});
   const barId=isStatus?'stVReplyBar':(btnId==='gSendB'?'gvbar':'vbar');
   const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
+  const setDragY=y=>btn.style.setProperty('--voice-drag-y',`${Math.round(y)}px`);
   const vibrate=pattern=>pulseHaptic(pattern,btn);
   const hint=()=>el(barId)?.querySelector('[data-voice-hint],[data-status-voice-hint]');
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};
   const resetState=()=>{
     state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
+    setDragY(0);
     btn.classList.remove('voice-locked','voice-pending');
     btn.title='Hold and slide up to record';
     setHint('Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer');
@@ -2747,6 +2749,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     if(document.activeElement?.id===inputId)document.activeElement.blur();
     state.suppressClick=true;
     state.startX=e.clientX;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
+    setDragY(0);
     btn.classList.add('voice-pending');
     try{btn.setPointerCapture(e.pointerId);}catch(err){}
     // A locked recording is completed by the next tap, not by a second start.
@@ -2771,6 +2774,12 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     if(!state.active||state.pointerId!==e.pointerId)return;
     e.preventDefault();
     const up=state.startY-e.clientY,left=e.clientX-state.startX;
+    // Visually follow the finger upward before the existing lock threshold.
+    // The recorder lifecycle itself is intentionally unchanged in this step.
+    if(!state.locked){
+      const visualY=up>30?Math.max(-225,-up*1.5):0;
+      setDragY(visualY);
+    }
     if(!state.locked&&left<-85){
       state.cancelled=true;state.active=false;vibrate([25,25]);cancelFn();releaseCapture();resetState();return;
     }
