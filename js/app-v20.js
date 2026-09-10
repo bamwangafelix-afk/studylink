@@ -2734,6 +2734,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};
   const resetState=()=>{
     state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
+    btn.dataset.voiceLocked='0';
     setDragY(0);
     btn.classList.remove('voice-locked','voice-pending');
     btn.title='Hold and slide up to record';
@@ -2753,7 +2754,9 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     btn.classList.add('voice-pending');
     try{btn.setPointerCapture(e.pointerId);}catch(err){}
     // A locked recording is completed by the next tap, not by a second start.
-    if(btn.classList.contains('rec')&&state.locked){
+    // Keep the lock outside the transient pointer state so this also works
+    // after pointer capture has been released on the previous gesture.
+    if(btn.classList.contains('rec')&&(state.locked||btn.dataset.voiceLocked==='1')){
       vibrate(35);
       Promise.resolve(stopFn()).finally(resetState);
       return;
@@ -2786,7 +2789,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     if(!state.locked&&up>70){
       // Queue the lock even if getUserMedia is still pending. This prevents a
       // fast Android swipe from being lost during the permission/startup gap.
-      state.locked=true;state.active=false;btn.classList.remove('voice-pending');btn.classList.add('voice-locked');btn.title='Tap to send voice message';
+      state.locked=true;state.active=false;btn.dataset.voiceLocked='1';btn.classList.remove('voice-pending');btn.classList.add('voice-locked');btn.title='Tap to send voice message';
       setHint('🔒 locked · tap mic to send');vibrate([35,55,35]);releaseCapture();
     }
   },{passive:false});
