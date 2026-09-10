@@ -2758,6 +2758,11 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
       Promise.resolve(stopFn()).finally(resetState);
       return;
     }
+    // A previous vocal may have been sent by the fixed Send tap while this
+    // gesture instance was still locked. Start every new gesture cleanly.
+    state.locked=false;state.released=false;state.cancelled=false;
+    btn.dataset.voiceLocked='0';
+    btn.classList.remove('voice-locked');
     // Fire the device vibration directly in pointerdown, before getUserMedia()
     // can yield to a permission prompt or another asynchronous browser task.
     vibrate(55);
