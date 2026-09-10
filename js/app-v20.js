@@ -745,9 +745,15 @@ function loadPic(e){
 let eIntent='both';
 function setEIntent(v){
   eIntent=v;
-  ['need','help','both'].forEach(t=>{
-    const b=el('e'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn');
-    if(b){if(t==='need')b.innerHTML=`${intentVectorIcon('aide')}<span>Get Help</span>`;else if(t==='help')b.innerHTML=`${intentVectorIcon('givehelp')}<span>Give Help</span>`;b.style.background=v===t?(t==='need'?'#fff1e0':t==='help'?'#e3f8f4':'var(--btnB)'):'transparent';b.style.color=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'#fff'):'var(--txt)';b.style.borderColor=v===t?(t==='need'?'#c2570a':t==='help'?'#000':'var(--btnB)'):'var(--brd)';}
+  ['need','help','both'].forEach(kind=>{
+    const b=el('e'+kind.charAt(0).toUpperCase()+kind.slice(1)+'Btn');
+    if(!b)return;
+    if(kind==='need')b.innerHTML=`${intentVectorIcon('aide')}<span>${t('me_get_help')}</span>`;
+    else if(kind==='help')b.innerHTML=`${intentVectorIcon('givehelp')}<span>${t('me_give_help')}</span>`;
+    else b.innerHTML=`${bothIntentIcon()}<span>${t('me_both')}</span>`;
+    b.style.background=v===kind?(kind==='need'?'#fff1e0':kind==='help'?'#e3f8f4':'var(--btnB)'):'transparent';
+    b.style.color=v===kind?(kind==='need'?'#c2570a':kind==='help'?'#000':'#fff'):'var(--txt)';
+    b.style.borderColor=v===kind?(kind==='need'?'#c2570a':kind==='help'?'#000':'var(--btnB)'):'var(--brd)';
   });
 }
 async function savePro(){
@@ -1145,7 +1151,7 @@ function viewStatus(uid){
   else{el('stVMsg').style.display='none';}
   if(sp.subject){el('stVSubject').style.display='inline-block';el('stVSubject').textContent='📖 '+sp.subject;}
   else{el('stVSubject').style.display='none';}
-  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupBtn').textContent='Rejoindre '+sp.linkedGroupName;}
+  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupLabel').textContent=t('st_join_prefix')+(sp.linkedGroupName||'');}
   else{el('stVJoinGroupBtn').style.display='none';}
   const view=el('statusView');
   applyStatusTheme(view,statusThemeFor(sp.category,sp.photo,sp.message));
@@ -1341,6 +1347,7 @@ function resetStatusReplyButton(){
   const btn=el('stVReplyBtn');
   btn?.classList.remove('voice-pending','rec','voice-locked');
   if(btn)btn.style.background='';
+  const float=el('stVReplyFloat');if(float){float.classList.remove('is-visible');float.style.setProperty('--voice-float-y','0px');}
   setMicIcon('stVReplyIcon');
   const bar=el('stVReplyBar');if(bar)bar.style.display='none';
   const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
@@ -1391,6 +1398,7 @@ async function startStatusVoice(fromGesture=false){
     stmr.start(200);stIsRec=true;stvSec=0;stVStartAt=Date.now();
     void keepVoiceScreenOn();
     const btn=el('stVReplyBtn');btn?.classList.remove('voice-pending');btn?.classList.add('rec');
+    const float=el('stVReplyFloat');if(float){float.classList.remove('is-visible');float.style.setProperty('--voice-float-y','0px');}
     if(btn)btn.style.background='';
     setSendIcon('stVReplyIcon');
     const bar=el('stVReplyBar');if(bar)bar.style.display='flex';
@@ -1418,15 +1426,16 @@ async function stopAndSendStatusVoice(){
   try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
   void releaseVoiceScreen();recorder.ondataavailable=null;recorder.onstop=null;
   stvCh=[];stvSec=0;stmr=null;stVStartAt=0;
-  if(!chunks.length||!toUid||toUid===CU?.uid){stVoiceSending=false;stVFinalizing=false;recStatusUid=null;showToast('⚠️ Rien n’a été enregistré.');restartStatusReplyTimer();return;}
+  if(!chunks.length||!toUid||toUid===CU?.uid){stVoiceSending=false;stVFinalizing=false;recStatusUid=null;showToast('⚠️ Rien n’a été enregistré.',viewingCategoryColor());restartStatusReplyTimer();return;}
   const file=voiceFileFromChunks(chunks),mm=Math.floor(dur/60),ss=dur%60,cid=getCID(CU.uid,toUid),t=now();
   let msgRef=null,uploadCommitted=false;
   try{
     msgRef=await db.collection('chats').doc(cid).collection('messages').add({type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     let url=await uploadCloud(file,'audio'),fallbackError='';
     if(!url){try{const storageUrl=await uploadVoiceToFirebase(file);if(storageUrl){await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});url=storageUrl;uploadCommitted=true;}}catch(e){fallbackError=e?.message||'Firebase Storage upload failed';}}
+    if(!url){try{const alt=await uploadToFirebaseStorage(file,'status-voices');if(alt?.url){await msgRef.update({data:alt.url,status:'sent',storage:alt.storage});url=alt.url;uploadCommitted=true;}}catch(e){fallbackError=e?.message||fallbackError||'Firebase Storage fallback failed';}}
     if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
-    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
+    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.',viewingCategoryColor());stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
     if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
     const upd={participants:[CU.uid,toUid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(upd,{merge:true});
@@ -1434,7 +1443,7 @@ async function stopAndSendStatusVoice(){
     db.collection('users').doc(toUid).update(receiverUpd).catch(()=>{db.collection('users').doc(toUid).set(receiverUpd,{merge:true}).catch(()=>{});});
     db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     showToast(t('st_toast_audio_sent'),viewingCategoryColor());
-  }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.');}
+  }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.',viewingCategoryColor());}
   stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();
 }
 function cancelStatusVoice(){
@@ -3188,6 +3197,7 @@ const STATUS_I18N_KEYS={dispo:'st_cat_dispo',revision:'st_cat_revision',aide:'st
 function catLabel(key){return t(STATUS_I18N_KEYS[key])||CATS[key]?.label||key;}
 function applyTranslations(){
   document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=t(node.getAttribute('data-i18n'));});
+  if(curStatusUid){const su=allUsers.find(x=>x.uid===curStatusUid),ssp=activeStatusOf(su);if(ssp?.linkedGroupId&&el('stVJoinGroupLabel'))el('stVJoinGroupLabel').textContent=t('st_join_prefix')+(ssp.linkedGroupName||'');}
   document.querySelectorAll('[data-i18n-ph]').forEach(node=>{node.placeholder=t(node.getAttribute('data-i18n-ph'));});
   document.querySelectorAll('[data-i18n-aria]').forEach(node=>{node.setAttribute('aria-label',t(node.getAttribute('data-i18n-aria')));});
   const langBtn=document.getElementById('langBtn');if(langBtn)langBtn.textContent=appLang.toUpperCase();
@@ -3230,7 +3240,9 @@ function localizeToastMessage(msg){
 function showToast(msg,color){
   const t=el('toast');
   t.textContent=localizeToastMessage(msg);
-  t.style.background=color||'';
+  const statusOpen=el('statusView')?.style.display!=='none'&&el('statusView')?.style.display;
+  const themedColor=color||(statusOpen?viewingCategoryColor():null);
+  t.style.background=themedColor||'';
   t.style.display='block';
   clearTimeout(t._t);
   t._t=setTimeout(()=>t.style.display='none',4000);
