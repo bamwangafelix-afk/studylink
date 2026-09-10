@@ -79,24 +79,28 @@ body.dark #statusCreate .stSection,body.dark #statusCreate .stPhotoEmpty,body.da
 .mp-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;}
 .mpbtn span{font-size:10px;color:var(--sub);}
 /* CHAT INPUT BAR */
-.cin-wrap{display:flex;align-items:center;gap:6px;padding:8px 10px;}
+.cin-wrap{display:flex;align-items:center;gap:6px;padding:8px 10px;position:relative;}
 .cin-emoji{background:none;border:none;cursor:pointer;font-size:22px;flex-shrink:0;padding:4px;}
 .cin-input{flex:1;padding:9px 14px;border-radius:22px;font-size:14px;border:1px solid var(--brd);background:var(--inp);color:var(--txt);margin:0;outline:none;}
 .cin-attach{background:none;border:none;cursor:pointer;flex-shrink:0;padding:4px;color:var(--sub);}
 .cin-attach svg{width:22px;height:22px;fill:currentColor;}
 .cin-camera{background:none;border:none;cursor:pointer;flex-shrink:0;padding:4px;color:var(--sub);}
 .cin-camera svg{width:22px;height:22px;fill:currentColor;}
-.cin-action{background:var(--btnB);color:#fff;border:none;border-radius:50%;width:50px;height:50px;min-width:50px;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .08s linear,box-shadow .16s ease;translate:0 var(--voice-drag-y,0px);}
+.cin-action{background:var(--btnB);color:#fff;border:none;border-radius:50%;width:50px;height:50px;min-width:50px;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .16s ease,box-shadow .16s ease;}
 .cin-action svg{width:22px;height:22px;fill:#fff;}
-.cin-action:active{transform:scale(.96);translate:0 var(--voice-drag-y,0px);}
+.cin-action:active{transform:scale(.96);}
 .cin-action.voice-pending{background:#1565c0;box-shadow:0 0 0 4px rgba(33,150,243,.22);}
 .cin-action.rec{background:#1976d2;animation:pulse 1s infinite;}
-.cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);translate:0 calc(var(--voice-drag-y,0px) - 2px);}
+.cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);}
 .cin-action.haptic-pulse{animation:hapticPulse .26s ease-out;}
 /* Group chat keeps its orange identity in every microphone state; private chat remains blue. */
 #gSendB,#gSendB.voice-pending,#gSendB.rec,#gSendB.voice-locked{background:#e67e22;}
 @keyframes hapticPulse{0%{transform:translateY(var(--voice-drag-y,0px)) scale(1)}35%{transform:translateY(var(--voice-drag-y,0px)) scale(1.12);box-shadow:0 0 0 5px rgba(33,150,243,.32)}100%{transform:translateY(var(--voice-drag-y,0px)) scale(1);box-shadow:none}}
-@keyframes pulse{0%,100%{transform:translateY(var(--voice-drag-y,0px)) scale(1)}50%{transform:translateY(var(--voice-drag-y,0px)) scale(1.1)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.voice-float-indicator{position:absolute;right:10px;bottom:8px;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--btnB);background:var(--card);border:2px solid currentColor;box-shadow:0 4px 14px rgba(0,0,0,.22);opacity:0;pointer-events:none;z-index:4;translate:0 var(--voice-float-y,0px);transition:opacity .1s linear,translate .06s linear;}
+.voice-float-indicator.voice-float-group{color:#e67e22;}
+.voice-float-indicator svg{width:26px;height:26px;fill:currentColor;}
+.voice-float-indicator.is-visible{opacity:1;}
 #vbar,#gvbar{display:none;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,#e3f2fd,#f5fbff);border-top:1px solid #90caf9;}
 #gvbar{background:linear-gradient(90deg,#fff3e0,#fffaf5);border-top-color:#e67e22;}
 #gvbar button,#gvbar [data-voice-hint],#gvbar>span:first-of-type{color:#e67e22;}
@@ -421,5 +425,4 @@ body.dark .subjectCategoryTab.active{background:#7cb8ff;border-color:#7cb8ff;col
 @media(max-width:380px){.subjectCategoryTab{padding:5px 7px;font-size:9px}.subjectOptions .tag{font-size:9px;padding:4px 7px;}}
 
 /* Separate Record and Send controls */
-.cin-record-action{position:relative;z-index:2;}
-.cin-send-action{position:relative;z-index:1;transform:none!important;translate:none!important;animation:none!important;}
+.cin-send-action{position:relative;z-index:2;}

@@ -260,8 +260,8 @@ async function releaseVoiceScreen(){
 }
 function resetRecorderUi(kind){
   const group=kind==='group';
-  const button=el(group?'gRecordB':'recordB');
-  const icon=group?'gRecordIcon':'recordIcon';
+  const button=el(group?'gSendB':'sendB');
+  const icon=group?'gSendIcon':'sendIcon';
   const bar=el(group?'gvbar':'vbar');
   const timer=el(group?'gvTimer':'vTimer');
   const recIndicator=el('gRecIndicator');
@@ -1585,7 +1585,7 @@ function openChat(name,uid){
   el('csBar').style.display='none';
   closeMediaPanel();closeStickers();
   // Setup swipe-up to record on mic button
-  setTimeout(()=>setupVoiceSwipe('recordB',startVoice,stopAndSendVoice,cancelVoice),100);
+  setTimeout(()=>setupVoiceSwipe('sendB',startVoice,stopAndSendVoice,cancelVoice),100);
 
   const cid=getCID(CU.uid,uid);
 
@@ -1691,9 +1691,10 @@ function closeChat(){
 function onMsgInput(){
   if(!curChat)return;
   const hasText=el('mIn').value.trim().length>0;
-  // Send stays a dedicated arrow button; Record has its own control.
   const icon=el('sendIcon');
-  if(icon){setSendIcon('sendIcon');el('sendB').style.background='var(--btnB)';}
+  if(hasText){setSendIcon('sendIcon');el('sendB').style.background='var(--btnB)';}
+  else if(isRec){/* keep the voice-send arrow while recording */}
+  else setMicIcon('sendIcon');
   const cid=getCID(CU.uid,curChat.uid);
   clearTimeout(typDebounce);
   if(hasText){
@@ -1705,7 +1706,9 @@ function onGMsgInput(){
   if(!curGrp)return;
   const hasText=el('gIn').value.trim().length>0;
   const icon=el('gSendIcon');
-  if(icon)setSendIcon('gSendIcon');
+  if(hasText)setSendIcon('gSendIcon');
+  else if(gIsRec){/* keep the voice-send arrow while recording */}
+  else setMicIcon('gSendIcon');
   const gid=curGrp.id;clearTimeout(gTypDebounce);
   if(hasText){
     void setPresenceState('group',gid,'typing',true);
@@ -1837,8 +1840,7 @@ function sendSpecial(type){
 async function sendMsg(){
   const inp=el('mIn');if(!inp.value.trim()||!curChat)return;
   const text=inp.value.trim();inp.value='';
-  // Keep the dedicated Send button as an arrow after a text message.
-  setSendIcon('sendIcon');
+  setMicIcon('sendIcon');
   const cid=getCID(CU.uid,curChat.uid);const t=now();
   clearTimeout(typDebounce);void setPresenceState('private',cid,'typing',false);
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
@@ -1873,7 +1875,7 @@ async function openGroup(postId,name){
     curGrp={id:postId,name};
     pushModalState();
     el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
-    setTimeout(()=>setupVoiceSwipe('gRecordB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
+    setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
     grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||{};const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);});
@@ -2425,7 +2427,7 @@ async function startVoice(fromGesture=false){
     pendingPresenceId=curChat&&CU?getCID(CU.uid,curChat.uid):null;
     recChatId=pendingPresenceId;
     if(recChatId)void setPresenceState('private',recChatId,'recording',true);
-    if(!fromGesture)pulseHaptic(55,el('recordB'));
+    if(!fromGesture)pulseHaptic(55,el('sendB'));
     const s=await getVoiceStream();
     bindRecorderSafety(s,'private');
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
@@ -2435,11 +2437,12 @@ async function startVoice(fromGesture=false){
     mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
     recChatId=pendingPresenceId;
     void keepVoiceScreenOn();
-    el('recordB').classList.remove('voice-pending');
+    el('sendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
     // Button → blue recording state
-    el('recordB').classList.add('rec');el('recordB').style.background='#1976d2';
-    el('recordIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+    el('sendB').classList.add('rec');el('sendB').style.background='#1976d2';
+    el('recordFloatB')?.classList.remove('is-visible');el('recordFloatB')?.style.setProperty('--voice-float-y','0px');
+    el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('vbar').style.display='flex';
     drawBars('vWave',()=>isRec,'#1976d2');
     const refreshVoiceTimer=()=>{vSec=Math.max(0,Math.floor((Date.now()-vStartAt)/1000));const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
@@ -2449,7 +2452,7 @@ async function startVoice(fromGesture=false){
     isRec=false;vStartAt=0;
     if(CU&&(recChatId||pendingPresenceId))void clearPresenceState('private',recChatId||pendingPresenceId);
     recChatId=null;
-    el('recordB').classList.remove('voice-pending','rec','voice-locked');
+    el('sendB').classList.remove('voice-pending','rec','voice-locked');
     void releaseVoiceScreen();
     const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
     showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
@@ -2496,8 +2499,8 @@ async function stopAndSendVoice(){
   // Android may deliver pointerup before MediaRecorder has emitted its first
   // dataavailable event. Let the recorder run briefly before stopping it.
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
-  el('recordB').classList.remove('rec','voice-pending','voice-locked');el('recordB').dataset.voiceLocked='0';el('recordB').style.setProperty('--voice-drag-y','0px');el('recordB').style.background='var(--btnB)';
-  setMicIcon('recordIcon');
+  el('sendB').classList.remove('rec','voice-pending','voice-locked');el('sendB').dataset.voiceLocked='0';el('sendB').style.setProperty('--voice-drag-y','0px');el('sendB').style.background='var(--btnB)';
+  setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
   let chunks=[];
   try{chunks=await collectRecorderChunks(recorder,vCh);}catch(e){console.error('Voice finalize error:',e);}
@@ -2570,8 +2573,8 @@ function cancelVoice(){
   stopWave('vWave');
   void releaseVoiceScreen();
 vCh=[];vSec=0;clearInterval(vInt);
-  el('recordB').classList.remove('rec','voice-pending','voice-locked');el('recordB').dataset.voiceLocked='0';el('recordB').style.setProperty('--voice-drag-y','0px');el('recordB').style.background='var(--btnB)';
-  setMicIcon('recordIcon');
+  el('sendB').classList.remove('rec','voice-pending','voice-locked');el('sendB').dataset.voiceLocked='0';el('sendB').style.setProperty('--voice-drag-y','0px');el('sendB').style.background='var(--btnB)';
+  setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
 }
 // Keep old processVoice/stopVoice/showVoiceReady stubs so smartSend still compiles
@@ -2591,7 +2594,7 @@ async function startGVoice(fromGesture=false){
     pendingGroupPresenceId=curGrp&&CU?curGrp.id:null;
     recGroupId=pendingGroupPresenceId;
     if(recGroupId)void setPresenceState('group',recGroupId,'recording',true);
-    if(!fromGesture)pulseHaptic(55,el('gRecordB'));
+    if(!fromGesture)pulseHaptic(55,el('gSendB'));
     const s=await getVoiceStream();
     bindRecorderSafety(s,'group');
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
@@ -2601,10 +2604,11 @@ async function startGVoice(fromGesture=false){
     gmr.start(200);gIsRec=true;gvSec=0;gVStartAt=Date.now();
     recGroupId=pendingGroupPresenceId;
     void keepVoiceScreenOn();
-    el('gRecordB').classList.remove('voice-pending');
+    el('gSendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
-    el('gRecordB').classList.add('rec');el('gRecordB').style.background='#e67e22';
-    el('gRecordIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
+    el('gSendB').classList.add('rec');el('gSendB').style.background='#e67e22';
+    el('gRecordFloatB')?.classList.remove('is-visible');el('gRecordFloatB')?.style.setProperty('--voice-float-y','0px');
+    el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
     el('gRecIndicator')?.classList.add('recPulse');
     drawBars('gvWave',()=>gIsRec,'#e67e22');
@@ -2615,7 +2619,7 @@ async function startGVoice(fromGesture=false){
     gIsRec=false;gVStartAt=0;
     if(CU&&(recGroupId||pendingGroupPresenceId))void clearPresenceState('group',recGroupId||pendingGroupPresenceId);
     recGroupId=null;
-    el('gRecordB').classList.remove('voice-pending','rec','voice-locked');
+    el('gSendB').classList.remove('voice-pending','rec','voice-locked');
     void releaseVoiceScreen();
     const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
     showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
@@ -2633,8 +2637,8 @@ async function stopAndSendGVoice(){
   const elapsed=Date.now()-(gVStartAt||Date.now());
   const dur=Math.max(gvSec,Math.floor(Math.max(0,elapsed)/1000));
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
-  el('gRecordB').classList.remove('rec','voice-pending','voice-locked');el('gRecordB').dataset.voiceLocked='0';el('gRecordB').style.setProperty('--voice-drag-y','0px');el('gRecordB').style.background='#e67e22';
-  setMicIcon('gRecordIcon');
+  el('gSendB').classList.remove('rec','voice-pending','voice-locked');el('gSendB').dataset.voiceLocked='0';el('gSendB').style.setProperty('--voice-drag-y','0px');el('gSendB').style.background='#e67e22';
+  setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   let chunks=[];
   try{chunks=await collectRecorderChunks(recorder,gvCh);}catch(e){console.error('Group voice finalize error:',e);}
@@ -2696,8 +2700,8 @@ function cancelGVoice(){
   stopWave('gvWave');
   void releaseVoiceScreen();
 gvCh=[];gvSec=0;clearInterval(gvInt);
-  el('gRecordB').classList.remove('rec','voice-pending','voice-locked');el('gRecordB').dataset.voiceLocked='0';el('gRecordB').style.setProperty('--voice-drag-y','0px');el('gRecordB').style.background='#e67e22';
-  setMicIcon('gRecordIcon');
+  el('gSendB').classList.remove('rec','voice-pending','voice-locked');el('gSendB').dataset.voiceLocked='0';el('gSendB').style.setProperty('--voice-drag-y','0px');el('gSendB').style.background='#e67e22';
+  setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   el('gRecIndicator')?.classList.remove('recPulse');
 }
@@ -2708,15 +2712,20 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   btn.dataset.voiceGestureBound='1';
   btn.style.touchAction='none';
   const isStatus=btnId==='stVReplyBtn';
-  const inputId=isStatus?'stVReplyInput':(btnId==='gRecordB'?'gIn':'mIn');
+  const inputId=isStatus?'stVReplyInput':(btnId==='gSendB'?'gIn':'mIn');
   // Keep haptic feedback on the earliest Android touch event as well as the
   // Pointer Events path. The debounce prevents a double pulse on Chrome.
   btn.addEventListener('touchstart',e=>{
     if(e.touches?.length===1&&!v(inputId).trim())vibrate(70);
   },{passive:true});
-  const barId=isStatus?'stVReplyBar':(btnId==='gRecordB'?'gvbar':'vbar');
+  const barId=isStatus?'stVReplyBar':(btnId==='gSendB'?'gvbar':'vbar');
   const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
-  const setDragY=y=>btn.style.setProperty('--voice-drag-y',`${Math.round(y)}px`);
+  const floatId=isStatus?'stVReplyFloat':(btnId==='gSendB'?'gRecordFloatB':'recordFloatB');
+  const float=el(floatId);
+  const setDragY=y=>{
+    const next=Math.round(y);
+    if(float){float.style.setProperty('--voice-float-y',`${next}px`);float.classList.toggle('is-visible',next< -4);}
+  };
   const vibrate=pattern=>pulseHaptic(pattern,btn);
   const hint=()=>el(barId)?.querySelector('[data-voice-hint],[data-status-voice-hint]');
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};

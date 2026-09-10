@@ -9,21 +9,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyLink">
 <meta name="description" content="StudyLink — Connect, Learn, Grow.">
-<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-80">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-80">
-<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-80">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-81">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-81">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-81">
 <title>StudyLink Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-80">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-81">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
 <div id="toast" style="display:none;"></div>
 <div id="installBanner" role="status" aria-live="polite">
-  <img src="icons/studylink-192.png?v=studylink-pwa-80" alt="StudyLink" width="42" height="42">
+  <img src="icons/studylink-192.png?v=studylink-pwa-81" alt="StudyLink" width="42" height="42">
   <div class="install-copy"><strong data-i18n="install_title">Installer l’application StudyLink</strong><span data-i18n="install_hint">Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
   <button type="button" id="installBtn" data-i18n="install_button">Installer l’app</button>
   <button type="button" id="installDismiss" data-i18n-aria="install_close" aria-label="Fermer">×</button>
@@ -82,7 +82,7 @@
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-80" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-81" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -459,12 +459,10 @@
       <button class="cin-camera" onclick="openCamera('p')" title="Take Photo">
         <svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 0 1 8.8 12 3.2 3.2 0 0 1 12 8.8 3.2 3.2 0 0 1 15.2 12 3.2 3.2 0 0 1 12 15.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
       </button>
-      <!-- Separate Record and Send controls: Record may move up; Send stays fixed in the bottom row. -->
-      <button type="button" class="cin-action cin-record-action" id="recordB" style="display:flex;" title="Hold and slide up to record" aria-label="Record voice">
-        <svg id="recordIcon" viewBox="0 0 48 48" width="26" height="26" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
-      </button>
+      <!-- One fixed Send button; the vector Record indicator floats upward during the gesture. -->
+      <span class="voice-float-indicator" id="recordFloatB" aria-hidden="true"><svg viewBox="0 0 48 48" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></span>
       <button type="button" class="cin-action cin-send-action" id="sendB" onclick="smartSend()" style="display:flex;" title="Send message" aria-label="Send message">
-        <svg id="sendIcon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        <svg id="sendIcon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15-2-15 2z"/></svg>
       </button>
     </div>
   </div>
@@ -544,9 +542,7 @@
       <button class="cin-camera" onclick="openCamera('g')" title="Take Photo" style="color:#e67e22;">
         <svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 0 1 8.8 12 3.2 3.2 0 0 1 12 8.8 3.2 3.2 0 0 1 15.2 12 3.2 3.2 0 0 1 12 15.2M20 4h-3.17L15 2H9L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/></svg>
       </button>
-      <button type="button" class="cin-action cin-record-action" id="gRecordB" style="display:flex;background:#e67e22;" title="Hold and slide up to record" aria-label="Record voice">
-        <svg id="gRecordIcon" viewBox="0 0 48 48" width="26" height="26" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
-      </button>
+      <span class="voice-float-indicator voice-float-group" id="gRecordFloatB" aria-hidden="true"><svg viewBox="0 0 48 48" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></span>
       <button type="button" class="cin-action cin-send-action" id="gSendB" onclick="smartGSend()" style="display:flex;background:#e67e22;" title="Send message" aria-label="Send message">
         <svg id="gSendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15-2-15 2z"/></svg>
       </button>
@@ -613,6 +609,6 @@
   </div>
 </div>
 
-<script defer src="js/app-v20.js?v=studylink-pwa-80"></script>
+<script defer src="js/app-v20.js?v=studylink-pwa-81"></script>
 </body>
 </html>
