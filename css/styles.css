@@ -419,3 +419,7 @@ body.dark .subjectPicker{background:#142437;}
 body.dark .subjectCategoryTab{border-color:#466078;color:#c8d9ee;}
 body.dark .subjectCategoryTab.active{background:#7cb8ff;border-color:#7cb8ff;color:#07182b;}
 @media(max-width:380px){.subjectCategoryTab{padding:5px 7px;font-size:9px}.subjectOptions .tag{font-size:9px;padding:4px 7px;}}
+
+/* Separate Record and Send controls */
+.cin-record-action{position:relative;z-index:2;}
+.cin-send-action{position:relative;z-index:1;transform:none!important;translate:none!important;animation:none!important;}
