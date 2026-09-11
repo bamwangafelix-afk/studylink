@@ -1874,20 +1874,32 @@ async function sendMsg(){
 
 // ── GROUP ──
 async function openGroup(postId,name){
-  if(!postId||postId==='undefined'){showToast('❌ Group not found');return;}
+  if(!postId||postId==='undefined'){showToast(t('group_not_found'));return;}
   showOv(true);
+  const gref=db.collection('groups').doc(postId);
+  const localPost=cachedPosts.find(p=>p.id===postId&&p.type==='Group');
+  let groupData=null;
   try{
-    const gref=db.collection('groups').doc(postId);
     const gs=await gref.get();
-    if(!gs.exists){showToast('❌ Group not found');showOv(false);return;}
-    if(!(gs.data().members||[]).includes(CU.uid))await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
-    curGrp={id:postId,name};
+    if(gs.exists)groupData=gs.data()||{};
+  }catch(e){
+    // Firestore can reject a server read while the device is temporarily offline.
+    // The group post already contains enough information to open the conversation shell.
+    console.warn('Group metadata unavailable; using cached post:',e?.message||e);
+    groupData=localPost?{name:localPost.groupName||name,creatorUid:localPost.uid,members:localPost.members||[]} : null;
+  }
+  if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
+  try{
+    if(CU?.uid&&navigator.onLine!==false&&!(groupData.members||[]).includes(CU.uid)){
+      await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)}).catch(()=>{});
+    }
+    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default')};
     pushModalState();
-    el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
+    el('grpT').textContent='🏫 '+curGrp.name;el('groupW').style.display='flex';
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
-    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||{};const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);});
+    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
     grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt').limitToLast(50).onSnapshot(sn=>{
       const mb=el('grpB');
       sn.docChanges().forEach(change=>{
@@ -1900,8 +1912,8 @@ async function openGroup(postId,name){
         else if(change.type==='modified'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(ex)ex.replaceWith(node);else mb.appendChild(node);}
       });
       mb.scrollTop=mb.scrollHeight;
-    },e=>console.log(e));
-  }catch(e){showToast('❌ '+e.message);}
+    },e=>console.warn('Group messages unavailable:',e?.message||e));
+  }catch(e){showToast(t('group_unavailable'));}
   showOv(false);
 }
 function closeGroup(){
@@ -3117,7 +3129,7 @@ const I18N={
     msg_seen:'Vu',
     prompt_poll_question:'Question du sondage :',prompt_event_details:'Détails de l’événement :',
     prompt_location:'Position :',prompt_enter_url:'Entre l’URL :',
-    group_member:'membre',group_members:'membres',
+    group_member:'membre',group_members:'membres',group_not_found:'Groupe introuvable',group_unavailable:'Le groupe est temporairement indisponible. Vérifiez votre connexion et réessayez.',group_name_default:'Groupe',
     st_new_title:'Nouveau statut',st_publish:'Publier',st_photo_label:'Photo (optionnel)',
     st_add_photo:'Ajouter une photo',st_photo_hint:'Notes, bureau de révision, selfie...',
     st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',stWhoCanSee:'Qui peut voir votre statut ?',stAnyone:'Tout le monde',stCountry:'Uniquement mon pays',stUniversity:'Uniquement mon université',stMajorCourse:'Uniquement ma filière / mon cours',st_not_available:'❌ Ce statut n’est pas disponible pour vous',
@@ -3172,7 +3184,7 @@ const I18N={
     msg_seen:'Seen',
     prompt_poll_question:'Poll question:',prompt_event_details:'Event details:',
     prompt_location:'Location:',prompt_enter_url:'Enter URL:',
-    group_member:'member',group_members:'members',
+    group_member:'member',group_members:'members',group_not_found:'Group not found',group_unavailable:'The group is temporarily unavailable. Check your connection and try again.',group_name_default:'Group',
     st_new_title:'New status',st_publish:'Post',st_photo_label:'Photo (optional)',st_add_photo:'Add a photo',
     st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',stWhoCanSee:'Who can see your status?',stAnyone:'Anyone',stCountry:'Only my country',stUniversity:'Only my university',stMajorCourse:'Only my major/Course',st_not_available:'❌ This status is not available to you',
     st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
