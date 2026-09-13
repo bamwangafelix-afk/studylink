@@ -1508,6 +1508,51 @@ function joinStatusGroup(){
 }
 
 // ── FIND ──
+// ── FIND: top-level Students / Groups / Library ──
+let findTop='students';
+function switchFindTop(tab,el2){
+  findTop=tab;
+  document.querySelectorAll('#findTopTabs .stab').forEach(b=>b.classList.remove('on'));
+  el2.classList.add('on');
+  el('findPanelStudents').style.display=tab==='students'?'block':'none';
+  el('findPanelGroups').style.display=tab==='groups'?'block':'none';
+  el('findPanelLibrary').style.display=tab==='library'?'block':'none';
+  if(tab==='groups')renderFindGroups();
+  if(tab==='library')renderFindLibrary();
+}
+async function renderFindGroups(q=""){
+  const f=el('findGroupsL');
+  f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_loading_groups')}</p>`;
+  let snap;
+  try{snap=await db.collection('posts').where('type','==','Group').limit(200).get();}
+  catch(e){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_groups_error')}</p>`;return;}
+  let groups=snap.docs.map(d=>({id:d.id,...d.data()}));
+  groups.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+  if(q){const s=q.toLowerCase();groups=groups.filter(g=>(g.groupName||'').toLowerCase().includes(s));}
+  const myGroups=groups.filter(g=>g.uid===CU?.uid);
+  const otherGroups=groups.filter(g=>g.uid!==CU?.uid);
+  if(!groups.length){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_no_groups')}</p>`;return;}
+  let html='';
+  if(myGroups.length){
+    html+=`<p style="font-weight:bold;font-size:13px;margin:6px 0;">${t('find_my_groups')}</p>`;
+    myGroups.forEach(g=>{html+=groupCardHtml(g,true);});
+  }
+  if(otherGroups.length){
+    html+=`<p style="font-weight:bold;font-size:13px;margin:14px 0 6px;">${t('find_discover_groups')}</p>`;
+    otherGroups.forEach(g=>{html+=groupCardHtml(g,false);});
+  }
+  f.innerHTML=html;
+}
+function groupCardHtml(g,isMine){
+  return `<div class="card">
+    <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.groupName||'Group')}</b>
+    <p style="font-size:13px;margin:6px 0;">${esc(g.text||'')}</p>
+    <button class="btn o" style="width:100%;" onclick="openGroup('${g.id}','${e2(g.groupName||'Group')}')">${isMine?t('find_manage_group'):t('home_join_group')}</button>
+  </div>`;
+}
+function renderFindLibrary(){
+  el('findLibraryL').innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('find_library_empty')}</p>`;
+}
 function switchFT(t,el2){ftab=t;document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));el2.classList.add('on');renderFind();}
 function toggleFav(uid){
   const wasFav=favs.has(uid);
@@ -3104,6 +3149,11 @@ const I18N={
     find_tab_all:'Tous',find_tab_match:'Match',find_tab_favs:'Favoris',
     find_loading:'Chargement des étudiants...',find_no_results:'Aucun étudiant trouvé.',
     find_you_badge:'Toi',find_match_label:'Match',find_own_profile:'C’est ton profil',
+    find_top_students:'Étudiants',find_top_groups:'Groupes',find_top_library:'Bibliothèque',
+    find_groups_search_ph:'Rechercher un groupe...',find_loading_groups:'Chargement des groupes...',
+    find_groups_error:'Impossible de charger les groupes.',find_no_groups:'Aucun groupe pour l’instant.',
+    find_my_groups:'Mes groupes',find_discover_groups:'Découvrir',find_manage_group:'Gérer',
+    find_library_empty:'Aucun cours pour l’instant. Reviens bientôt !',
     post_title:'Créer une publication',post_as_label:'Publier en tant que :',postWhoCanSee:'Qui peut voir ta publication ?',postAnyone:'Tout le monde',postCountry:'Uniquement mon pays',postUniversity:'Uniquement mon université',postMajorCourse:'Uniquement ma filière / mon cours',
     post_individual:'Individuel',post_study_group:'Groupe d’étude',
     post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',
@@ -3159,6 +3209,11 @@ const I18N={
     find_tab_all:'All',find_tab_match:'Match',find_tab_favs:'Favs',
     find_loading:'Loading students...',find_no_results:'No students found.',
     find_you_badge:'You',find_match_label:'Match',find_own_profile:'This is your profile',
+    find_top_students:'Students',find_top_groups:'Groups',find_top_library:'Library',
+    find_groups_search_ph:'Search groups...',find_loading_groups:'Loading groups...',
+    find_groups_error:'Could not load groups.',find_no_groups:'No groups yet.',
+    find_my_groups:'My Groups',find_discover_groups:'Discover',find_manage_group:'Manage',
+    find_library_empty:'No courses yet. Check back soon!',
     post_title:'Create Post',post_as_label:'Post As:',postWhoCanSee:'Who can see your post?',postAnyone:'Anyone',postCountry:'Only my country',postUniversity:'Only my university',postMajorCourse:'Only my major/Course',
     post_individual:'Individual',post_study_group:'Study Group',
     post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',
@@ -3225,6 +3280,11 @@ function toggleLang(){
   renderStatusBar();
   if(typeof updatePC==='function'&&MP)updatePC();
   if(typeof renderHome==='function'&&Array.isArray(cachedPosts)&&cachedPosts.length&&el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
+  if(el('Pfind')?.style.display!=='none'){
+    if(findTop==='students')renderFind(el('findQ')?.value||'');
+    else if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
+    else if(findTop==='library')renderFindLibrary();
+  }
   if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);
 }
 
