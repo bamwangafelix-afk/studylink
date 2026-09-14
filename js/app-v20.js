@@ -33,6 +33,8 @@ function consumeModalState(){
 function closeTopModal(){
   if(el('statusView')?.style.display==='flex'){closeStatusView();return;}
   if(el('statusCreate')?.style.display==='flex'){closeStatusCreate();return;}
+  if(el('inviteMembersView')?.style.display==='flex'){closeInviteMembers();return;}
+  if(el('groupManageView')?.style.display==='flex'){closeGroupManage();return;}
   if(el('profileView')?.style.display==='flex'){closeProfileView();return;}
   if(el('groupW')&&getComputedStyle(el('groupW')).display!=='none'){closeGroup();return;}
   if(el('chatW')&&getComputedStyle(el('chatW')).display!=='none'){closeChat();return;}
@@ -877,7 +879,12 @@ function loadMorePosts(){
       }).catch(()=>{});
   }
 }
-function toggleGN(val){el('gnW').style.display=val==='Group'?'block':'none';}
+function toggleGN(val){
+  el('gnW').style.display=val==='Group'?'block':'none';
+  const lbl=el('pVisLabel');
+  if(val==='Group'){lbl.removeAttribute('data-i18n');lbl.textContent=t('postWhoCanJoin');}
+  else{lbl.setAttribute('data-i18n','postWhoCanSee');lbl.textContent=t('postWhoCanSee');}
+}
 async function addPost(){
   if(!MP?.name)return alert('Complete your profile first');
   const text=v('pText');if(!text)return alert('Write something');
@@ -888,7 +895,7 @@ async function addPost(){
   showOv(true);
   try{
     const ref=await db.collection('posts').add({type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],accessRule:visibility,creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];renderSubjectPicker('post');
@@ -945,7 +952,7 @@ function renderHome(posts,limit){
       ${tags?`<div style="margin-bottom:6px;">${tags}</div>`:''}
       <p style="font-size:13px;margin-bottom:8px;">${esc(p.text)}</p>
       <div style="display:flex;gap:6px;">
-        ${isG?`<button class="btn o" style="flex:1;" onclick="openGroup('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${t('home_join_group')}</button>`:
+        ${isG?`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${t('home_join_group')}</button>`:
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
       </div>
@@ -1503,8 +1510,8 @@ function joinStatusGroup(){
   if(!sp?.linkedGroupId)return;
   const gid=sp.linkedGroupId,gname=sp.linkedGroupName;
   closeStatusView();
-  if(typeof openGroup==='function')openGroup(gid,gname);
-  else showToast('Groupe introuvable');
+  if(typeof handleGroupAccess==='function')handleGroupAccess(gid,gname);
+  else showToast(t('group_not_found'));
 }
 
 // ── FIND ──
@@ -1524,13 +1531,13 @@ async function renderFindGroups(q=""){
   const f=el('findGroupsL');
   f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_loading_groups')}</p>`;
   let snap;
-  try{snap=await db.collection('posts').where('type','==','Group').limit(200).get();}
+  try{snap=await db.collection('groups').limit(200).get();}
   catch(e){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_groups_error')}</p>`;return;}
   let groups=snap.docs.map(d=>({id:d.id,...d.data()}));
   groups.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
-  if(q){const s=q.toLowerCase();groups=groups.filter(g=>(g.groupName||'').toLowerCase().includes(s));}
-  const myGroups=groups.filter(g=>g.uid===CU?.uid);
-  const otherGroups=groups.filter(g=>g.uid!==CU?.uid);
+  if(q){const s=q.toLowerCase();groups=groups.filter(g=>(g.name||'').toLowerCase().includes(s));}
+  const myGroups=groups.filter(g=>g.creatorUid===CU?.uid);
+  const otherGroups=groups.filter(g=>g.creatorUid!==CU?.uid);
   if(!groups.length){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_no_groups')}</p>`;return;}
   let html='';
   if(myGroups.length){
@@ -1543,16 +1550,96 @@ async function renderFindGroups(q=""){
   }
   f.innerHTML=html;
 }
+function accessRuleLabel(rule){
+  return {anyone:t('rule_anyone'),country:t('rule_country'),university:t('rule_university'),major:t('rule_major'),request:t('rule_request')}[rule]||t('rule_anyone');
+}
 function groupCardHtml(g,isMine){
+  const post=cachedPosts.find(p=>p.id===g.id);
+  const desc=post?.text||'';
+  const isMember=(g.members||[]).includes(CU?.uid);
+  const isPending=(g.pendingRequests||[]).includes(CU?.uid);
+  let actionLabel=t('home_join_group'),actionCls='o';
+  if(isMine)actionLabel=t('find_manage_group');
+  else if(isMember)actionLabel=t('group_open');
+  else if(isPending)actionLabel=t('group_pending');
+  else if(g.accessRule==='request')actionLabel=t('group_request_to_join');
   return `<div class="card">
-    <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.groupName||'Group')}</b>
-    <p style="font-size:13px;margin:6px 0;">${esc(g.text||'')}</p>
-    <button class="btn o" style="width:100%;" onclick="openGroup('${g.id}','${e2(g.groupName||'Group')}')">${isMine?t('find_manage_group'):t('home_join_group')}</button>
+    <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.name||'Group')}</b>
+    <span style="display:inline-block;margin-left:6px;font-size:10px;background:var(--card2,#eef2f9);color:var(--sub);padding:2px 7px;border-radius:8px;">${accessRuleLabel(g.accessRule)}</span>
+    <p style="font-size:13px;margin:6px 0;">${esc(desc)}</p>
+    <button class="btn ${actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
   </div>`;
 }
-function renderFindLibrary(){
-  el('findLibraryL').innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('find_library_empty')}</p>`;
+async function handleGroupAccess(postId,name){
+  showOv(true);
+  let gs;
+  try{gs=await db.collection('groups').doc(postId).get();}catch(e){showOv(false);showToast(t('group_unavailable'));return;}
+  if(!gs.exists){showOv(false);showToast(t('group_not_found'));return;}
+  const g=gs.data();
+  const rule=g.accessRule||'anyone';
+  if((g.members||[]).includes(CU.uid)){showOv(false);openGroup(postId,name);return;}
+  if(rule==='request'){
+    if((g.pendingRequests||[]).includes(CU.uid)){showOv(false);showToast(t('group_still_pending'));return;}
+    try{
+      await db.collection('groups').doc(postId).update({pendingRequests:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+      db.collection('notifications').add({toUid:g.creatorUid,icon:'🙋',title:t('notif_join_request_title'),body:(MP?.name||'Someone')+' '+t('notif_join_request_body')+' '+(g.name||name),read:false,groupId:postId,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+      showToast(t('group_request_sent'));
+    }catch(e){showToast('❌ '+e.message);}
+    showOv(false);return;
+  }
+  let eligible=true;
+  if(rule==='country')eligible=(MP?.country||'')===g.creatorCountry;
+  else if(rule==='university')eligible=(MP?.uni||'')===g.creatorUni;
+  else if(rule==='major')eligible=(MP?.course||'')===g.creatorCourse;
+  if(!eligible){
+    showOv(false);
+    const reason={country:t('group_refused_country'),university:t('group_refused_university'),major:t('group_refused_major')}[rule]||t('group_refused_generic');
+    showToast(reason);
+    return;
+  }
+  try{await db.collection('groups').doc(postId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});}catch(e){}
+  showOv(false);
+  openGroup(postId,name);
 }
+let libraryView={level:'categories',category:null};
+function renderFindLibrary(){
+  libraryView={level:'categories',category:null};
+  renderLibraryView();
+}
+function renderLibraryView(){
+  const crumb=el('libraryBreadcrumb');
+  const l=el('findLibraryL');
+  if(libraryView.level==='categories'){
+    crumb.style.display='none';
+    const cats=Object.keys(SUBJECT_CATEGORIES);
+    l.innerHTML=cats.map(k=>{
+      const c=SUBJECT_CATEGORIES[k];
+      const name=appLang==='fr'?c.fr:c.en;
+      return `<div class="card" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="openLibraryCategory('${k}')">
+        <b style="color:var(--btnB);font-size:14px;">📁 ${esc(name)}</b>
+        <span style="color:var(--sub);font-size:12px;">${c.items.length} ${t('library_courses_count')} ›</span>
+      </div>`;
+    }).join('');
+  }else if(libraryView.level==='courses'){
+    const c=SUBJECT_CATEGORIES[libraryView.category];
+    const name=appLang==='fr'?c.fr:c.en;
+    crumb.style.display='flex';
+    crumb.innerHTML=`<button onclick="backToLibraryCategories()" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;">← ${t('library_all_categories')}</button><span style="margin:0 6px;color:var(--sub);">/</span><b style="font-size:13px;">${esc(name)}</b>`;
+    l.innerHTML=c.items.map(course=>`<div class="card" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="openLibraryCourse('${e2(course)}')">
+      <b style="color:var(--btnB);font-size:14px;">📘 ${esc(course)}</b>
+      <span style="color:var(--sub);font-size:12px;">›</span>
+    </div>`).join('');
+  }else if(libraryView.level==='course'){
+    const c=SUBJECT_CATEGORIES[libraryView.category];
+    const catName=appLang==='fr'?c.fr:c.en;
+    crumb.style.display='flex';crumb.style.flexWrap='wrap';
+    crumb.innerHTML=`<button onclick="backToLibraryCategories()" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;">${t('library_all_categories')}</button><span style="margin:0 6px;color:var(--sub);">/</span><button onclick="openLibraryCategory('${libraryView.category}')" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;">${esc(catName)}</button><span style="margin:0 6px;color:var(--sub);">/</span><b style="font-size:13px;">${esc(libraryView.course)}</b>`;
+    l.innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('find_library_empty')}</p>`;
+  }
+}
+function openLibraryCategory(key){libraryView={level:'courses',category:key};renderLibraryView();}
+function openLibraryCourse(course){libraryView.level='course';libraryView.course=course;renderLibraryView();}
+function backToLibraryCategories(){libraryView={level:'categories',category:null};renderLibraryView();}
 function switchFT(t,el2){ftab=t;document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));el2.classList.add('on');renderFind();}
 function toggleFav(uid){
   const wasFav=favs.has(uid);
@@ -1935,9 +2022,6 @@ async function openGroup(postId,name){
   }
   if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
   try{
-    if(CU?.uid&&navigator.onLine!==false&&!(groupData.members||[]).includes(CU.uid)){
-      await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)}).catch(()=>{});
-    }
     curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default')};
     pushModalState();
     el('grpT').textContent='🏫 '+curGrp.name;el('groupW').style.display='flex';
@@ -3154,6 +3238,24 @@ const I18N={
     find_groups_error:'Impossible de charger les groupes.',find_no_groups:'Aucun groupe pour l’instant.',
     find_my_groups:'Mes groupes',find_discover_groups:'Découvrir',find_manage_group:'Gérer',
     find_library_empty:'Aucun cours pour l’instant. Reviens bientôt !',
+    library_courses_count:'cours',library_all_categories:'Toutes les catégories',
+    postRequestToJoin:'Demande d’accès',postWhoCanJoin:'Qui peut rejoindre ton groupe ?',
+    rule_anyone:'Tout le monde',rule_country:'Mon pays',rule_university:'Mon université',rule_major:'Ma matière',rule_request:'Sur demande',
+    group_open:'Ouvrir le groupe',group_pending:'En attente',group_request_to_join:'Demander à rejoindre',
+    group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée',
+    group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
+    group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
+    group_refused_major:'❌ Ce groupe est réservé aux étudiants de la même matière',
+    group_refused_generic:'❌ Tu n’es pas éligible pour rejoindre ce groupe',
+    notif_join_request_title:'Nouvelle demande',notif_join_request_body:'veut rejoindre',
+    group_loading:'Chargement...',group_no_pending:'Aucune demande en attente',
+    group_accept:'Accepter',group_decline:'Refuser',group_member_added:'✅ Membre ajouté',
+    group_request_declined:'Demande refusée',group_pending_requests:'Demandes en attente',
+    group_members_label:'Membres',group_invite_members:'Inviter des membres',group_invite:'Inviter',
+    group_already_member:'Déjà membre',group_invite_sent:'Invitation envoyée à {name}',
+    notif_group_invite_title:'Invitation à un groupe',notif_group_invite_body:'t’a invité à rejoindre',
+    notif_request_accepted_title:'Demande acceptée',notif_request_accepted_body:'Ta demande pour rejoindre le groupe a été acceptée !',
+    notif_request_declined_title:'Demande refusée',notif_request_declined_body:'Ta demande pour rejoindre le groupe a été refusée.',
     post_title:'Créer une publication',post_as_label:'Publier en tant que :',postWhoCanSee:'Qui peut voir ta publication ?',postAnyone:'Tout le monde',postCountry:'Uniquement mon pays',postUniversity:'Uniquement mon université',postMajorCourse:'Uniquement ma filière / mon cours',
     post_individual:'Individuel',post_study_group:'Groupe d’étude',
     post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',
@@ -3214,6 +3316,24 @@ const I18N={
     find_groups_error:'Could not load groups.',find_no_groups:'No groups yet.',
     find_my_groups:'My Groups',find_discover_groups:'Discover',find_manage_group:'Manage',
     find_library_empty:'No courses yet. Check back soon!',
+    library_courses_count:'courses',library_all_categories:'All categories',
+    postRequestToJoin:'Request to Join',postWhoCanJoin:'Who can join your group?',
+    rule_anyone:'Anyone',rule_country:'My Country',rule_university:'My University',rule_major:'My Course',rule_request:'By Request',
+    group_open:'Open Group',group_pending:'Pending',group_request_to_join:'Request to Join',
+    group_still_pending:'Your request is still pending',group_request_sent:'Request sent',
+    group_refused_country:'❌ This group is only for students from the same country',
+    group_refused_university:'❌ This group is only for students from the same university',
+    group_refused_major:'❌ This group is only for students in the same course',
+    group_refused_generic:'❌ You’re not eligible to join this group',
+    notif_join_request_title:'New request',notif_join_request_body:'wants to join',
+    group_loading:'Loading...',group_no_pending:'No pending requests',
+    group_accept:'Accept',group_decline:'Decline',group_member_added:'✅ Member added',
+    group_request_declined:'Request declined',group_pending_requests:'Pending Requests',
+    group_members_label:'Members',group_invite_members:'Invite Members',group_invite:'Invite',
+    group_already_member:'Already a member',group_invite_sent:'Invite sent to {name}',
+    notif_group_invite_title:'Group Invite',notif_group_invite_body:'invited you to join',
+    notif_request_accepted_title:'Request Accepted',notif_request_accepted_body:'Your request to join the group was accepted!',
+    notif_request_declined_title:'Request Declined',notif_request_declined_body:'Your request to join the group was declined.',
     post_title:'Create Post',post_as_label:'Post As:',postWhoCanSee:'Who can see your post?',postAnyone:'Anyone',postCountry:'Only my country',postUniversity:'Only my university',postMajorCourse:'Only my major/Course',
     post_individual:'Individual',post_study_group:'Study Group',
     post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',
@@ -3283,9 +3403,103 @@ function toggleLang(){
   if(el('Pfind')?.style.display!=='none'){
     if(findTop==='students')renderFind(el('findQ')?.value||'');
     else if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
-    else if(findTop==='library')renderFindLibrary();
+    else if(findTop==='library')renderLibraryView();
   }
   if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);
+}
+
+// ── GROUP MANAGEMENT (owner) ──
+let curManageGroupId=null;
+async function openManageGroup(postId){
+  curManageGroupId=postId;
+  pushModalState();
+  el('groupManageView').style.display='flex';
+  el('gmTitle').textContent=t('group_loading');
+  el('gmPending').innerHTML='';el('gmMembers').innerHTML='';
+  let gs;
+  try{gs=await db.collection('groups').doc(postId).get();}catch(e){showToast(t('group_unavailable'));closeGroupManage();return;}
+  if(!gs.exists){showToast(t('group_not_found'));closeGroupManage();return;}
+  const g=gs.data();
+  el('gmTitle').textContent='🏫 '+(g.name||'');
+  const pendingIds=g.pendingRequests||[];
+  const memberIds=g.members||[];
+  if(!pendingIds.length){
+    el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_no_pending')}</p>`;
+  }else{
+    el('gmPending').innerHTML=pendingIds.map(uid=>{
+      const u=allUsers.find(x=>x.uid===uid);
+      const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
+      return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
+        <b style="flex:1;font-size:14px;">${esc(u?.name||'Utilisateur')}</b>
+        <button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',true)">${t('group_accept')}</button>
+        <button class="btn r" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',false)">${t('group_decline')}</button>
+      </div>`;
+    }).join('');
+  }
+  el('gmMembers').innerHTML=memberIds.map(uid=>{
+    const u=allUsers.find(x=>x.uid===uid);
+    const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
+    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+      <div style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
+      <span style="font-size:13px;">${esc(u?.name||'Utilisateur')}${uid===g.creatorUid?' 👑':''}</span>
+    </div>`;
+  }).join('');
+}
+function closeGroupManage(){el('groupManageView').style.display='none';curManageGroupId=null;consumeModalState();}
+async function respondGroupRequest(uid,accept){
+  if(!curManageGroupId)return;
+  const gref=db.collection('groups').doc(curManageGroupId);
+  try{
+    if(accept){
+      await gref.update({members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
+      db.collection('notifications').add({toUid:uid,icon:'✅',title:t('notif_request_accepted_title'),body:t('notif_request_accepted_body'),read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+    }else{
+      await gref.update({pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
+      db.collection('notifications').add({toUid:uid,icon:'❌',title:t('notif_request_declined_title'),body:t('notif_request_declined_body'),read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+    }
+    showToast(accept?t('group_member_added'):t('group_request_declined'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+function openInviteMembers(){
+  el('inviteSearchQ').value='';
+  el('inviteMembersView').style.display='flex';
+  pushModalState();
+  renderInviteSearch('');
+}
+function closeInviteMembers(){el('inviteMembersView').style.display='none';consumeModalState();}
+function renderInviteSearch(q){
+  const l=el('inviteSearchL');
+  let list=allUsers.filter(u=>u.uid!==CU?.uid);
+  if(q){const s=q.toLowerCase();list=list.filter(u=>(u.name||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s));}
+  list=list.slice(0,30);
+  if(!list.length){l.innerHTML=`<p style="text-align:center;color:#888;">${t('find_no_results')}</p>`;return;}
+  l.innerHTML=list.map(u=>{
+    const av=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
+    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
+      <span style="flex:1;font-size:13px;">${esc(u.name||'?')}</span>
+      <button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite')}</button>
+    </div>`;
+  }).join('');
+}
+async function sendGroupInvite(uid,name){
+  if(!curManageGroupId)return;
+  try{
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    const g=gs.data()||{};
+    if((g.members||[]).includes(uid)){showToast(t('group_already_member'));return;}
+    await db.collection('notifications').add({toUid:uid,icon:'🏫',title:t('notif_group_invite_title'),body:(MP?.name||'Someone')+' '+t('notif_group_invite_body')+' '+(g.name||''),read:false,groupId:curManageGroupId,groupName:g.name||'',isGroupInvite:true,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    showToast(t('group_invite_sent').replace('{name}',name));
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function acceptGroupInvite(groupId,notifId){
+  try{
+    await db.collection('groups').doc(groupId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+    if(notifId)await db.collection('notifications').doc(notifId).update({read:true,isGroupInvite:false}).catch(()=>{});
+    showToast(t('group_member_added'));
+  }catch(e){showToast('❌ '+e.message);}
 }
 
 // ── HELPERS ──
