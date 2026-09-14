@@ -1,0 +1,13 @@
+theme: jekyll-theme-minimal
+
+# Site settings
+title: StudyLink
+description: A collaborative learning platform
+url: https://bamwangafelix-afk.github.io/studylink
+
+# GitHub Pages settings
+github:
+  repository_url: https://github.com/bamwangafelix-afk/studylink
+
+# Markdown processing
+markdown: kramdown
