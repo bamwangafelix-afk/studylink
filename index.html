@@ -390,6 +390,24 @@
   </div>
 </div>
 
+<!-- INVITE TO STUDY -->
+<div class="cwin" id="studyInviteView" style="z-index:283;">
+  <div class="chdr" style="align-items:center;">
+    <button class="profile-back-btn" onclick="closeStudyInvite()" aria-label="Retour">←</button>
+    <div class="profile-header-title" data-i18n="invite_to_study">Invite to Study</div>
+    <div style="width:24px;"></div>
+  </div>
+  <div style="overflow-y:auto;flex:1;padding:18px 16px 40px;">
+    <div id="siTargetHeader" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;"></div>
+    <p class="stSection" data-i18n="invite_course_label">Course</p>
+    <div id="siCatSel" style="display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 10px;"></div>
+    <div id="siSubjSel" style="display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;max-height:150px;overflow-y:auto;"></div>
+    <p class="stSection" data-i18n="invite_message_label">Message (optional)</p>
+    <textarea id="siMsg" rows="3" placeholder="Let's study together..." data-i18n-ph="invite_message_ph"></textarea>
+    <button class="btn inv" style="margin-top:14px;" onclick="sendStudyInvite()" data-i18n="invite_send">Send Invitation</button>
+  </div>
+</div>
+
 <!-- PROFILE VIEW -->
 <div class="cwin" id="profileView" style="z-index:280;">
   <div class="chdr" style="align-items:center;">
@@ -406,7 +424,9 @@
     <div id="pvIntent" style="margin-bottom:10px;"></div>
     <div id="pvLangs" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:10px;"></div>
     <div id="pvSkills" style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-bottom:20px;"></div>
+    <div id="pvStudyTogether" style="margin-bottom:12px;"></div>
     <button id="pvMsgBtn" class="btn" style="width:100%;padding:13px;" data-i18n="home_message">Message</button>
+    <button id="pvInviteBtn" class="btn inv" style="width:100%;padding:13px;margin-top:8px;" data-i18n="invite_to_study">Invite to Study</button>
   </div>
 </div>
 
