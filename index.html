@@ -9,21 +9,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyLink">
 <meta name="description" content="StudyLink — Connect, Learn, Grow.">
-<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-84">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-84">
-<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-84">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-85">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-85">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-85">
 <title>StudyLink Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-84">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-85">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
 <div id="toast" style="display:none;"></div>
 <div id="installBanner" role="status" aria-live="polite">
-  <img src="icons/studylink-192.png?v=studylink-pwa-84" alt="StudyLink" width="42" height="42">
+  <img src="icons/studylink-192.png?v=studylink-pwa-85" alt="StudyLink" width="42" height="42">
   <div class="install-copy"><strong data-i18n="install_title">Installer l’application StudyLink</strong><span data-i18n="install_hint">Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
   <button type="button" id="installBtn" data-i18n="install_button">Installer l’app</button>
   <button type="button" id="installDismiss" data-i18n-aria="install_close" aria-label="Fermer">×</button>
@@ -82,7 +82,7 @@
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-84" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-85" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -107,16 +107,39 @@
 
 <!-- ME -->
 <div id="Pme" class="page">
-<h3>My Profile</h3>
-<div class="card" id="pcardEl" style="position:relative;overflow:hidden;">
-  <div style="display:flex;gap:12px;align-items:center;">
-    <div style="position:relative;flex-shrink:0;"><img id="pcPic" src="" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);"><span id="pcDot" style="position:absolute;right:1px;bottom:1px;width:16px;height:16px;border-radius:50%;background:#22c55e;border:3px solid #fff;"></span></div>
-    <div style="min-width:0;flex:1;"><b id="pcName" style="font-size:16px;display:block;"></b><div id="pcBio" style="font-size:12px;color:#6b7280;margin-top:3px;"></div><div id="pcInfo" style="font-size:12px;color:#405a78;margin-top:5px;line-height:1.45;"></div></div>
+  <h3 style="margin-bottom:12px;" data-i18n="me_title">My Profile</h3>
+  <div id="pcardEl" style="display:none;" class="pcard">
+    <div class="pcard-av"><div class="avatar" id="pcPic">👤</div><div class="odot" id="pcDot"></div></div>
+    <div style="flex:1;overflow:hidden;"><b id="pcName" style="font-size:16px;display:block;"></b><p id="pcBio" style="font-size:11px;opacity:.8;font-style:italic;"></p><p id="pcInfo" style="font-size:12px;opacity:.85;"></p><div id="pcIntent"></div></div>
   </div>
-  <div id="pcActions" style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;"></div>
-</div>
-<div id="disconnectBtn" style="margin:10px 0 0;text-align:center;"></div>
-<div id="EF" style="display:none;margin-top:10px;"></div>
+  <div class="card">
+    <p style="font-weight:bold;margin-bottom:8px;" data-i18n="me_account">Account</p>
+    <button type="button" class="btn g" id="disconnectBtn" data-i18n="me_disconnect">Disconnect</button>
+    <button class="btn" style="margin-top:6px;" onclick="showEF()" data-i18n="me_edit_profile">Edit Profile</button>
+  </div>
+  <div id="EF" class="card" style="display:none;text-align:center;">
+    <p style="font-weight:bold;text-align:left;margin-bottom:10px;" data-i18n="me_edit_profile">Edit Profile</p>
+    <div class="ppwrap"><div class="avatar" id="myPic">👤</div><div class="odot online" id="myDot"></div><button class="ephoto" onclick="document.getElementById('uPh').click()" title="Change photo"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 15.2A3.2 3.2 0 1 1 15.2 12 3.2 3.2 0 0 1 12 15.2zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9z"/></svg></button></div>
+    <input type="file" id="uPh" style="display:none;" accept="image/*" onchange="loadPic(event)">
+    <input id="uN" placeholder="Full Name" data-i18n-ph="me_full_name_ph">
+    <textarea id="uBio" rows="2" placeholder="Bio / About you..." style="resize:none;" data-i18n-ph="me_bio_ph"></textarea>
+    <select id="uC"><option value="" disabled selected data-i18n="me_select_country">Select Country</option></select>
+    <input id="uU" placeholder="University / School" data-i18n-ph="me_university_ph">
+    <input id="uCo" placeholder="Course / Major" data-i18n-ph="me_course_ph">
+    <input id="uY" placeholder="Year of Study" data-i18n-ph="me_year_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;" data-i18n="me_languages_label">Languages</label>
+    <input id="uL" placeholder="e.g. English, French..." data-i18n-ph="me_languages_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:5px;" data-i18n="me_skills_label">Skills</label>
+    <input id="uSk" placeholder="e.g. Python, Math..." data-i18n-ph="me_skills_ph">
+    <label style="font-size:12px;font-weight:bold;display:block;text-align:left;margin-top:8px;" data-i18n="me_here_to_label">I am here to:</label>
+    <div style="display:flex;gap:6px;margin:4px 0 8px;">
+      <button type="button" id="eNeedBtn" onclick="setEIntent('need')" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;"><span>🙋</span><span data-i18n="me_get_help">Get Help</span></button>
+      <button type="button" id="eHelpBtn" onclick="setEIntent('help')" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;"><span>🧑‍🏫</span><span data-i18n="me_give_help">Give Help</span></button>
+      <button type="button" id="eBothBtn" onclick="setEIntent('both')" class="btn" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;"><span>🔄</span><span data-i18n="me_both">Both</span></button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn" style="flex:1;" onclick="savePro()" data-i18n="me_save">Save</button><button class="btn" style="flex:1;background:var(--btnB);" onclick="hideEF()" data-i18n="me_cancel">Cancel</button></div>
+    <button class="btn" style="margin-top:8px;background:var(--btnB);width:100%;" onclick="openPhoneSettings()" data-i18n="me_app_settings">App Settings</button>
+  </div>
 </div>
 
 <!-- GROUP MANAGEMENT -->
@@ -143,6 +166,6 @@
   <div data-tab="me" id="nme" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Me</div>
 </div>
 <script defer src="js/group-controls-v1.js?v=1"></script>
-<script defer src="js/app-v20.js?v=studylink-pwa-84"></script>
+<script defer src="js/app-v20.js?v=studylink-pwa-85"></script>
 </body>
 </html>
