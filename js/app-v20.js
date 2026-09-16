@@ -902,25 +902,25 @@ function loadMorePosts(){
 }
 function toggleGN(val){
   el('gnW').style.display=val==='Group'?'block':'none';
-  const lbl=el('pVisLabel');
-  if(val==='Group'){lbl.removeAttribute('data-i18n');lbl.textContent=t('postWhoCanJoin');}
-  else{lbl.setAttribute('data-i18n','postWhoCanSee');lbl.textContent=t('postWhoCanSee');}
+  el('pVisWrap').style.display=val==='Group'?'none':'block';
 }
 async function addPost(){
   if(!MP?.name)return alert('Complete your profile first');
   const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
-  const visibility=el('pVisibility')?.value||'anyone';
+  const visibility=type==='Group'?'anyone':(el('pVisibility')?.value||'anyone');
+  const whoCanJoin=type==='Group'?(el('gWhoCanJoin')?.value||'anyone'):'anyone';
+  const howCanJoin=type==='Group'?(el('gHowCanJoin')?.value||'direct'):'direct';
   const gname=type==='Group'?v('gName'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
   showOv(true);
   try{
     const ref=await db.collection('posts').add({type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],accessRule:visibility,creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'admins',whoCanBeInvited:'anyone',creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];renderSubjectPicker('post');
-    el('pText').value='';el('pType').value='Individual';if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gnW').style.display='none';
+    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';
     showToast('📢 Posted!');tab('home');
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
@@ -1571,24 +1571,38 @@ async function renderFindGroups(q=""){
   }
   f.innerHTML=html;
 }
+const RULE_ICONS={anyone:'🟢',country:'🌍',university:'🎓',major:'📚'};
+function normalizeGroupRules(g){
+  // Backward compatibility: legacy groups only had a single `accessRule` field.
+  if(g.whoCanJoin!==undefined)return{whoCanJoin:g.whoCanJoin,howCanJoin:g.howCanJoin||'direct'};
+  if(g.accessRule==='request')return{whoCanJoin:'anyone',howCanJoin:'request'};
+  return{whoCanJoin:g.accessRule||'anyone',howCanJoin:'direct'};
+}
 function accessRuleLabel(rule){
-  return {anyone:t('rule_anyone'),country:t('rule_country'),university:t('rule_university'),major:t('rule_major'),request:t('rule_request')}[rule]||t('rule_anyone');
+  return {anyone:t('rule_anyone'),country:t('rule_country'),university:t('rule_university'),major:t('rule_major')}[rule]||t('rule_anyone');
+}
+function groupRuleBadgesHtml(g){
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
+  let html=`<span class="ruleBadge">${RULE_ICONS[whoCanJoin]||'🟢'} ${accessRuleLabel(whoCanJoin)}</span>`;
+  if(howCanJoin==='request')html+=`<span class="ruleBadge">🔒 ${t('rule_request')}</span>`;
+  return html;
 }
 function groupCardHtml(g,isMine){
   const post=cachedPosts.find(p=>p.id===g.id);
   const desc=post?.text||'';
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
   const isMember=(g.members||[]).includes(CU?.uid);
   const isPending=(g.pendingRequests||[]).includes(CU?.uid);
   let actionLabel=t('home_join_group'),actionCls='o';
   if(isMine)actionLabel=t('find_manage_group');
   else if(isMember)actionLabel=t('group_open');
   else if(isPending)actionLabel=t('pending');
-  else if(g.accessRule==='request')actionLabel=t('group_request_to_join');
+  else if(howCanJoin==='request')actionLabel=t('group_request_to_join');
   return `<div class="card">
     <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.name||'Group')}</b>
-    <span style="display:inline-block;margin-left:6px;font-size:10px;background:var(--card2,#eef2f9);color:var(--sub);padding:2px 7px;border-radius:8px;">${accessRuleLabel(g.accessRule)}</span>
+    <div style="margin-top:4px;">${groupRuleBadgesHtml(g)}</div>
     <p style="font-size:13px;margin:6px 0;">${esc(desc)}</p>
-    <button class="btn ${actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
+    <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
   </div>`;
 }
 async function handleGroupAccess(postId,name){
@@ -1597,9 +1611,19 @@ async function handleGroupAccess(postId,name){
   try{gs=await db.collection('groups').doc(postId).get();}catch(e){showOv(false);showToast(t('group_unavailable'));return;}
   if(!gs.exists){showOv(false);showToast(t('group_not_found'));return;}
   const g=gs.data();
-  const rule=g.accessRule||'anyone';
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
   if((g.members||[]).includes(CU.uid)){showOv(false);openGroup(postId,name);return;}
-  if(rule==='request'){
+  let eligible=true;
+  if(whoCanJoin==='country')eligible=(MP?.country||'')===g.creatorCountry;
+  else if(whoCanJoin==='university')eligible=(MP?.uni||'')===g.creatorUni;
+  else if(whoCanJoin==='major')eligible=(MP?.course||'')===g.creatorCourse;
+  if(!eligible){
+    showOv(false);
+    const reason={country:t('group_refused_country'),university:t('group_refused_university'),major:t('group_refused_major')}[whoCanJoin]||t('group_refused_generic');
+    showToast(reason);
+    return;
+  }
+  if(howCanJoin==='request'){
     if((g.pendingRequests||[]).includes(CU.uid)){showOv(false);showToast(t('group_still_pending'));return;}
     try{
       await db.collection('groups').doc(postId).update({pendingRequests:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
@@ -1607,16 +1631,6 @@ async function handleGroupAccess(postId,name){
       showToast(t('group_request_sent'));
     }catch(e){showToast('❌ '+e.message);}
     showOv(false);return;
-  }
-  let eligible=true;
-  if(rule==='country')eligible=(MP?.country||'')===g.creatorCountry;
-  else if(rule==='university')eligible=(MP?.uni||'')===g.creatorUni;
-  else if(rule==='major')eligible=(MP?.course||'')===g.creatorCourse;
-  if(!eligible){
-    showOv(false);
-    const reason={country:t('group_refused_country'),university:t('group_refused_university'),major:t('group_refused_major')}[rule]||t('group_refused_generic');
-    showToast(reason);
-    return;
   }
   try{await db.collection('groups').doc(postId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});}catch(e){}
   showOv(false);
@@ -1655,7 +1669,7 @@ function renderLibraryView(){
     const catName=appLang==='fr'?c.fr:c.en;
     crumb.style.display='flex';crumb.style.flexWrap='wrap';
     crumb.innerHTML=`<button onclick="backToLibraryCategories()" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;">${t('library_all_categories')}</button><span style="margin:0 6px;color:var(--sub);">/</span><button onclick="openLibraryCategory('${libraryView.category}')" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;">${esc(catName)}</button><span style="margin:0 6px;color:var(--sub);">/</span><b style="font-size:13px;">${esc(libraryView.course)}</b>`;
-    l.innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('find_library_empty')}</p>`;
+    l.innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('library_resources_empty')}</p>`;
   }
 }
 function openLibraryCategory(key){libraryView={level:'courses',category:key};renderLibraryView();}
@@ -3303,7 +3317,7 @@ const I18N={
     home_join_group:'Rejoindre le groupe',home_message:'Message',home_load_more:'Voir plus',
     badge_needs_help:'Besoin d’aide',badge_can_help:'Peut aider',
     status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
-    find_title:'Recherche & Match',find_search_ph:'Rechercher un nom, une filière ou un cours, une université ou un pays...',
+    find_title:'Recherche & Match',find_search_ph:'Rechercher un nom, une filière, un cours, une université ou un pays',
     find_tab_all:'Tous',find_tab_match:'Match',find_tab_favs:'Favoris',
     find_loading:'Chargement des étudiants...',find_no_results:'Aucun étudiant trouvé.',
     find_you_badge:'Toi',find_match_label:'Match',find_own_profile:'C’est ton profil',
@@ -3311,11 +3325,12 @@ const I18N={
     find_groups_search_ph:'Rechercher un groupe...',find_loading_groups:'Chargement des groupes...',
     find_groups_error:'Impossible de charger les groupes.',find_no_groups:'Aucun groupe pour l’instant.',
     find_my_groups:'Mes groupes',find_discover_groups:'Découvrir',find_manage_group:'Gérer',
-    find_library_empty:'Aucun cours pour l’instant. Reviens bientôt !',
+    find_library_empty:'Aucun cours pour l’instant. Reviens bientôt !',library_resources_empty:'Aucune ressource pour l’instant. Reviens bientôt !',
     library_courses_count:'cours',library_all_categories:'Toutes les catégories',
     postRequestToJoin:'Demande d’accès',postWhoCanJoin:'Qui peut rejoindre ton groupe ?',
-    rule_anyone:'Tout le monde',rule_country:'Mon pays',rule_university:'Mon université',rule_major:'Ma matière',rule_request:'Sur demande',
+    rule_anyone:'Tout le monde',rule_country:'Mon pays',rule_university:'Mon université',rule_major:'Mes cours',rule_request:'Sur demande',
     group_open:'Ouvrir le groupe',pending:'En attente',group_request_to_join:'Demander à rejoindre',
+    group_who_can_join:'Qui peut rejoindre ?',group_how_can_join:'Comment peuvent-ils rejoindre ?',group_direct_join:'Adhésion directe',
     group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée',
     group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
     group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
@@ -3399,7 +3414,7 @@ const I18N={
     home_join_group:'Join Group',home_message:'Message',home_load_more:'Load more',
     badge_needs_help:'Needs Help',badge_can_help:'Can Help',
     status_online:'🟢 Online',status_busy:'🔴 Busy',
-    find_title:'Find & Match',find_search_ph:'Search name, major or course, university or country...',
+    find_title:'Find & Match',find_search_ph:'Search name, major, course, university or country',
     find_tab_all:'All',find_tab_match:'Match',find_tab_favs:'Favs',
     find_loading:'Loading students...',find_no_results:'No students found.',
     find_you_badge:'You',find_match_label:'Match',find_own_profile:'This is your profile',
@@ -3407,11 +3422,12 @@ const I18N={
     find_groups_search_ph:'Search groups...',find_loading_groups:'Loading groups...',
     find_groups_error:'Could not load groups.',find_no_groups:'No groups yet.',
     find_my_groups:'My Groups',find_discover_groups:'Discover',find_manage_group:'Manage',
-    find_library_empty:'No courses yet. Check back soon!',
+    find_library_empty:'No courses yet. Check back soon!',library_resources_empty:'No resources yet. Check back soon!',
     library_courses_count:'courses',library_all_categories:'All categories',
     postRequestToJoin:'Request to Join',postWhoCanJoin:'Who can join your group?',
-    rule_anyone:'Anyone',rule_country:'My Country',rule_university:'My University',rule_major:'My Course',rule_request:'By Request',
+    rule_anyone:'Anyone',rule_country:'My Country',rule_university:'My University',rule_major:'My Courses',rule_request:'Request to Join',
     group_open:'Open Group',pending:'Pending',group_request_to_join:'Request to Join',
+    group_who_can_join:'Who can join?',group_how_can_join:'How can they join?',group_direct_join:'Direct Join',
     group_still_pending:'Your request is still pending',group_request_sent:'Request sent',
     group_refused_country:'❌ This group is only for students from the same country',
     group_refused_university:'❌ This group is only for students from the same university',

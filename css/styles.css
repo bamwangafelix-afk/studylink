@@ -438,3 +438,7 @@ body.dark .notif.inviteCard{background:rgba(123,47,247,.12);}
 
 /* Groups tab uses the StudyLink group colour (orange) when active */
 .stab.on-grp{background:#e67e22;color:#fff;}
+
+/* ── Group rule badges + orange "Open/Settings" actions ── */
+.ruleBadge{display:inline-block;font-size:10px;background:var(--card2,#eef2f9);color:var(--sub);padding:2px 7px;border-radius:8px;margin-right:4px;}
+.btn.grp-open{background:#e67e22;color:#fff;}

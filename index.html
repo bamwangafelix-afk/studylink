@@ -119,7 +119,7 @@
 
   <!-- STUDENTS PANEL -->
   <div id="findPanelStudents">
-    <input placeholder="Search name or country..." data-i18n-ph="find_search_ph" oninput="renderFind(this.value)" id="findQ" style="margin-bottom:8px;">
+    <input placeholder="Search name, major, course, university or country" data-i18n-ph="find_search_ph" oninput="renderFind(this.value)" id="findQ" style="margin-bottom:8px;">
     <div class="stabs">
       <button class="stab on" onclick="switchFT('all',this)" data-i18n="find_tab_all">All</button>
       <button class="stab" onclick="switchFT('match',this)"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="margin-right:3px;vertical-align:middle;"><path d="M11 14H9C9 9.03 13.03 5 18 5v2c-3.87 0-7 3.13-7 7zm8-7v2c-2.76 0-5 2.24-5 5h-2c0-3.87 3.13-7 7-7zM7 4c0 1.1-.9 2-2 2S3 5.1 3 4s.9-2 2-2 2 .9 2 2zm4.45 3.2A3.003 3.003 0 0 0 8.5 5H8C6.34 5 5 6.34 5 8v5H3v6h8v-4.68l3.41 1.23C15.07 15.96 16 15.07 16 14c0-.66-.34-1.24-.85-1.57L11.45 7.2z"/></svg> <span data-i18n="find_tab_match">Match</span></button>
@@ -151,17 +151,30 @@
       <option value="Individual" data-i18n="post_individual">Individual</option>
       <option value="Group" data-i18n="post_study_group">Study Group</option>
     </select>
-    <label id="pVisLabel" style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="postWhoCanSee">Who can see your post?</label>
-    <select id="pVisibility">
-      <option value="anyone" data-i18n="postAnyone">Anyone</option>
-      <option value="country" data-i18n="postCountry">Only my Country</option>
-      <option value="university" data-i18n="postUniversity">Only my University</option>
-      <option value="major" data-i18n="postMajorCourse">Only my Major/Course</option>
-      <option value="request" data-i18n="postRequestToJoin">Request to Join</option>
-    </select>
+    <div id="pVisWrap">
+      <label id="pVisLabel" style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="postWhoCanSee">Who can see your post?</label>
+      <select id="pVisibility">
+        <option value="anyone" data-i18n="postAnyone">Anyone</option>
+        <option value="country" data-i18n="postCountry">Only my Country</option>
+        <option value="university" data-i18n="postUniversity">Only my University</option>
+        <option value="major" data-i18n="postMajorCourse">Only my Major/Course</option>
+      </select>
+    </div>
     <div id="gnW" style="display:none;">
       <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_name_label">Group Name:</label>
       <input id="gName" placeholder="e.g. Python Coders..." data-i18n-ph="post_group_name_ph">
+      <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="group_who_can_join">Who can join?</label>
+      <select id="gWhoCanJoin">
+        <option value="anyone" data-i18n="postAnyone">Anyone</option>
+        <option value="country" data-i18n="postCountry">Only my Country</option>
+        <option value="university" data-i18n="postUniversity">Only my University</option>
+        <option value="major" data-i18n="postMajorCourse">Only my Major/Course</option>
+      </select>
+      <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="group_how_can_join">How can they join?</label>
+      <select id="gHowCanJoin">
+        <option value="direct" data-i18n="group_direct_join">Direct Join</option>
+        <option value="request" data-i18n="postRequestToJoin">Request to Join</option>
+      </select>
     </div>
     <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
     <div class="subjectPicker" id="postSubjectPicker">
