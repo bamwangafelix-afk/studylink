@@ -20,8 +20,119 @@
 <link rel="stylesheet" href="css/styles.css?v=studylink-pwa-84">
 </head>
 <body>
-<!-- existing StudyLink app markup -->
+<div class="ov" id="ov"><div class="spin"></div></div>
+<div id="toast" style="display:none;"></div>
+<div id="installBanner" role="status" aria-live="polite">
+  <img src="icons/studylink-192.png?v=studylink-pwa-84" alt="StudyLink" width="42" height="42">
+  <div class="install-copy"><strong data-i18n="install_title">Installer l’application StudyLink</strong><span data-i18n="install_hint">Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
+  <button type="button" id="installBtn" data-i18n="install_button">Installer l’app</button>
+  <button type="button" id="installDismiss" data-i18n-aria="install_close" aria-label="Fermer">×</button>
+</div>
+
+<!-- AUTH -->
+<div id="auth" style="display:none;">
+  <p id="asub" style="color:#405a78;margin-bottom:18px;font-size:14px;font-style:italic;visibility:hidden;">Connect &bull; Learn &bull; Grow</p>
+  <div class="af" id="loginF">
+    <input id="lE" type="email" placeholder="Email">
+    <input id="lP" type="password" placeholder="Password">
+    <div class="aerr" id="lErr"></div>
+    <button class="abtn" onclick="doLogin()">🔐 Login</button>
+    <div class="adiv">or</div>
+    <button class="abtn g" onclick="doGoogle()"><img src="https://www.google.com/favicon.ico" width="16">Continue with Google</button>
+    <div class="alink" onclick="showReset()">Forgot password?</div>
+    <div class="aswitch" onclick="showReg()">No account? Register →</div>
+  </div>
+  <div class="af" id="regF" style="display:none;">
+    <input id="rN" placeholder="Full Name">
+    <input id="rE" type="email" placeholder="Email">
+    <input id="rP" type="password" placeholder="Password (min 6 chars)">
+    <div class="aerr" id="rErr"></div>
+    <button class="abtn" onclick="doReg()">✅ Create Account</button>
+    <div class="adiv">or</div>
+    <button class="abtn g" onclick="doGoogle()"><img src="https://www.google.com/favicon.ico" width="16">Sign up with Google</button>
+    <div class="aswitch" onclick="showLogin()">← Back to Login</div>
+  </div>
+  <div class="af" id="resetF" style="display:none;">
+    <input id="resetE" type="email" placeholder="Your email">
+    <div class="aerr" id="resetErr"></div>
+    <button class="abtn" onclick="doReset()">📧 Send Reset Link</button>
+    <div class="aswitch" onclick="showLogin()">← Back to Login</div>
+  </div>
+
+  <!-- STEP 2: Profile Completion -->
+  <div class="af" id="step2F" style="display:none;">
+    <p style="color:rgba(255,255,255,.9);font-size:13px;margin-bottom:10px;text-align:center;">Almost there! Tell us about yourself so students can find you 🎯</p>
+    <select id="s2C" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;"><option value="" disabled selected>🌍 Select Country</option></select>
+    <input id="s2U" placeholder="🏛️ University / School" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;">
+    <input id="s2Co" placeholder="📖 Course / Major (e.g. Software Engineering)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;">
+    <input id="s2Y" placeholder="📅 Year of Study (e.g. Year 2)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:12px;margin:4px 0;font-size:14px;width:100%;">
+    <p style="color:rgba(255,255,255,.7);font-size:12px;margin:8px 0 4px;">🏷️ Subject Tags — what do you study?</p>
+    <div id="s2Tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;max-height:120px;overflow-y:auto;"></div>
+    <p style="color:rgba(255,255,255,.7);font-size:12px;margin:4px 0;">🤝 I am here to:</p>
+    <div style="display:flex;gap:8px;margin:4px 0 8px;">
+      <button id="s2NeedBtn" onclick="setIntent('need')" style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:bold;cursor:pointer;">🙋 <span data-i18n="me_get_help">Get Help</span></button>
+      <button id="s2HelpBtn" onclick="setIntent('help')" style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:bold;cursor:pointer;">🧑‍🏫 <span data-i18n="me_give_help">Give Help</span></button>
+      <button id="s2BothBtn" onclick="setIntent('both')" style="flex:1;padding:10px;border-radius:10px;border:2px solid rgba(255,255,255,.4);background:transparent;color:rgba(255,255,255,.7);font-size:13px;font-weight:bold;cursor:pointer;">🔄 <span data-i18n="me_both">Both</span></button>
+    </div>
+    <div class="aerr" id="s2Err"></div>
+    <button class="abtn" onclick="completeProfile()">🚀 Enter StudyLink</button>
+    <p style="color:rgba(255,255,255,.5);font-size:11px;margin-top:8px;text-align:center;">You can update this anytime from your profile</p>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-84" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+    <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button type="button" class="dark-btn" id="langBtn" title="Change language" onclick="toggleLang()" style="font-size:11px;font-weight:800;width:auto;padding:0 8px;">FR</button>
+      <button type="button" class="dark-btn" id="darkModeBtn" title="Toggle dark mode">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+      </button>
+      <button type="button" class="dark-btn" id="alertsBtn" title="Alerts" style="position:relative;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0-1.1-.67-1.5-1.5-1.5S4 14.07 4 11V9.5C4 6.43 5.63 3.86 8.5 3.18V2.5C8.5 1.67 9.17 1 10 1s1.5.67 1.5 1.5v.68C14.37 3.86 16 6.43 16 9.5V14l2 2v1H2v-1l2-2V9.5C4 6.43 5.63 3.86 8.5 3.18V2.5C8.5 1.67 9.17 1 10 1s1.5.67 1.5 1.5v.68C14.37 3.86 16 6.43 16 9.5V14l2 2v1H2v-1l2-2z"/></svg>
+        <span id="notifB" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:bold;line-height:16px;text-align:center;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="Phome" class="page" style="display:block;padding-top:0;"><div class="statusStrip"><div class="statusScroll" id="statusScroll"></div></div><div style="padding:14px 0 0;"><h3 style="margin-bottom:12px;"><span data-i18n="home_feed_title">Community Feed</span></h3><div id="feed"><p style="text-align:center;color:#888;" data-i18n="loading">Loading...</p></div></div></div>
+
+<!-- FIND -->
+<div id="Pfind" class="page"><h3 style="margin-bottom:10px;"><span data-i18n="find_title">Find &amp; Match</span></h3><div class="stabs" id="findTopTabs"><button class="stab on" onclick="switchFindTop('students',this)" data-i18n="find_top_students">Students</button><button class="stab" onclick="switchFindTop('groups',this)" data-i18n="find_top_groups">Groups</button><button class="stab" onclick="switchFindTop('library',this)" data-i18n="find_top_library">Library</button></div><div id="findPanelStudents"><input placeholder="Search name, major, course, university or country" data-i18n-ph="find_search_ph" oninput="renderFind(this.value)" id="findQ" style="margin-bottom:8px;"><div class="stabs"><button class="stab on" onclick="switchFT('all',this)" data-i18n="find_tab_all">All</button><button class="stab" onclick="switchFT('match',this)">Match</button><button class="stab" onclick="switchFT('fav',this)">⭐ Favs</button></div><div id="findL"></div></div><div id="findPanelGroups" style="display:none;"><input placeholder="Search groups..." data-i18n-ph="find_groups_search_ph" oninput="renderFindGroups(this.value)" id="findGQ" style="margin-bottom:8px;"><div id="findGroupsL"></div></div><div id="findPanelLibrary" style="display:none;"><div id="libraryBreadcrumb" style="display:none;margin-bottom:10px;"></div><div id="findLibraryL"></div></div></div>
+
+<!-- POST -->
+<div id="Ppost" class="page"><h3>Create Post</h3><div class="card"><label>Post As:</label><select id="pType" onchange="toggleGN(this.value)"><option value="Individual">Individual</option><option value="Group">Study Group</option></select><div id="pVisWrap"><label id="pVisLabel">Who can see your post?</label><select id="pVisibility"><option value="anyone">Anyone</option><option value="country">Only my Country</option><option value="university">Only my University</option><option value="major">Only my Major/Course</option></select></div><div id="gnW" style="display:none;"><label>Group Name:</label><input id="gName" placeholder="e.g. Python Coders..."><label>Who can join?</label><select id="gWhoCanJoin"><option value="anyone">Anyone</option><option value="country">Only my Country</option><option value="university">Only my University</option><option value="major">Only my Major/Course</option></select><label>How can they join?</label><select id="gHowCanJoin"><option value="direct">Direct Join</option><option value="request">Request to Join</option></select></div><label>Subject Tags:</label><div class="subjectPicker" id="postSubjectPicker"><input id="postSubjectSearch" class="subjectSearch" type="search" placeholder="Search subjects..." autocomplete="off"><div class="subjectCategoryTabs" id="postSubjectCats" role="tablist"></div><div class="subjectSelected" id="postSubjectSelected"></div><div id="tagSel" class="subjectOptions" aria-live="polite"></div></div><label>Your Message:</label><textarea id="pText" rows="4" placeholder="Write your study request..."></textarea><button class="btn" onclick="addPost()">📢 Post to Feed</button></div></div>
+
+<!-- MESSAGES -->
+<div id="Pmsgs" class="page"><h3>Messages 💬</h3><input id="inboxQ" placeholder="🔍 Search conversations..." oninput="renderInbox(this.value)"><div class="card" style="padding:0;overflow:hidden;" id="inboxL"></div></div>
+
+<!-- ME -->
+<div id="Pme" class="page"><h3>My Profile</h3><div id="meContent"></div></div>
+
+<!-- GROUP MANAGEMENT -->
+<div class="cwin" id="groupManageView" style="z-index:281;"><div class="chdr" style="align-items:center;"><button class="profile-back-btn" onclick="closeGroupManage()" aria-label="Retour">←</button><div class="profile-header-title" id="gmTitle">Group</div><div id="gmRole" style="font-size:10px;font-weight:800;"></div></div><div style="overflow-y:auto;flex:1;padding:18px 16px 40px;"><p style="font-weight:bold;font-size:13px;margin-bottom:8px;">Pending Requests</p><div id="gmPending"></div><p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">Members</p><div id="gmMembers"></div><button id="gmInviteBtn" class="btn" style="margin-top:16px;" onclick="openInviteMembers()">Invite Members</button><button id="gcSettingsBtn" class="btn o" style="display:none;margin-top:8px" onclick="gcOpenSettings()">⚙️ Group Settings</button><button id="gcDeleteBtn" class="btn r" style="display:none;margin-top:8px" onclick="gcDelete()">🗑️ Delete Group</button><div id="gcSettings" class="card" style="display:none;margin-top:12px"><b>⚙️ Group Settings</b><label style="display:block;font-size:12px;font-weight:bold;margin-top:10px">WHO CAN JOIN?</label><select id="gcJoin"><option value="anyone">Anyone</option><option value="country">My Country</option><option value="university">My University</option><option value="major">My Courses</option></select><label style="display:block;font-size:12px;font-weight:bold">HOW CAN THEY JOIN?</label><select id="gcHow"><option value="direct">Direct Join</option><option value="request">Request to Join</option></select><label style="display:block;font-size:12px;font-weight:bold">WHO CAN INVITE?</label><select id="gcInvite"><option value="admins">Admins only</option><option value="owner">Owner only</option><option value="members">Members</option></select><label style="display:block;font-size:12px;font-weight:bold">WHO CAN BE INVITED?</label><select id="gcTarget"><option value="anyone">Anyone</option><option value="country">My Country</option><option value="university">My University</option><option value="major">My Courses</option></select><button class="btn g" onclick="gcSaveSettings()">Save Settings</button><button class="btn gray" onclick="E('gcSettings').style.display='none'">Cancel</button></div></div></div>
+
+<!-- INVITE MEMBERS VIEW -->
+<div class="cwin" id="inviteMembersView" style="z-index:282;"><div class="chdr"><button class="profile-back-btn" onclick="closeInviteMembers()" aria-label="Retour">←</button><div class="profile-header-title">Invite Members</div><div style="width:24px;"></div></div><div style="overflow-y:auto;flex:1;padding:14px 16px 40px;"><input id="inviteSearchQ" placeholder="Search students..." oninput="renderInviteSearch(this.value)"><div id="inviteSearchL"></div></div></div>
+
+<!-- PROFILE VIEW -->
+<div class="cwin" id="profileView" style="z-index:280;"><div class="chdr"><button class="profile-back-btn" onclick="closeProfileView()" aria-label="Retour">←</button><div class="profile-header-title">Profil</div><div style="width:24px;"></div></div><div id="pvBody" style="overflow-y:auto;flex:1;padding:24px 20px 40px;text-align:center;"><div id="pvAvatar"></div><div id="pvName"></div><div id="pvMeta"></div><div id="pvMeta2"></div><div id="pvBio"></div><div id="pvIntent"></div><div id="pvLangs"></div><div id="pvSkills"></div><div id="pvStudyTogether"></div><button id="pvMsgBtn" class="btn">Message</button><button id="pvInviteBtn" class="btn inv">Invite to Study</button></div></div>
+
+<!-- PRIVATE CHAT -->
+<div class="cwin" id="chatW"><div class="chdr" style="background:var(--hdr);"><button onclick="closeChat()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button><div style="text-align:center;cursor:pointer;"><b id="chatT"></b><div id="chatSt" style="font-size:10px;opacity:.8;"></div></div><button onclick="toggleCS()" style="color:#fff;background:none;border:none;cursor:pointer;">⌕</button></div><div id="csBar"></div><div id="typebar"></div><div class="cmsgbox" id="msgB"></div><div class="cbottom"><div id="rplybar"></div><div id="vbar"></div><div class="cin-wrap"><input id="mIn" class="cin-input" placeholder="Message..." onkeydown="if(event.key==='Enter'){event.preventDefault();smartSend()}"><button id="sendB" class="cin-action" onclick="smartSend()"><svg id="sendIcon"></svg></button></div></div></div>
+
+<!-- GROUP CHAT -->
+<div class="cwin" id="groupW"><div class="chdr" style="background:#e67e22;"><button onclick="closeGroup()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button><div style="text-align:center"><b id="grpT"></b><div id="grpM" style="font-size:10px"></div></div><div></div></div><div id="gTypebar"></div><div class="cmsgbox" id="grpB"></div><div class="cbottom"><div id="gvbar"></div><div class="cin-wrap"><input id="gIn" class="cin-input" placeholder="Message..." onkeydown="if(event.key==='Enter'){event.preventDefault();smartGSend()}"><button id="gSendB" class="cin-action"><svg id="gSendIcon"></svg></button></div></div></div>
+
+<!-- STATUS / STUDY INVITE -->
+<div class="cwin" id="statusView" style="z-index:270;"></div><div class="cwin" id="statusCreate" style="z-index:269;"></div><div class="cwin" id="studyInviteView" style="z-index:283;"><div class="chdr"><button class="profile-back-btn" onclick="closeStudyInvite()" aria-label="Retour">←</button><div class="profile-header-title">Invite to Study</div><div></div></div><div style="padding:18px 16px"><div id="siTargetHeader"></div><div id="siCatSel"></div><div id="siSubjSel"></div><textarea id="siMsg" rows="3" placeholder="Let's study together..."></textarea><button class="btn inv" onclick="sendStudyInvite()">Send Invitation</button></div></div>
+
+<!-- NAV -->
+<div class="nav"><div data-tab="home" id="nhome" class="ni on" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home<span id="feedB" class="nbadge" style="display:none;"></span></div><div data-tab="find" id="nfind" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5a6.5 6.5 0 1 0-1.27 3.93l.28.27h.79l5 4.99L20.49 19l-4.99-5z"/></svg>Find</div><div data-tab="post" id="npost" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Post</div><div data-tab="msgs" id="nmsgs" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-2 2-2V4c0-1.1-.9-2-2-2z"/></svg>Msgs<span id="msgB2" class="nbadge" style="display:none;"></span></div><div data-tab="me" id="nme" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Me</div></div>
 <script defer src="js/app-v20.js?v=studylink-pwa-84"></script>
 <script defer src="js/group-controls-v1.js?v=1"></script>
-</body>
-</html>
+</body></html>
