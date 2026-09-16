@@ -87,13 +87,8 @@
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     <div style="display:flex;gap:6px;align-items:center;">
       <button type="button" class="dark-btn" id="langBtn" title="Change language" onclick="toggleLang()" style="font-size:11px;font-weight:800;width:auto;padding:0 8px;">FR</button>
-      <button type="button" class="dark-btn" id="darkModeBtn" title="Toggle dark mode">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
-      </button>
-      <button type="button" class="dark-btn" id="alertsBtn" title="Alerts" style="position:relative;">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0-1.1-.67-1.5-1.5-1.5S4 14.07 4 11V9.5C4 6.43 5.63 3.86 8.5 3.18V2.5C8.5 1.67 9.17 1 10 1s1.5.67 1.5 1.5v.68C14.37 3.86 16 6.43 16 9.5V14l2 2v1H2v-1l2-2V9.5C4 6.43 5.63 3.86 8.5 3.18V2.5C8.5 1.67 9.17 1 10 1s1.5.67 1.5 1.5v.68C14.37 3.86 16 6.43 16 9.5V14l2 2v1H2v-1l2-2z"/></svg>
-        <span id="notifB" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:bold;line-height:16px;text-align:center;"></span>
-      </button>
+      <button type="button" class="dark-btn" id="darkModeBtn" title="Toggle dark mode"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg></button>
+      <button type="button" class="dark-btn" id="alertsBtn" title="Alerts" style="position:relative;"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0-1-.67-1.5-1.5-1.5S4 14.07 4 11V9.5C4 6.43 5.63 3.86 8.5 3.18V2.5C8.5 1.67 9.17 1 10 1s1.5.67 1.5 1.5v.68C14.37 3.86 16 6.43 16 9.5V14l2 2v1H2v-1l2-2V9.5C4 6.43 5.63 3.86 8.5 3.18V2.5C8.5 1.67 9.17 1 10 1s1.5.67 1.5 1.5v.68C14.37 3.86 16 6.43 16 9.5V14l2 2v1H2v-1l2-2z"/></svg><span id="notifB" style="display:none;position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:bold;line-height:16px;text-align:center;"></span></button>
     </div>
   </div>
 </div>
@@ -111,28 +106,43 @@
 <div id="Pmsgs" class="page"><h3>Messages 💬</h3><input id="inboxQ" placeholder="🔍 Search conversations..." oninput="renderInbox(this.value)"><div class="card" style="padding:0;overflow:hidden;" id="inboxL"></div></div>
 
 <!-- ME -->
-<div id="Pme" class="page"><h3>My Profile</h3><div id="meContent"></div></div>
+<div id="Pme" class="page">
+<h3>My Profile</h3>
+<div class="card" id="pcardEl" style="position:relative;overflow:hidden;">
+  <div style="display:flex;gap:12px;align-items:center;">
+    <div style="position:relative;flex-shrink:0;"><img id="pcPic" src="" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);"><span id="pcDot" style="position:absolute;right:1px;bottom:1px;width:16px;height:16px;border-radius:50%;background:#22c55e;border:3px solid #fff;"></span></div>
+    <div style="min-width:0;flex:1;"><b id="pcName" style="font-size:16px;display:block;"></b><div id="pcBio" style="font-size:12px;color:#6b7280;margin-top:3px;"></div><div id="pcInfo" style="font-size:12px;color:#405a78;margin-top:5px;line-height:1.45;"></div></div>
+  </div>
+  <div id="pcActions" style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;"></div>
+</div>
+<div id="disconnectBtn" style="margin:10px 0 0;text-align:center;"></div>
+<div id="EF" style="display:none;margin-top:10px;"></div>
+</div>
 
 <!-- GROUP MANAGEMENT -->
-<div class="cwin" id="groupManageView" style="z-index:281;"><div class="chdr" style="align-items:center;"><button class="profile-back-btn" onclick="closeGroupManage()" aria-label="Retour">←</button><div class="profile-header-title" id="gmTitle">Group</div><div id="gmRole" style="font-size:10px;font-weight:800;"></div></div><div style="overflow-y:auto;flex:1;padding:18px 16px 40px;"><p style="font-weight:bold;font-size:13px;margin-bottom:8px;">Pending Requests</p><div id="gmPending"></div><p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">Members</p><div id="gmMembers"></div><button id="gmInviteBtn" class="btn" style="margin-top:16px;" onclick="openInviteMembers()">Invite Members</button><button id="gcSettingsBtn" class="btn o" style="display:none;margin-top:8px" onclick="gcOpenSettings()">⚙️ Group Settings</button><button id="gcDeleteBtn" class="btn r" style="display:none;margin-top:8px" onclick="gcDelete()">🗑️ Delete Group</button><div id="gcSettings" class="card" style="display:none;margin-top:12px"><b>⚙️ Group Settings</b><label style="display:block;font-size:12px;font-weight:bold;margin-top:10px">WHO CAN JOIN?</label><select id="gcJoin"><option value="anyone">Anyone</option><option value="country">My Country</option><option value="university">My University</option><option value="major">My Courses</option></select><label style="display:block;font-size:12px;font-weight:bold">HOW CAN THEY JOIN?</label><select id="gcHow"><option value="direct">Direct Join</option><option value="request">Request to Join</option></select><label style="display:block;font-size:12px;font-weight:bold">WHO CAN INVITE?</label><select id="gcInvite"><option value="admins">Admins only</option><option value="owner">Owner only</option><option value="members">Members</option></select><label style="display:block;font-size:12px;font-weight:bold">WHO CAN BE INVITED?</label><select id="gcTarget"><option value="anyone">Anyone</option><option value="country">My Country</option><option value="university">My University</option><option value="major">My Courses</option></select><button class="btn g" onclick="gcSaveSettings()">Save Settings</button><button class="btn gray" onclick="E('gcSettings').style.display='none'">Cancel</button></div></div></div>
+<div class="cwin" id="groupManageView" style="z-index:281;"><div class="chdr" style="align-items:center;"><button class="xbtn" onclick="closeGroupManage()">×</button><b id="groupManageTitle">Group Settings</b></div><div id="groupManageBody"></div></div>
 
-<!-- INVITE MEMBERS VIEW -->
-<div class="cwin" id="inviteMembersView" style="z-index:282;"><div class="chdr"><button class="profile-back-btn" onclick="closeInviteMembers()" aria-label="Retour">←</button><div class="profile-header-title">Invite Members</div><div style="width:24px;"></div></div><div style="overflow-y:auto;flex:1;padding:14px 16px 40px;"><input id="inviteSearchQ" placeholder="Search students..." oninput="renderInviteSearch(this.value)"><div id="inviteSearchL"></div></div></div>
+<!-- STATUS CREATE -->
+<div class="cwin" id="statusCreate" style="z-index:280;"><div class="chdr"><button class="xbtn" onclick="closeStatusCreate()">×</button><b>Create Status</b></div><div class="cbody"><input id="statusText" placeholder="What are you studying?" maxlength="140"><button class="btn" onclick="createStatus()">Post Status</button></div></div>
 
-<!-- PROFILE VIEW -->
-<div class="cwin" id="profileView" style="z-index:280;"><div class="chdr"><button class="profile-back-btn" onclick="closeProfileView()" aria-label="Retour">←</button><div class="profile-header-title">Profil</div><div style="width:24px;"></div></div><div id="pvBody" style="overflow-y:auto;flex:1;padding:24px 20px 40px;text-align:center;"><div id="pvAvatar"></div><div id="pvName"></div><div id="pvMeta"></div><div id="pvMeta2"></div><div id="pvBio"></div><div id="pvIntent"></div><div id="pvLangs"></div><div id="pvSkills"></div><div id="pvStudyTogether"></div><button id="pvMsgBtn" class="btn">Message</button><button id="pvInviteBtn" class="btn inv">Invite to Study</button></div></div>
+<!-- STATUS VIEW -->
+<div class="cwin" id="statusView" style="z-index:280;"><div class="chdr"><button class="xbtn" onclick="closeStatusView()">×</button><b id="statusViewName"></b></div><div class="cbody" id="statusViewBody"></div></div>
 
-<!-- PRIVATE CHAT -->
-<div class="cwin" id="chatW"><div class="chdr" style="background:var(--hdr);"><button onclick="closeChat()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button><div style="text-align:center;cursor:pointer;"><b id="chatT"></b><div id="chatSt" style="font-size:10px;opacity:.8;"></div></div><button onclick="toggleCS()" style="color:#fff;background:none;border:none;cursor:pointer;">⌕</button></div><div id="csBar"></div><div id="typebar"></div><div class="cmsgbox" id="msgB"></div><div class="cbottom"><div id="rplybar"></div><div id="vbar"></div><div class="cin-wrap"><input id="mIn" class="cin-input" placeholder="Message..." onkeydown="if(event.key==='Enter'){event.preventDefault();smartSend()}"><button id="sendB" class="cin-action" onclick="smartSend()"><svg id="sendIcon"></svg></button></div></div></div>
+<!-- CHAT -->
+<div class="cwin" id="chatView" style="z-index:280;"><div class="chdr"><button class="xbtn" onclick="closeChat()">×</button><b id="chatTitle"></b></div><div class="cbody" id="chatBody"></div><div style="display:flex;gap:6px;padding:8px;border-top:1px solid #ddd;"><button type="button" id="chatCamera">📷</button><input id="chatInput" placeholder="Write a message..." style="flex:1;"><button type="button" id="chatSend">Send</button></div></div>
 
 <!-- GROUP CHAT -->
-<div class="cwin" id="groupW"><div class="chdr" style="background:#e67e22;"><button onclick="closeGroup()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button><div style="text-align:center"><b id="grpT"></b><div id="grpM" style="font-size:10px"></div></div><div></div></div><div id="gTypebar"></div><div class="cmsgbox" id="grpB"></div><div class="cbottom"><div id="gvbar"></div><div class="cin-wrap"><input id="gIn" class="cin-input" placeholder="Message..." onkeydown="if(event.key==='Enter'){event.preventDefault();smartGSend()}"><button id="gSendB" class="cin-action"><svg id="gSendIcon"></svg></button></div></div></div>
-
-<!-- STATUS / STUDY INVITE -->
-<div class="cwin" id="statusView" style="z-index:270;"></div><div class="cwin" id="statusCreate" style="z-index:269;"></div><div class="cwin" id="studyInviteView" style="z-index:283;"><div class="chdr"><button class="profile-back-btn" onclick="closeStudyInvite()" aria-label="Retour">←</button><div class="profile-header-title">Invite to Study</div><div></div></div><div style="padding:18px 16px"><div id="siTargetHeader"></div><div id="siCatSel"></div><div id="siSubjSel"></div><textarea id="siMsg" rows="3" placeholder="Let's study together..."></textarea><button class="btn inv" onclick="sendStudyInvite()">Send Invitation</button></div></div>
+<div class="cwin" id="groupChatView" style="z-index:280;"><div class="chdr"><button class="xbtn" onclick="closeGroupChat()">×</button><b id="groupChatTitle"></b></div><div class="cbody" id="groupChatBody"></div><div style="display:flex;gap:6px;padding:8px;border-top:1px solid #ddd;"><button type="button" id="groupChatCamera">📷</button><input id="groupChatInput" placeholder="Write a message..." style="flex:1;"><button type="button" id="groupChatSend">Send</button></div></div>
 
 <!-- NAV -->
-<div class="nav"><div data-tab="home" id="nhome" class="ni on" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home<span id="feedB" class="nbadge" style="display:none;"></span></div><div data-tab="find" id="nfind" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5a6.5 6.5 0 1 0-1.27 3.93l.28.27h.79l5 4.99L20.49 19l-4.99-5z"/></svg>Find</div><div data-tab="post" id="npost" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Post</div><div data-tab="msgs" id="nmsgs" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-2 2-2V4c0-1.1-.9-2-2-2z"/></svg>Msgs<span id="msgB2" class="nbadge" style="display:none;"></span></div><div data-tab="me" id="nme" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Me</div></div>
-<script defer src="js/app-v20.js?v=studylink-pwa-84"></script>
+<div class="nav">
+  <div data-tab="home" id="nhome" class="ni on" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home<span id="feedB" class="nbadge" style="display:none;"></span></div>
+  <div data-tab="find" id="nfind" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Find</div>
+  <div data-tab="post" id="npost" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Post</div>
+  <div data-tab="msgs" id="nmsgs" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l-4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>Msgs<span id="msgB2" class="nbadge" style="display:none;"></span></div>
+  <div data-tab="me" id="nme" class="ni" role="button" tabindex="0"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Me</div>
+</div>
 <script defer src="js/group-controls-v1.js?v=1"></script>
-</body></html>
+<script defer src="js/app-v20.js?v=studylink-pwa-84"></script>
+</body>
+</html>
