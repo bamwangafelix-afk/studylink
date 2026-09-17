@@ -1,9 +1,19 @@
-const CACHE='studylink-shell-v91';
-const SHELL=['./','./index.html','./css/styles.css?v=studylink-pwa-84','./js/app-v20.js?v=studylink-pwa-84','./js/ui-recovery-v1.js?v=1','./js/ui-feed-rules-v1.js?v=1','./js/ui-group-hook-v1.js?v=1','./js/ui-profile-recovery-v1.js?v=1','./manifest.webmanifest?v=studylink-pwa-84','./icons/studylink-192.png?v=studylink-pwa-84','./icons/studylink-512.png?v=studylink-pwa-84','./icons/studylink-login-full-logo.png?v=studylink-pwa-84'];
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));});
-self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')event.waitUntil(self.skipWaiting());});
-self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
-self.addEventListener('fetch',event=>{const request=event.request;if(request.method!=='GET'||new URL(request.url).origin!==self.location.origin)return;const url=new URL(request.url);
-if(url.pathname.endsWith('/js/app-v20.js')){event.respondWith(Promise.all([fetch(new Request(url.origin+url.pathname+'?v=studylink-pwa-84',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-recovery-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-feed-rules-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-group-hook-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-profile-recovery-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'}))]).then(async([a,b,c,d,e])=>new Response((await a.text())+'\n'+(await b.text())+'\n'+(await c.text())+'\n'+(await d.text())+'\n'+(await e.text()),{status:200,headers:{'Content-Type':'application/javascript; charset=utf-8'}})).catch(()=>caches.match(request)));return;}
-if(url.pathname.endsWith('/js/group-controls-v1.js')){event.respondWith(Promise.all([fetch(new Request(url.origin+url.pathname+'?v=3',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-recovery-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-feed-rules-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-group-hook-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'})),fetch(new Request(url.origin+'/js/ui-profile-recovery-v1.js?v=1',{method:'GET',headers:request.headers,credentials:request.credentials,mode:request.mode,redirect:request.redirect,cache:'no-store'}))]).then(async([a,b,c,d,e])=>new Response((await a.text())+'\n'+(await b.text())+'\n'+(await c.text())+'\n'+(await d.text())+'\n'+(await e.text()),{status:200,headers:{'Content-Type':'application/javascript; charset=utf-8'}})).catch(()=>caches.match(request)));return;}
-event.respondWith(caches.match(request).then(cached=>cached||fetch(request).then(response=>{if(!response||response.status!==200||response.type==='opaque')return response;const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));return response;}).catch(()=>request.mode==='navigate'?caches.match('./index.html'):Response.error())));});
+const CACHE='studylink-shell-v84-compat-2';
+const SHELL=['./','./index.html','./css/styles.css?v=studylink-pwa-84','./js/app-v20.js?v=studylink-pwa-84','./manifest.webmanifest?v=studylink-pwa-84','./icons/studylink-192.png?v=studylink-pwa-84','./icons/studylink-512.png?v=studylink-pwa-84','./icons/studylink-login-full-logo.png?v=studylink-pwa-84','./icons/person-available.svg?v=studylink-pwa-84'];
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
+});
+self.addEventListener('message',event=>{
+  if(event.data?.type==='SKIP_WAITING') event.waitUntil(self.skipWaiting());
+});
+self.addEventListener('activate',event=>{
+  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));
+});
+self.addEventListener('fetch',event=>{
+  const request=event.request;
+  if(request.method!=='GET'||new URL(request.url).origin!==self.location.origin)return;
+  event.respondWith(caches.match(request).then(cached=>cached||fetch(request).then(response=>{
+    if(!response||response.status!==200||response.type==='opaque')return response;
+    const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));return response;
+  }).catch(()=>request.mode==='navigate'?caches.match('./index.html'):Response.error())));
+});
