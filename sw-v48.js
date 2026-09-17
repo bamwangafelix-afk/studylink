@@ -12,8 +12,11 @@ self.addEventListener('activate',event=>{
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET'||new URL(request.url).origin!==self.location.origin)return;
-  event.respondWith(caches.match(request).then(cached=>cached||fetch(request).then(response=>{
+  const url=new URL(request.url);
+  const isAppAsset=request.mode==='navigate'||/\.(?:html|css|js|webmanifest)$/.test(url.pathname);
+  const networkFirst=fetch(request).then(response=>{
     if(!response||response.status!==200||response.type==='opaque')return response;
     const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));return response;
-  }).catch(()=>request.mode==='navigate'?caches.match('./index.html'):Response.error())));
+  });
+  event.respondWith(isAppAsset?networkFirst.catch(()=>caches.match(request).then(cached=>cached||Response.error())):caches.match(request).then(cached=>cached||networkFirst.catch(()=>Response.error())));
 });
