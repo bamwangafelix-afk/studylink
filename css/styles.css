@@ -442,21 +442,3 @@ body.dark .notif.inviteCard{background:rgba(123,47,247,.12);}
 /* ── Group rule badges + orange "Open/Settings" actions ── */
 .ruleBadge{display:inline-block;font-size:10px;background:var(--card2,#eef2f9);color:var(--sub);padding:2px 7px;border-radius:8px;margin-right:4px;}
 .btn.grp-open{background:#e67e22;color:#fff;}
-/* GROUP SETTINGS, ROLES AND MODERATION */
-.group-settings-btn{background:#f39c12!important;color:#fff!important;}
-.group-setting-label{font-size:13px;font-weight:800;margin:12px 0 6px;color:var(--txt);}
-.group-setting-note{font-size:11px;color:var(--sub);margin:12px 0 0;line-height:1.45;}
-.group-role-badge{display:inline-flex;align-items:center;gap:4px;border-radius:12px;padding:3px 7px;font-size:10px;font-weight:800;background:#e8f0fb;color:var(--btnB);}
-.group-role-owner{background:#fff3cd;color:#8a5a00;}
-.group-role-admin{background:#eee5ff;color:#6b32a8;}
-.group-role-member{background:#e8f0fb;color:var(--btnB);}
-.group-mod-actions{display:flex;gap:5px;margin-left:auto;}
-.group-mod-actions button{border:0;border-radius:8px;padding:5px 7px;font-size:10px;font-weight:700;cursor:pointer;}.group-role-action{background:#e8f0fb;color:var(--btnB);}.group-role-action:hover{filter:brightness(.96);}
-.group-remove-btn{background:#fdecea;color:#b42318;}
-.group-block-btn{background:#f4d7d3;color:#8e1b13;}
-body.dark .group-setting-label{color:#fff;}
-body.dark .group-setting-note{color:#d9e5f5;}
-body.dark .group-role-member{background:#123a66;color:#fff;}
-body.dark .group-role-admin{background:#3f2461;color:#fff;}
-body.dark .group-role-owner{background:#5a4614;color:#fff;}
-body.dark .group-remove-btn,body.dark .group-block-btn{background:#522020;color:#fff;}

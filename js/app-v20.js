@@ -34,6 +34,7 @@ function closeTopModal(){
   if(el('statusView')?.style.display==='flex'){closeStatusView();return;}
   if(el('statusCreate')?.style.display==='flex'){closeStatusCreate();return;}
   if(el('studyInviteView')?.style.display==='flex'){closeStudyInvite();return;}
+  if(el('groupSettingsView')?.style.display==='flex'){closeGroupSettings();return;}
   if(el('inviteMembersView')?.style.display==='flex'){closeInviteMembers();return;}
   if(el('groupManageView')?.style.display==='flex'){closeGroupManage();return;}
   if(el('profileView')?.style.display==='flex'){closeProfileView();return;}
@@ -668,43 +669,26 @@ async function delAccount(){
 }
 
 // ── PROFILE ──
-function ensureProfileCountryOptions(){
-  const uc=el('uC');if(!uc)return;
-  if(uc.options.length<=1)COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;uc.appendChild(o);});
-}
 async function loadPro(){
-  if(!CU)return;
-  ensureProfileCountryOptions();
   try{
     const sn=await db.collection('users').doc(CU.uid).get();
-    const authFallback={uid:CU.uid,name:CU.displayName||CU.email?.split('@')[0]||'Student',email:CU.email||'',photo:CU.photoURL||'',bio:'',country:'',uni:'',course:'',year:'',langs:[],skills:[],intent:'both'};
-    MP=sn.exists?{...authFallback,...sn.data(),uid:sn.data().uid||CU.uid}:authFallback;
-    myPho=MP.photo||'';
-    el('topN').textContent=MP.name||'';
-    el('uN').value=MP.name||'';el('uBio').value=MP.bio||'';
-    el('uU').value=MP.uni||'';el('uCo').value=MP.course||'';
-    el('uY').value=MP.year||'';
-    el('uL').value=(MP.langs||[]).join(', ');
-    el('uSk').value=(MP.skills||[]).join(', ');
-    el('uC').value=MP.country||'';
-    setEIntent(MP.intent||'both');
-    el('myPic').innerHTML=MP.photo?`<img src="${MP.photo}">`:'👤';
-    el('pcPic').innerHTML=MP.photo?`<img src="${MP.photo}">`:'👤';
-    el('myDot').className='odot online';
-    el('pcDot').className='odot online';
-    updatePC();
-    el('pcardEl').style.display='flex';
-    el('EF').style.display=sn.exists&&MP.name?'none':'block';
-  }catch(e){
-    console.warn('loadPro failed:',e);
-    // Keep the page usable even when the profile read is temporarily unavailable.
-    const fallbackName=CU.displayName||CU.email?.split('@')[0]||'Student';
-    el('topN').textContent=fallbackName;
-    el('pcName').textContent=fallbackName;
-    el('pcPic').textContent='👤';
-    el('pcardEl').style.display='flex';
-    el('EF').style.display='block';
-  }
+    if(sn.exists){
+      MP=sn.data();myPho=MP.photo||'';
+      el('topN').textContent=MP.name||'';
+      el('uN').value=MP.name||'';el('uBio').value=MP.bio||'';
+      el('uU').value=MP.uni||'';el('uCo').value=MP.course||'';
+      el('uY').value=MP.year||'';
+      el('uL').value=(MP.langs||[]).join(', ');
+      el('uSk').value=(MP.skills||[]).join(', ');
+      if(MP.country)el('uC').value=MP.country;
+      if(MP.intent)setEIntent(MP.intent);else setEIntent('both');
+      if(MP.photo){el('myPic').innerHTML=`<img src="${MP.photo}">`;el('pcPic').innerHTML=`<img src="${MP.photo}">`;}
+      el('myDot').className='odot online';
+      el('pcDot').className='odot online';
+      if(MP.name){updatePC();el('pcardEl').style.display='flex';el('EF').style.display='none';}
+      else el('EF').style.display='block';
+    }else el('EF').style.display='block';
+  }catch(e){console.log(e);}
 }
 function showEF(){el('EF').style.display='block';el('EF').scrollIntoView({behavior:'smooth'});}
 function hideEF(){el('EF').style.display='none';}
@@ -1574,9 +1558,8 @@ async function renderFindGroups(q=""){
   let groups=snap.docs.map(d=>({id:d.id,...d.data()}));
   groups.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
   if(q){const s=q.toLowerCase();groups=groups.filter(g=>(g.name||'').toLowerCase().includes(s));}
-  groups=groups.filter(g=>!g.deleted);
-  const myGroups=groups.filter(g=>(g.members||[]).includes(CU?.uid));
-  const otherGroups=groups.filter(g=>!(g.members||[]).includes(CU?.uid));
+  const myGroups=groups.filter(g=>isGroupAdmin(g,CU?.uid));
+  const otherGroups=groups.filter(g=>!isGroupAdmin(g,CU?.uid));
   if(!groups.length){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_no_groups')}</p>`;return;}
   let html='';
   if(myGroups.length){
@@ -1607,13 +1590,12 @@ function groupRuleBadgesHtml(g){
 }
 function groupCardHtml(g,isMine){
   const post=cachedPosts.find(p=>p.id===g.id);
-  const canManage=groupCanManage(g);
   const desc=post?.text||'';
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
   const isMember=(g.members||[]).includes(CU?.uid);
   const isPending=(g.pendingRequests||[]).includes(CU?.uid);
   let actionLabel=t('home_join_group'),actionCls='o';
-  if(canManage)actionLabel=t('find_manage_group');
+  if(isMine)actionLabel=t('find_manage_group');
   else if(isMember)actionLabel=t('group_open');
   else if(isPending)actionLabel=t('pending');
   else if(howCanJoin==='request')actionLabel=t('group_request_to_join');
@@ -1621,7 +1603,7 @@ function groupCardHtml(g,isMine){
     <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.name||'Group')}</b>
     <div style="margin-top:4px;">${groupRuleBadgesHtml(g)}</div>
     <p style="font-size:13px;margin:6px 0;">${esc(desc)}</p>
-    <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${canManage?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
+    <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
   </div>`;
 }
 async function handleGroupAccess(postId,name){
@@ -1630,7 +1612,6 @@ async function handleGroupAccess(postId,name){
   try{gs=await db.collection('groups').doc(postId).get();}catch(e){showOv(false);showToast(t('group_unavailable'));return;}
   if(!gs.exists){showOv(false);showToast(t('group_not_found'));return;}
   const g=gs.data();
-  if(g.deleted){showOv(false);showToast(t('group_deleted'));return;}
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
   if((g.members||[]).includes(CU.uid)){showOv(false);openGroup(postId,name);return;}
   let eligible=true;
@@ -3351,7 +3332,14 @@ const I18N={
     rule_anyone:'Tout le monde',rule_country:'Mon pays',rule_university:'Mon université',rule_major:'Mes cours',rule_request:'Sur demande',
     group_open:'Ouvrir le groupe',pending:'En attente',group_request_to_join:'Demander à rejoindre',
     group_who_can_join:'Qui peut rejoindre ?',group_how_can_join:'Comment peuvent-ils rejoindre ?',group_direct_join:'Adhésion directe',
-    group_settings:'Paramètres du groupe',group_who_can_invite:'Qui peut inviter ?',group_admins_only:'Admins uniquement',group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer les paramètres',group_delete:'Supprimer le groupe',group_owner_only_note:'Seul le Owner peut modifier les règles principales.',group_owner:'Owner',group_admin:'Admin',group_member_role:'Member',group_remove_member:'Retirer',group_block_member:'Bloquer',group_make_admin:'Nommer Admin',group_demote_admin:'Retirer Admin',group_deleted:'Ce groupe n’est plus disponible',group_invite_not_allowed:'Tu n’es pas autorisé à inviter dans ce groupe',group_invitee_not_eligible:'Cet étudiant ne respecte pas la règle d’éligibilité',group_invite_race:'Une invitation est déjà en attente pour cet étudiant',group_settings_saved:'Paramètres du groupe enregistrés',group_delete_confirm:'Supprimer définitivement ce groupe ?',group_member_removed:'Membre retiré',group_member_blocked:'Membre bloqué',group_permission_denied:'Permission refusée',
+    role_owner:'Propriétaire',role_admin:'Admin',group_make_admin:'Nommer admin',group_remove_admin:'Retirer admin',
+    group_remove_member:'Retirer',group_confirm_remove:'Retirer ce membre du groupe ?',group_member_removed:'Membre retiré',
+    group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',
+    group_invite_not_eligible:'❌ Cette personne n’est pas éligible à ce groupe',group_view_only:'Lecture seule',
+    group_settings:'Paramètres du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
+    group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer',group_settings_saved:'✅ Paramètres enregistrés',
+    group_delete:'Supprimer le groupe',group_confirm_delete:'Supprimer définitivement ce groupe ? Cette action est irréversible.',
+    group_deleted:'Groupe supprimé',
     group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée',
     group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
     group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
@@ -3449,7 +3437,14 @@ const I18N={
     rule_anyone:'Anyone',rule_country:'My Country',rule_university:'My University',rule_major:'My Courses',rule_request:'Request to Join',
     group_open:'Open Group',pending:'Pending',group_request_to_join:'Request to Join',
     group_who_can_join:'Who can join?',group_how_can_join:'How can they join?',group_direct_join:'Direct Join',
-    group_settings:'Group Settings',group_who_can_invite:'Who can invite?',group_admins_only:'Admins only',group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_delete:'Delete Group',group_owner_only_note:'Only the Owner can change the main group rules.',group_owner:'Owner',group_admin:'Admin',group_member_role:'Member',group_remove_member:'Remove',group_block_member:'Block',group_make_admin:'Make Admin',group_demote_admin:'Remove Admin',group_deleted:'This group is no longer available',group_invite_not_allowed:'You are not allowed to invite in this group',group_invitee_not_eligible:'This student does not meet the eligibility rule',group_invite_race:'This student already has a pending invitation',group_settings_saved:'Group settings saved',group_delete_confirm:'Delete this group permanently?',group_member_removed:'Member removed',group_member_blocked:'Member blocked',group_permission_denied:'Permission denied',
+    role_owner:'Owner',role_admin:'Admin',group_make_admin:'Make Admin',group_remove_admin:'Remove Admin',
+    group_remove_member:'Remove',group_confirm_remove:'Remove this member from the group?',group_member_removed:'Member removed',
+    group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',
+    group_invite_not_eligible:'❌ This person isn’t eligible for this group',group_view_only:'View only',
+    group_settings:'Group Settings',group_settings_readonly:'Only the group owner can change these settings.',
+    group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_settings_saved:'✅ Settings saved',
+    group_delete:'Delete Group',group_confirm_delete:'Permanently delete this group? This cannot be undone.',
+    group_deleted:'Group deleted',
     group_still_pending:'Your request is still pending',group_request_sent:'Request sent',
     group_refused_country:'❌ This group is only for students from the same country',
     group_refused_university:'❌ This group is only for students from the same university',
@@ -3558,31 +3553,8 @@ function toggleLang(){
 
 // ── GROUP MANAGEMENT (owner) ──
 let curManageGroupId=null;
-let curManageGroupData=null;
-function groupRole(g,uid=CU?.uid){
-  if(!g||!uid)return null;
-  if(uid===g.ownerUid||uid===g.creatorUid)return 'owner';
-  if((g.admins||[]).includes(uid))return 'admin';
-  if((g.members||[]).includes(uid))return 'member';
-  return null;
-}
-function groupCanManage(g,uid=CU?.uid){const r=groupRole(g,uid);return r==='owner'||r==='admin';}
-function groupCanEditSettings(g,uid=CU?.uid){return groupRole(g,uid)==='owner';}
-function groupCanInvite(g,uid=CU?.uid){const r=groupRole(g,uid);return r==='owner'||r==='admin';}
-function groupInviteeEligible(g,u){
-  if(!g||!u)return false;
-  const rule=g.whoCanBeInvited||'anyone';
-  if(rule==='country')return String(u.country||'')===String(g.creatorCountry||'');
-  if(rule==='university')return String(u.uni||u.university||'')===String(g.creatorUni||'');
-  if(rule==='major')return String(u.course||u.major||'')===String(g.creatorCourse||'');
-  return true;
-}
-function groupRoleBadge(role){
-  const key=role==='owner'?'group_owner':role==='admin'?'group_admin':'group_member_role';
-  const cls=role==='owner'?'group-role-owner':role==='admin'?'group-role-admin':'group-role-member';
-  return `<span class="group-role-badge ${cls}">${t(key)}</span>`;
-}
-async function openGroupManageAfterRefresh(){if(curManageGroupId)await openManageGroup(curManageGroupId);}
+function isGroupOwner(g,uid){return g.ownerUid===uid||g.creatorUid===uid;}
+function isGroupAdmin(g,uid){return isGroupOwner(g,uid)||(g.admins||[]).includes(uid);}
 async function openManageGroup(postId){
   curManageGroupId=postId;
   pushModalState();
@@ -3593,15 +3565,15 @@ async function openManageGroup(postId){
   try{gs=await db.collection('groups').doc(postId).get();}catch(e){showToast(t('group_unavailable'));closeGroupManage();return;}
   if(!gs.exists){showToast(t('group_not_found'));closeGroupManage();return;}
   const g=gs.data();
-  curManageGroupData={id:postId,...g};
-  const viewerRole=groupRole(g);
-  const settingsBtn=el('gmSettingsBtn');if(settingsBtn)settingsBtn.style.display=groupCanEditSettings(g)?'block':'none';
-  const inviteBtn=el('inviteMembersView');
-  const manageInviteBtn=document.querySelector('#groupManageView button[onclick="openInviteMembers()"]');if(manageInviteBtn)manageInviteBtn.style.display=groupCanInvite(g)?'block':'none';
+  const viewerIsOwner=isGroupOwner(g,CU.uid);
+  const viewerIsAdmin=isGroupAdmin(g,CU.uid);
   el('gmTitle').textContent='🏫 '+(g.name||'');
   const pendingIds=g.pendingRequests||[];
   const memberIds=g.members||[];
-  if(!pendingIds.length){
+  const pendingSection=el('gmPending').closest?el('gmPending').parentElement:null;
+  if(!viewerIsAdmin){
+    el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_view_only')}</p>`;
+  }else if(!pendingIds.length){
     el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_no_pending')}</p>`;
   }else{
     el('gmPending').innerHTML=pendingIds.map(uid=>{
@@ -3617,23 +3589,56 @@ async function openManageGroup(postId){
   }
   el('gmMembers').innerHTML=memberIds.map(uid=>{
     const u=allUsers.find(x=>x.uid===uid);
-    const role=groupRole(g,uid)||'member';
     const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
-    const canAct=viewerRole==='owner'&&role!=='owner' || viewerRole==='admin'&&role==='member';
-    const roleAction=viewerRole==='owner'&&role!=='owner'?`<button class="group-role-action" onclick="setGroupAdmin('${uid}',${role!=='admin'})">${role==='admin'?t('group_demote_admin'):t('group_make_admin')}</button>`:'';
-    const actions=canAct?`<div class="group-mod-actions">${roleAction}<button class="group-remove-btn" onclick="moderateGroupMember('${uid}','remove')">${t('group_remove_member')}</button><button class="group-block-btn" onclick="moderateGroupMember('${uid}','block')">${t('group_block_member')}</button></div>`:'';
-    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+    const uOwner=isGroupOwner(g,uid),uAdmin=!uOwner&&(g.admins||[]).includes(uid);
+    const roleTag=uOwner?`👑 ${t('role_owner')}`:uAdmin?`🛡️ ${t('role_admin')}`:'';
+    let mgmt='';
+    if(viewerIsOwner&&!uOwner){
+      mgmt+=uAdmin
+        ?`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',false)">${t('group_remove_admin')}</button>`
+        :`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',true)">${t('group_make_admin')}</button>`;
+    }
+    if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
+      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
+    }
+    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
       <div style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
-      <div style="display:flex;flex-direction:column;gap:3px;min-width:0;"><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(u?.name||'Utilisateur')}</span>${groupRoleBadge(role)}</div>${actions}
+      <span style="font-size:13px;flex:1;">${esc(u?.name||'Utilisateur')}${roleTag?' · '+roleTag:''}</span>
+      ${mgmt?`<div style="display:flex;gap:5px;width:100%;justify-content:flex-end;margin-top:4px;">${mgmt}</div>`:''}
     </div>`;
   }).join('');
+  el('gmInviteBtn').style.display=viewerIsAdmin?'block':'none';
+  el('gmSettingsBtn').style.display='block';
+}
+async function toggleGroupAdmin(uid,makeAdmin){
+  if(!curManageGroupId)return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      admins:makeAdmin?firebase.firestore.FieldValue.arrayUnion(uid):firebase.firestore.FieldValue.arrayRemove(uid)
+    });
+    showToast(makeAdmin?t('group_admin_added'):t('group_admin_removed'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function removeGroupMember(uid){
+  if(!curManageGroupId)return;
+  if(!confirm(t('group_confirm_remove')))return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      members:firebase.firestore.FieldValue.arrayRemove(uid),
+      admins:firebase.firestore.FieldValue.arrayRemove(uid)
+    });
+    showToast(t('group_member_removed'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
 }
 function closeGroupManage(){el('groupManageView').style.display='none';curManageGroupId=null;consumeModalState();}
 async function respondGroupRequest(uid,accept){
   if(!curManageGroupId)return;
-  const gSnap=await db.collection('groups').doc(curManageGroupId).get();const g=gSnap.data()||{};if(!groupCanManage(g)){showToast(t('group_permission_denied'));return;}
   const gref=db.collection('groups').doc(curManageGroupId);
   try{
+    const gchk=await gref.get();
+    if(!isGroupAdmin(gchk.data()||{},CU.uid)){showToast(t('group_not_authorized'));return;}
     if(accept){
       await gref.update({members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
       db.collection('notifications').add({toUid:uid,icon:'✅',title:t('notif_request_accepted_title'),body:t('notif_request_accepted_body'),read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
@@ -3645,88 +3650,125 @@ async function respondGroupRequest(uid,accept){
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
 }
+// ── GROUP SETTINGS (owner edits, admins view) ──
+async function openGroupSettings(){
+  if(!curManageGroupId)return;
+  pushModalState();
+  el('groupSettingsView').style.display='flex';
+  let gs;
+  try{gs=await db.collection('groups').doc(curManageGroupId).get();}catch(e){showToast(t('group_unavailable'));closeGroupSettings();return;}
+  if(!gs.exists){showToast(t('group_not_found'));closeGroupSettings();return;}
+  const g=gs.data();
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
+  el('gsWhoCanJoin').value=whoCanJoin;
+  el('gsHowCanJoin').value=howCanJoin;
+  el('gsWhoCanBeInvited').value=g.whoCanBeInvited||'anyone';
+  const viewerIsOwner=isGroupOwner(g,CU.uid);
+  ['gsWhoCanJoin','gsHowCanJoin','gsWhoCanBeInvited'].forEach(id=>el(id).disabled=!viewerIsOwner);
+  el('gsReadOnlyNote').style.display=viewerIsOwner?'none':'block';
+  el('gsSaveBtn').style.display=viewerIsOwner?'block':'none';
+  el('gsDeleteBtn').style.display=viewerIsOwner?'block':'none';
+}
+function closeGroupSettings(){el('groupSettingsView').style.display='none';consumeModalState();}
+async function saveGroupSettings(){
+  if(!curManageGroupId)return;
+  try{
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    if(!isGroupOwner(gs.data()||{},CU.uid))return showToast(t('group_not_authorized'));
+    await db.collection('groups').doc(curManageGroupId).update({
+      whoCanJoin:el('gsWhoCanJoin').value,
+      howCanJoin:el('gsHowCanJoin').value,
+      whoCanBeInvited:el('gsWhoCanBeInvited').value
+    });
+    showToast(t('group_settings_saved'));
+    closeGroupSettings();
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function deleteGroup(){
+  if(!curManageGroupId)return;
+  const gid=curManageGroupId;
+  try{
+    const gs=await db.collection('groups').doc(gid).get();
+    if(!isGroupOwner(gs.data()||{},CU.uid))return showToast(t('group_not_authorized'));
+  }catch(e){showToast('❌ '+e.message);return;}
+  if(!confirm(t('group_confirm_delete')))return;
+  showOv(true);
+  try{
+    await db.collection('groups').doc(gid).delete();
+    await db.collection('posts').doc(gid).delete().catch(()=>{});
+    cachedPosts=cachedPosts.filter(p=>p.id!==gid);
+    if(el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
+    showOv(false);
+    showToast(t('group_deleted'));
+    closeGroupSettings();closeGroupManage();
+    if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
+  }catch(e){showOv(false);showToast('❌ '+e.message);}
+}
 function openInviteMembers(){
-  if(!groupCanInvite(curManageGroupData)){showToast(t('group_invite_not_allowed'));return;}
-  el('inviteSearchQ').value='';el('inviteMembersView').style.display='flex';pushModalState();renderInviteSearch('');
+  el('inviteSearchQ').value='';
+  el('inviteMembersView').style.display='flex';
+  pushModalState();
+  renderInviteSearch('');
 }
 function closeInviteMembers(){el('inviteMembersView').style.display='none';consumeModalState();}
 function renderInviteSearch(q){
-  const l=el('inviteSearchL'),g=curManageGroupData;
-  let list=allUsers.filter(u=>u.uid!==CU?.uid&&!(g?.members||[]).includes(u.uid)&&groupInviteeEligible(g,u));
-  if(q){const s=q.toLowerCase();list=list.filter(u=>(u.name||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s)||(u.country||'').toLowerCase().includes(s)||(u.course||'').toLowerCase().includes(s));}
+  const l=el('inviteSearchL');
+  let list=allUsers.filter(u=>u.uid!==CU?.uid);
+  if(q){const s=q.toLowerCase();list=list.filter(u=>(u.name||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s));}
   list=list.slice(0,30);
   if(!list.length){l.innerHTML=`<p style="text-align:center;color:#888;">${t('find_no_results')}</p>`;return;}
   l.innerHTML=list.map(u=>{
     const av=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
-    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;"><div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div><span style="flex:1;font-size:13px;">${esc(u.name||'?')}</span><button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button></div>`;
+    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
+      <span style="flex:1;font-size:13px;">${esc(u.name||'?')}</span>
+      <button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button>
+    </div>`;
   }).join('');
 }
 async function sendGroupInvite(uid,name){
-  const gid=curManageGroupId,gref=gid?db.collection('groups').doc(gid):null;
-  if(!gid||!gref)return;
+  if(!curManageGroupId)return;
   try{
-    const inviteRef=gref.collection('invites').doc(uid);
-    const result=await db.runTransaction(async tx=>{
-      const gs=await tx.get(gref);const g=gs.data()||{};
-      if(g.deleted)throw new Error(t('group_deleted'));
-      if(!groupCanInvite(g))throw new Error(t('group_invite_not_allowed'));
-      if((g.members||[]).includes(uid))return{status:'member'};
-      const target=allUsers.find(u=>u.uid===uid);
-      if(!groupInviteeEligible(g,target))return{status:'ineligible'};
-      const existing=await tx.get(inviteRef);
-      if(existing.exists&&existing.data()?.state==='pending')return{status:'pending'};
-      tx.set(inviteRef,{groupId:gid,toUid:uid,fromUid:CU.uid,state:'pending',createdAt:firebase.firestore.FieldValue.serverTimestamp(),senderName:MP?.name||''},{merge:true});
-      return{status:'created',group:g};
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    const g=gs.data()||{};
+    if(!isGroupAdmin(g,CU.uid))return showToast(t('group_not_authorized'));
+    if((g.members||[]).includes(uid))return showToast(t('group_already_member'));
+    const invitee=allUsers.find(x=>x.uid===uid)||{};
+    const whoCanBeInvited=g.whoCanBeInvited||'anyone';
+    let eligible=true;
+    if(whoCanBeInvited==='country')eligible=(invitee.country||'')===g.creatorCountry;
+    else if(whoCanBeInvited==='university')eligible=(invitee.uni||'')===g.creatorUni;
+    else if(whoCanBeInvited==='major')eligible=(invitee.course||'')===g.creatorCourse;
+    if(!eligible)return showToast(t('group_invite_not_eligible'));
+    const notifRef=db.collection('notifications').doc('grpinv_'+curManageGroupId+'_'+uid);
+    const existing=await notifRef.get();
+    if(existing.exists&&existing.data().state==='pending')return showToast(t('invite_already_pending'));
+    await notifRef.set({
+      toUid:uid,kind:'groupInvite',role:'recipient',groupId:curManageGroupId,groupName:g.name||'',
+      personName:MP?.name||'',personPhoto:myPho||'',fromUid:CU.uid,
+      state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    if(result.status==='member')return showToast(t('group_already_member'));
-    if(result.status==='ineligible')return showToast(t('group_invitee_not_eligible'));
-    if(result.status==='pending')return showToast(t('group_invite_race'));
-    await db.collection('notifications').doc(`groupInvite_${gid}_${uid}`).set({toUid:uid,kind:'groupInvite',role:'recipient',groupId:gid,groupName:result.group?.name||'',personName:MP?.name||'',personPhoto:myPho||'',fromUid:CU.uid,state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
     showToast(t('group_invite_sent').replace('{name}',name));
-    const btn=el('inviteBtn_'+uid);if(btn){btn.textContent=t('pending');btn.disabled=true;btn.classList.remove('inv');}
-  }catch(e){showToast('❌ '+(e.message||e));}
+    const btn=el('inviteBtn_'+uid);
+    if(btn){btn.textContent=t('pending');btn.disabled=true;btn.classList.remove('inv');}
+  }catch(e){showToast('❌ '+e.message);}
 }
-
-
 async function respondGroupInvite(notifId,groupId,accept){
   try{
-    const nSnap=await db.collection('notifications').doc(notifId).get();const n=nSnap.data()||{};if(!n.fromUid)return;
-    const groupRef=db.collection('groups').doc(groupId),inviteRef=groupRef.collection('invites').doc(n.toUid||CU.uid);
-    await db.runTransaction(async tx=>{
-      const gs=await tx.get(groupRef);if(!gs.exists||gs.data().deleted)throw new Error(t('group_deleted'));
-      const inv=await tx.get(inviteRef);const state=accept?'accepted':'declined';
-      if(accept)tx.update(groupRef,{members:firebase.firestore.FieldValue.arrayUnion(CU.uid),blockedMembers:firebase.firestore.FieldValue.arrayRemove(CU.uid)});
-      tx.update(db.collection('notifications').doc(notifId),{state,read:true});
-      if(inv.exists)tx.update(inviteRef,{state,respondedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const newState=accept?'accepted':'declined';
+    if(accept)await db.collection('groups').doc(groupId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+    await db.collection('notifications').doc(notifId).update({state:newState,read:true});
+    const ns=await db.collection('notifications').doc(notifId).get();
+    const n=ns.data()||{};
+    await db.collection('notifications').add({
+      toUid:n.fromUid,kind:'groupInvite',role:'sender',groupId:groupId,groupName:n.groupName||'',
+      personName:MP?.name||'',personPhoto:myPho||'',
+      state:newState,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    await db.collection('notifications').add({toUid:n.fromUid,kind:'groupInvite',role:'sender',groupId,groupName:n.groupName||'',personName:MP?.name||'',personPhoto:myPho||'',state:accept?'accepted':'declined',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     showToast(accept?t('group_member_added'):t('invite_declined'));
-  }catch(e){showToast('❌ '+(e.message||e));}
+  }catch(e){showToast('❌ '+e.message);}
 }
-async function openGroupSettings(){
-  const g=curManageGroupData||{};if(!groupCanEditSettings(g)){showToast(t('group_permission_denied'));return;}
-  el('gsWhoCanJoin').value=g.whoCanJoin||'anyone';el('gsHowCanJoin').value=g.howCanJoin||'direct';el('gsWhoCanInvite').value=g.whoCanInvite||'admins';el('gsWhoCanBeInvited').value=g.whoCanBeInvited||'anyone';
-  el('groupSettingsView').style.display='flex';pushModalState();
-}
-function closeGroupSettings(){el('groupSettingsView').style.display='none';consumeModalState();}
-async function saveGroupSettings(){
-  const g=curManageGroupData||{};if(!groupCanEditSettings(g)){showToast(t('group_permission_denied'));return;}
-  try{await db.collection('groups').doc(curManageGroupId).update({whoCanJoin:el('gsWhoCanJoin').value,howCanJoin:el('gsHowCanJoin').value,whoCanInvite:el('gsWhoCanInvite').value,whoCanBeInvited:el('gsWhoCanBeInvited').value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});showToast(t('group_settings_saved'));closeGroupSettings();await openGroupManageAfterRefresh();renderFindGroups(el('findGQ')?.value||'');}catch(e){showToast('❌ '+(e.message||e));}
-}
-async function deleteCurrentGroup(){
-  const g=curManageGroupData||{};if(!groupCanEditSettings(g)){showToast(t('group_permission_denied'));return;}
-  if(!confirm(t('group_delete_confirm')))return;
-  try{const batch=db.batch();batch.update(db.collection('groups').doc(curManageGroupId),{deleted:true,deletedAt:firebase.firestore.FieldValue.serverTimestamp()});if(g.postId)batch.delete(db.collection('posts').doc(g.postId));await batch.commit();cachedPosts=cachedPosts.filter(p=>p.id!==curManageGroupId);closeGroupSettings();closeGroupManage();renderHome(cachedPosts,_feedShown);renderFindGroups(el('findGQ')?.value||'');showToast(t('group_deleted'));}catch(e){showToast('❌ '+(e.message||e));}
-}
-async function setGroupAdmin(uid,makeAdmin){
-  const g=curManageGroupData||{};if(groupRole(g)!=='owner'||uid===g.ownerUid||uid===g.creatorUid){showToast(t('group_permission_denied'));return;}
-  try{const change=makeAdmin?{admins:firebase.firestore.FieldValue.arrayUnion(uid)}:{admins:firebase.firestore.FieldValue.arrayRemove(uid)};await db.collection('groups').doc(curManageGroupId).update(change);showToast(makeAdmin?t('group_make_admin'):t('group_demote_admin'));await openGroupManageAfterRefresh();}catch(e){showToast('❌ '+(e.message||e));}
-}
-async function moderateGroupMember(uid,action){
-  const g=curManageGroupData||{},viewer=groupRole(g),target=groupRole(g,uid);
-  if(!groupCanManage(g)||uid===g.ownerUid||uid===g.creatorUid||(viewer==='admin'&&target!=='member')){showToast(t('group_permission_denied'));return;}
-  try{const changes={members:firebase.firestore.FieldValue.arrayRemove(uid)};if(action==='block')changes.blockedMembers=firebase.firestore.FieldValue.arrayUnion(uid);await db.collection('groups').doc(curManageGroupId).update(changes);showToast(action==='block'?t('group_member_blocked'):t('group_member_removed'));await openGroupManageAfterRefresh();}catch(e){showToast('❌ '+(e.message||e));}
-}
+
 
 // ── INVITE TO STUDY (person-to-person) ──
 let siTargetUid=null,siTargetName='',siTargetPhoto='',siSelSubject=null,siSelCat=null;
@@ -3882,7 +3924,6 @@ function tab(id){
     if(allUsers.length>0)renderFind(el('findQ')?.value||'');
     else db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>({...d.data(),uid:d.id}));renderFind('');});
   }
-  if(id==='me')void loadPro();
   if(id==='msgs'){/* setupInbox handles real-time inbox updates */}
   if(id==='alerts'){
     db.collection('notifications').where('toUid','==',CU.uid).where('read','==',false).get()
@@ -3910,7 +3951,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v49.js?v=studylink-pwa-85',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-74',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
