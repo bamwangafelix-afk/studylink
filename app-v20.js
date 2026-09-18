@@ -1,4 +1,14 @@
-const SUBJECTS=["Math","Algebra","Calculus","Statistics","Physics","Chemistry","Biology","CS","Python","JavaScript","TypeScript","Java","C++","C#","C","Rust","Go","Ruby","PHP","Swift","Kotlin","React","Vue","Angular","Node.js","HTML/CSS","SQL","MySQL","PostgreSQL","MongoDB","Firebase","Docker","Linux","Git","AWS","Cloud","AI/ML","Deep Learning","Data Science","Cybersecurity","Networks","English","French","Spanish","Arabic","Chinese","Portuguese","History","Economics","Law","Medicine","Engineering","Business","Psychology","Art","Music","Geography","Philosophy","Accounting","Marketing"];
+const SUBJECT_CATEGORIES={
+  programming:{en:'Programming Languages',fr:'Langages de programmation',items:['Python','JavaScript','TypeScript','Java','C++','C#','C','Rust','Go','Ruby','PHP','Swift','Kotlin','Dart','Scala','Perl','Lua','R','MATLAB','Julia','Assembly','Bash','PowerShell','Objective-C','Visual Basic','Solidity']},
+  frameworks:{en:'Frameworks & Libraries',fr:'Frameworks et bibliothèques',items:['React','Vue','Angular','Node.js','Django','Laravel','Blazor','Spring Boot','Ruby on Rails','Express.js','Next.js','Flutter']},
+  web:{en:'Web & Mobile',fr:'Web et mobile',items:['HTML/CSS','Web Development','Frontend Development','Backend Development','Full-Stack Development','Software Engineering','Mobile Development','Android Development','iOS Development','UI/UX Design','Game Development','Unity','Unreal Engine']},
+  tools:{en:'Tools & DevOps',fr:'Outils et DevOps',items:['Git','Linux','Docker','Kubernetes','AWS','Cloud','Cloud Computing','DevOps','CI/CD','Selenium','Playwright','Firebase','Testing & QA']},
+  data:{en:'Data, AI & Security',fr:'Données, IA et sécurité',items:['SQL','MySQL','PostgreSQL','MongoDB','Databases','Big Data','Data Engineering','Data Analytics','AI/ML','Machine Learning','Deep Learning','Natural Language Processing','Computer Vision','Data Science','Cybersecurity','Ethical Hacking','Network Security','Information Security','Digital Forensics','Cryptography','Networks','Blockchain']},
+  computing:{en:'Computer Science',fr:'Informatique',items:['Computer Science','CS','Information Technology','Information Systems','Computer Engineering','Engineering','Algorithms','Data Structures','Object-Oriented Programming','Operating Systems','Distributed Systems','System Design','Software Testing','Microservices']},
+  sciences:{en:'Sciences & Engineering',fr:'Sciences et ingénierie',items:['Math','Algebra','Calculus','Statistics','Physics','Chemistry','Biology','Mathematics','Environmental Science','Geology','Architecture','Mechanical Engineering','Chemical Engineering','Biomedical Engineering']},
+  general:{en:'Academic & Professional',fr:'Études et professions',items:['English','French','Spanish','Arabic','Chinese','Portuguese','History','Economics','Law','Medicine','Nursing','Public Health','Pharmacy','Dentistry','Business','Business Administration','Accounting','Marketing','Human Resources','Psychology','Sociology','Political Science','Communication','Education','Art','Music','Geography','Philosophy']}
+};
+const SUBJECTS=[...new Set(Object.values(SUBJECT_CATEGORIES).flatMap(c=>c.items))];
 const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahrain","Bangladesh","Belarus","Belgium","Belize","Benin","Bolivia","Bosnia","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cambodia","Cameroon","Canada","Cape Verde","Chad","Chile","China","Colombia","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czech Republic","Denmark","Djibouti","Dominican Republic","DR Congo","Ecuador","Egypt","El Salvador","Eritrea","Estonia","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Guatemala","Guinea","Haiti","Honduras","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Lithuania","Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Mauritania","Mauritius","Mexico","Moldova","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palestine","Panama","Paraguay","Peru","Philippines","Poland","Portugal","Qatar","Romania","Russia","Rwanda","Saudi Arabia","Senegal","Serbia","Sierra Leone","Singapore","Slovakia","Slovenia","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Sweden","Switzerland","Syria","Taiwan","Tanzania","Thailand","Togo","Tunisia","Turkey","Turkmenistan","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
 const STICKERS=["😀","😁","😂","🤣","😃","😄","😅","😆","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤬","😱","😰","🤔","🙄","😏","🥺","🥹","🫡","🤗","😇","🤓","😴","🤤","🙈","🙉","🙊","🐶","🐱","🐼","🦊","🦁","🐯","🐸","🐧","🐦","🦄","🐉","🦋","🌟","⭐","🔥","💯","🎉","🎊","🏆","💪","👏","🙌","🤜","🤛","✌️","🤞","💡","📚","✏️","🖊️","🎓","🏫","💻","📱","🤖","🚀","🛸","🌈","☀️","🌙","⚡","❄️","🌊","🍕","🍔","🍟","🍣","🍜","🧁","🍰","☕","🧋","🎮","🎵","🎸","🎤","🏀","⚽","🏆","🥇","❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💝","💖","💫","✨","🌸","🌺","🌻","🌹"];
 const FLAGS=["🇦🇫","🇦🇱","🇩🇿","🇦🇩","🇦🇴","🇦🇷","🇦🇲","🇦🇺","🇦🇹","🇦🇿","🇧🇭","🇧🇩","🇧🇾","🇧🇪","🇧🇿","🇧🇯","🇧🇴","🇧🇦","🇧🇼","🇧🇷","🇧🇳","🇧🇬","🇧🇫","🇧🇮","🇰🇭","🇨🇲","🇨🇦","🇨🇻","🇹🇩","🇨🇱","🇨🇳","🇨🇴","🇨🇬","🇨🇷","🇭🇷","🇨🇺","🇨🇾","🇨🇿","🇩🇰","🇩🇯","🇩🇴","🇨🇩","🇪🇨","🇪🇬","🇸🇻","🇪🇷","🇪🇪","🇪🇹","🇫🇯","🇫🇮","🇫🇷","🇬🇦","🇬🇲","🇬🇪","🇩🇪","🇬🇭","🇬🇷","🇬🇹","🇬🇳","🇭🇹","🇭🇳","🇭🇺","🇮🇸","🇮🇳","🇮🇩","🇮🇷","🇮🇶","🇮🇪","🇮🇱","🇮🇹","🇨🇮","🇯🇲","🇯🇵","🇯🇴","🇰🇿","🇰🇪","🇽🇰","🇰🇼","🇰🇬","🇱🇦","🇱🇻","🇱🇧","🇱🇸","🇱🇷","🇱🇾","🇱🇹","🇱🇺","🇲🇬","🇲🇼","🇲🇾","🇲🇻","🇲🇱","🇲🇹","🇲🇷","🇲🇺","🇲🇽","🇲🇩","🇲🇳","🇲🇪","🇲🇦","🇲🇿","🇲🇲","🇳🇦","🇳🇵","🇳🇱","🇳🇿","🇳🇮","🇳🇪","🇳🇬","🇰🇵","🇲🇰","🇳🇴","🇴🇲","🇵🇰","🇵🇸","🇵🇦","🇵🇾","🇵🇪","🇵🇭","🇵🇱","🇵🇹","🇶🇦","🇷🇴","🇷🇺","🇷🇼","🇸🇦","🇸🇳","🇷🇸","🇸🇱","🇸🇬","🇸🇰","🇸🇮","🇸🇴","🇿🇦","🇰🇷","🇸🇸","🇪🇸","🇱🇰","🇸🇩","🇸🇪","🇨🇭","🇸🇾","🇹🇼","🇹🇿","🇹🇭","🇹🇬","🇹🇳","🇹🇷","🇹🇲","🇺🇬","🇺🇦","🇦🇪","🇬🇧","🇺🇸","🇺🇾","🇺🇿","🇻🇪","🇻🇳","🇾🇪","🇿🇲","🇿🇼"];
@@ -23,6 +33,10 @@ function consumeModalState(){
 function closeTopModal(){
   if(el('statusView')?.style.display==='flex'){closeStatusView();return;}
   if(el('statusCreate')?.style.display==='flex'){closeStatusCreate();return;}
+  if(el('studyInviteView')?.style.display==='flex'){closeStudyInvite();return;}
+  if(el('groupSettingsView')?.style.display==='flex'){closeGroupSettings();return;}
+  if(el('inviteMembersView')?.style.display==='flex'){closeInviteMembers();return;}
+  if(el('groupManageView')?.style.display==='flex'){closeGroupManage();return;}
   if(el('profileView')?.style.display==='flex'){closeProfileView();return;}
   if(el('groupW')&&getComputedStyle(el('groupW')).display!=='none'){closeGroup();return;}
   if(el('chatW')&&getComputedStyle(el('chatW')).display!=='none'){closeChat();return;}
@@ -265,7 +279,7 @@ function resetRecorderUi(kind){
   if(!group&&CU&&recChatId)void setPresenceState('private',recChatId,'recording',false);
   if(group)recGroupId=null;else recChatId=null;
   button?.classList.remove('voice-pending','rec','voice-locked');
-  if(button)button.style.background=group?'#e67e22':'var(--btnB)';
+  if(button){button.dataset.voiceLocked='0';button.style.setProperty('--voice-drag-y','0px');button.style.background=group?'#e67e22':'var(--btnB)';}
   setMicIcon(icon);
   if(bar)bar.style.display='none';
   if(timer)timer.textContent='0:00';
@@ -306,11 +320,15 @@ async function uploadCloud(file,type){
   }
   // Audio is accepted by Cloudinary through auto/upload and video/upload.
   // Try auto first, then video, with one retry for transient mobile failures.
-  const endpoints=(type==='audio'||type==='voice')
-    ? ['auto','video']
-    : [type==='doc'?'raw':'image'];
+  const endpoints=type==='video'
+    ? ['video','auto']
+    : (type==='audio'||type==='voice')
+      ? ['auto','video']
+      : type==='doc'
+        ? []
+        : ['image','auto'];
   let lastError='Upload failed';
-  // Keep a mobile upload from leaving the bubble in Sending... indefinitely.
+  // Keep a mobile upload from leaving the bubble pending indefinitely.
   // Each request gets up to 15 seconds, with a 45-second total ceiling across fallbacks.
   const deadline=Date.now()+45000;
   for(const resourceType of endpoints){
@@ -362,6 +380,21 @@ async function uploadVoiceToFirebase(file){
     });
   });
   return ref.getDownloadURL();
+}
+async function uploadToFirebaseStorage(file,folder){
+  if(!voiceStorage||!CU||!file)return null;
+  try{
+    const ext=(file.name||'media.bin').split('.').pop()||'bin';
+    const key=`${folder}/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const ref=voiceStorage.ref().child(key);
+    const task=ref.put(file,{contentType:file.type||'application/octet-stream'});
+    await new Promise((resolve,reject)=>task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},reject,resolve));
+    return {url:await ref.getDownloadURL(),storage:'firebase-storage'};
+  }catch(e){uploadToFirebaseStorage.lastError=e?.message||'Firebase Storage upload failed';return null;}
+}
+async function uploadDocument(file){
+  // Long documents bypass Cloudinary because the unsigned preset is limited to 10 MB.
+  return uploadToFirebaseStorage(file,'documents');
 }
 function readVoiceAsDataUrl(file,maxBytes=300000){
   return new Promise(resolve=>{
@@ -467,6 +500,30 @@ function showReg(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.
 function showReset(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('resetF').style.display='flex';}
 
 let s2Intent='both',s2SelTags=[];
+let postSubjectCategory='all',statusSubjectCategory='all';
+function subjectCategoryLabel(key){const c=SUBJECT_CATEGORIES[key];return c?(c[appLang==='en'?'en':'fr']||c.en):key;}
+function subjectMatches(s,q){return !q||s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''));}
+function subjectItems(category,q){
+  const pool=category==='all'?SUBJECTS:(SUBJECT_CATEGORIES[category]?.items||[]);
+  return pool.filter(s=>subjectMatches(s,q));
+}
+function renderSubjectPicker(mode){
+  const isPost=mode==='post',prefix=isPost?'post':'status',category=isPost?postSubjectCategory:statusSubjectCategory;
+  const search=el(prefix+'SubjectSearch'),cats=el(prefix+'SubjectCats'),options=el(isPost?'tagSel':'stSubjSel'),selected=el(prefix+'SubjectSelected');
+  if(!cats||!options)return;
+  const q=(search?.value||'').trim();
+  cats.innerHTML=[['all',appLang==='en'?'All':'Tous'],...Object.keys(SUBJECT_CATEGORIES).map(k=>[k,subjectCategoryLabel(k)])].map(([key,label])=>`<button type="button" class="subjectCategoryTab${category===key?' active':''}" onclick="selectSubjectCategory('${mode}','${key}')">${esc(label)}</button>`).join('');
+  const values=isPost?selTags:(selStatusSubject?[selStatusSubject]:[]);
+  selected.innerHTML=values.map(s=>`<span class="subjectChip">${esc(s)} <button type="button" aria-label="Remove ${esc(s)}" onclick="${isPost?`togglePostSubject('${e2(s)}')`:`toggleStatusSubject('${e2(s)}')`}">×</button></span>`).join('');
+  const items=subjectItems(category,q);
+  options.innerHTML=items.length?items.map(s=>`<button type="button" class="tag${values.includes(s)?' sel':''}" onclick="${isPost?`togglePostSubject('${e2(s)}')`:`toggleStatusSubject('${e2(s)}')`}">${esc(s)}</button>`).join(''):`<span class="subjectEmpty">${appLang==='en'?'No subject found':'Aucune matière trouvée'}</span>`;
+}
+function selectSubjectCategory(mode,key){if(mode==='post')postSubjectCategory=key;else statusSubjectCategory=key;renderSubjectPicker(mode);}
+function togglePostSubject(s){if(selTags.includes(s))selTags=selTags.filter(t=>t!==s);else if(selTags.length<5)selTags.push(s);else return showToast(appLang==='en'?'You can select up to 5 subjects':'Tu peux sélectionner au maximum 5 matières');renderSubjectPicker('post');}
+function setupSubjectPicker(){
+  [['post','postSubjectSearch'],['status','statusSubjectSearch']].forEach(([mode,id])=>el(id)?.addEventListener('input',()=>renderSubjectPicker(mode)));
+}
+
 function showStep2(){
   ['loginF','regF','resetF'].forEach(id=>el(id).style.display='none');
   el('step2F').style.display='flex';
@@ -654,6 +711,26 @@ function openProfile(uid,profileData=null){
   const isSelf=uid===CU?.uid;
   el('pvMsgBtn').style.display=isSelf?'none':'block';
   el('pvMsgBtn').onclick=()=>{closeProfileView(true);openChat(u.name||'',uid);};
+  const invBtn=el('pvInviteBtn');
+  if(invBtn){
+    invBtn.style.display=isSelf?'none':'block';
+    invBtn.textContent=t('invite_to_study');
+    invBtn.disabled=false;
+    invBtn.onclick=()=>openStudyInvite(uid,u.name||'');
+  }
+  const stEl=el('pvStudyTogether');
+  if(stEl){
+    stEl.innerHTML='';
+    if(!isSelf&&CU?.uid){
+      db.collection('studyInvites').where('status','==','accepted').where('fromUid','==',CU.uid).where('toUid','==',uid).get()
+        .then(async a=>{
+          const b=await db.collection('studyInvites').where('status','==','accepted').where('fromUid','==',uid).where('toUid','==',CU.uid).get();
+          const courses=[...new Set([...a.docs,...b.docs].map(d=>d.data().course).filter(Boolean))];
+          if(!courses.length)return;
+          stEl.innerHTML=`<div style="font-size:11.5px;color:#7b2ff7;font-weight:700;margin-bottom:6px;">${t('study_together_label')}</div>`+courses.map(c=>`<span class="tbadge" style="background:#f2e6ff;color:#6b21c9;">📚 ${esc(c)}</span>`).join('');
+        }).catch(()=>{});
+    }
+  }
   el('statusView').style.display='none';
   el('stVMenu').style.display='none';
   el('profileView').style.display='flex';
@@ -664,10 +741,12 @@ function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
 }
+function bothIntentIcon(){return `<svg class="intent-vector intent-vector-both" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="display:block;flex:0 0 16px;fill:currentColor;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`;}
 function getIntentBadge(intent){
-  if(intent==='need')return'<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e8f4fd;color:#1565c0;margin-top:3px;">🙋 Needs Help</span>';
-  if(intent==='help')return'<span style="display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e8f8ef;color:#1a7a3c;margin-top:3px;">🧑‍🏫 Can Help</span>';
-  return'';
+  if(intent==='need')return`<span class="intent-badge intent-need" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#fff1e0;color:#c2570a;margin-top:3px;">${intentVectorIcon('aide')}<span>${t('badge_needs_help')}</span></span>`;
+  if(intent==='help')return`<span class="intent-badge intent-help" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e3f8f4;color:#000;margin-top:3px;">${intentVectorIcon('givehelp')}<span>${t('badge_can_help')}</span></span>`;
+  if(intent==='both')return`<span class="intent-badge intent-both" style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:bold;background:#e8f0ff;color:#2563eb;margin-top:3px;">${bothIntentIcon()}<span>${t('me_both')}</span></span>`;
+  return '';
 }
 function updatePC(){
   if(!MP)return;
@@ -690,14 +769,20 @@ function loadPic(e){
 let eIntent='both';
 function setEIntent(v){
   eIntent=v;
-  ['need','help','both'].forEach(t=>{
-    const b=el('e'+t.charAt(0).toUpperCase()+t.slice(1)+'Btn');
-    if(b){b.style.background=v===t?'var(--btnB)':'transparent';b.style.color=v===t?'#fff':'var(--txt)';b.style.borderColor=v===t?'var(--btnB)':'var(--brd)';}
+  ['need','help','both'].forEach(kind=>{
+    const b=el('e'+kind.charAt(0).toUpperCase()+kind.slice(1)+'Btn');
+    if(!b)return;
+    if(kind==='need')b.innerHTML=`${intentVectorIcon('aide')}<span>${t('me_get_help')}</span>`;
+    else if(kind==='help')b.innerHTML=`${intentVectorIcon('givehelp')}<span>${t('me_give_help')}</span>`;
+    else b.innerHTML=`${bothIntentIcon()}<span>${t('me_both')}</span>`;
+    b.style.background=v===kind?(kind==='need'?'#fff1e0':kind==='help'?'#e3f8f4':'var(--btnB)'):'transparent';
+    b.style.color=v===kind?(kind==='need'?'#c2570a':kind==='help'?'#000':'#fff'):'var(--txt)';
+    b.style.borderColor=v===kind?(kind==='need'?'#c2570a':kind==='help'?'#000':'var(--btnB)'):'var(--brd)';
   });
 }
 async function savePro(){
   if(!CU)return;
-  const name=v('uN');if(!name){showToast('❌ Name required');return;}
+  const name=v('uN');if(!name){showToast(t('me_toast_name_required'));return;}
   const langs=v('uL').split(',').map(l=>l.trim()).filter(Boolean);
   const skills=v('uSk').split(',').map(s=>s.trim()).filter(Boolean);
   const data={name,bio:v('uBio'),country:el('uC').value||'',uni:v('uU'),course:v('uCo'),year:v('uY'),langs,skills,intent:eIntent,status:'Online',photo:myPho};
@@ -706,7 +791,7 @@ async function savePro(){
     await db.collection('users').doc(CU.uid).set(data,{merge:true});
     MP={...MP,...data};el('topN').textContent=name;updatePC();
     el('pcardEl').style.display='flex';el('EF').style.display='none';
-    showToast('✅ Saved!');
+    showToast(t('me_toast_saved'));
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
 }
@@ -740,6 +825,40 @@ function listenUsers(){
     });
   },e=>console.log('users:',e));
 }
+
+// ── VISIBILITY ──
+function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+function visibilityWords(value,kind){
+  const ignored=kind==='university'?new Set(['university','uni','college','school','institution','institute']):new Set();
+  return visibilityText(value).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(word=>word&&!ignored.has(word));
+}
+function sameAudienceValue(a,b,kind){
+  const left=visibilityWords(a,kind),right=visibilityWords(b,kind);
+  return left.length>0&&right.length>0&&left.some(word=>right.includes(word));
+}
+function sameAudienceField(owner,viewer,kind){
+  const ownerValue=kind==='country'?owner?.country:(kind==='university'?owner?.uni:owner?.course);
+  const viewerValue=kind==='country'?viewer?.country:(kind==='university'?viewer?.uni:viewer?.course);
+  return sameAudienceValue(ownerValue,viewerValue,kind);
+}
+function rememberStatusVisibility(value){
+  if(!['anyone','country','university','major'].includes(value))return;
+  localStorage.setItem('statusVisibility',value);
+  if(MP)MP.statusVisibility=value;
+  if(CU)db.collection('users').doc(CU.uid).set({statusVisibility:value},{merge:true}).catch(()=>{});
+}
+function canViewVisibility(content,viewer,owner){
+  if(!viewer||!owner)return false;
+  if(content?.uid&&content.uid===viewer.uid)return true;
+  const rule=visibilityText(content?.visibility);
+  if(!rule||rule==='anyone'||rule==='public')return true;
+  const vp=viewer.uid===CU?.uid?(allUsers.find(u=>u.uid===viewer.uid)||MP):(viewer.profile||viewer);
+  if(rule==='country')return sameAudienceField(owner,vp,'country');
+  if(rule==='university'||rule==='uni')return sameAudienceField(owner,vp,'university');
+  if(rule==='major'||rule==='course'||rule==='major/course')return sameAudienceField(owner,vp,'major');
+  return true;
+}
+function visiblePosts(posts){return (posts||[]).filter(p=>canViewVisibility(p,CU,allUsers.find(u=>u.uid===p.uid)||p.user||{}));}
 
 // ── POSTS ──
 let cachedPosts=[],lastPostCount=0,_feedShown=10;
@@ -782,80 +901,90 @@ function loadMorePosts(){
       }).catch(()=>{});
   }
 }
-function toggleGN(val){el('gnW').style.display=val==='Group'?'block':'none';}
+function toggleGN(val){
+  el('gnW').style.display=val==='Group'?'block':'none';
+  el('pVisWrap').style.display=val==='Group'?'none':'block';
+}
 async function addPost(){
   if(!MP?.name)return alert('Complete your profile first');
   const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
+  const visibility=type==='Group'?'anyone':(el('pVisibility')?.value||'anyone');
+  const whoCanJoin='anyone',howCanJoin='direct'; // group access rules are configured afterwards in Group Settings, not at creation
   const gname=type==='Group'?v('gName'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
   showOv(true);
   try{
-    const ref=await db.collection('posts').add({type,text,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,members:[CU.uid],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const postData={type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+    if(type==='Group'){postData.whoCanJoin=whoCanJoin;postData.howCanJoin=howCanJoin;}
+    const ref=await db.collection('posts').add(postData);
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
-    selTags=[];document.querySelectorAll('#tagSel .tag').forEach(b=>b.classList.remove('sel'));
-    el('pText').value='';el('pType').value='Individual';el('gName').value='';el('gnW').style.display='none';
+    selTags=[];renderSubjectPicker('post');
+    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';
     showToast('📢 Posted!');tab('home');
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
 }
 async function delPost(id){if(!confirm('Delete?'))return;await db.collection('posts').doc(id).delete();}
 function fmtLastSeen(lastSeen){
-  if(!lastSeen)return'Active a while ago';
+  if(!lastSeen)return t('time_active_while_ago');
   const sec=Math.floor((Date.now()-(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000))/1000);
-  if(sec<10)return'Active just now';
-  if(sec<60)return'Active '+sec+'s ago';
+  if(sec<10)return t('time_active_now');
+  if(sec<60)return t('time_active_s').replace('{n}',sec);
   const min=Math.floor(sec/60);
-  if(min<60)return'Active '+min+'m ago';
+  if(min<60)return t('time_active_m').replace('{n}',min);
   const hr=Math.floor(min/60);
-  if(hr<24)return'Active '+hr+'h ago';
+  if(hr<24)return t('time_active_h').replace('{n}',hr);
   const dy=Math.floor(hr/24);
-  if(dy===1)return'Active yesterday';
-  if(dy<7)return'Active '+dy+'d ago';
-  return'Active over a week ago';
+  if(dy===1)return t('time_active_yesterday');
+  if(dy<7)return t('time_active_d').replace('{n}',dy);
+  return t('time_active_week_ago');
 }
 function getStatusInfo(status,lastSeen){
-  if(status==='Online')return{cls:'online',label:'🟢 Online'};
-  if(status==='Busy')return{cls:'busy',label:'🔴 Busy'};
+  if(status==='Online')return{cls:'online',label:t('status_online')};
+  if(status==='Busy')return{cls:'busy',label:t('status_busy')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
 }
 function renderHome(posts,limit){
   const f=el('feed');
-  if(!posts?.length){f.innerHTML="<p style='text-align:center;color:#888;padding:24px;'>No posts yet. Be the first to post! 🎓</p>";return;}
+  posts=visiblePosts(posts);
+  if(!posts?.length){f.innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('home_no_posts')}</p>`;return;}
   const shown=posts.slice(0,limit||10);
   const hasMore=posts.length>(limit||10);
   f.innerHTML='';
   shown.forEach(p=>{
     const isG=p.type==='Group',isOwn=p.uid===CU?.uid;
-    const st=getStatusInfo(p.user?.status,p.user?.lastSeen);
-    const tags=(p.tags||[]).map(t=>`<span class="tbadge">${t}</span>`).join('');
-    const av=p.user?.photo?`<img src="${p.user.photo}">`:'👤';
     const liveUser=allUsers.find(u=>u.uid===p.uid);
-    const intent=p.user?.intent||liveUser?.intent||'';
+    const du=liveUser||p.user||{}; // prefer live profile data over the stale snapshot saved with the post
+    const st=getStatusInfo(du.status,du.lastSeen);
+    const tags=(p.tags||[]).map(t=>`<span class="tbadge">${t}</span>`).join('');
+    const av=du.photo?`<img src="${du.photo}">`:'👤';
+    const intent=du.intent||'';
     f.innerHTML+=`<div class="card ${isG?'grp':''}">
       <div style="display:flex;gap:10px;margin-bottom:8px;">
         <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;">${esc(p.user?.name||'?')}${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}</b>
-          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(p.user?.country||'')} ${p.user?.country||'—'} | 🏛️ ${p.user?.uni||'—'}</p>
-          <p style="font-size:11px;color:var(--sub);margin:2px 0;">📖 ${p.user?.course||'—'} ${p.user?.year?'('+p.user.year+')':''}</p>
+          <b style="color:var(--btnB);font-size:14px;">${esc(du.name||'?')}${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}</b>
+          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | 🏛️ ${du.uni||'—'}</p>
+          <p style="font-size:11px;color:var(--sub);margin:2px 0;">📖 ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
+          <div style="margin-top:2px;">${isG?groupRuleBadgesHtml(p):`<span class="ruleBadge">${RULE_ICONS[p.visibility]||'🟢'} ${accessRuleLabel(p.visibility)}</span>`}</div>
           ${getIntentBadge(intent)}
         </div>
       </div>
       ${tags?`<div style="margin-bottom:6px;">${tags}</div>`:''}
       <p style="font-size:13px;margin-bottom:8px;">${esc(p.text)}</p>
       <div style="display:flex;gap:6px;">
-        ${isG?`<button class="btn o" style="flex:1;" onclick="openGroup('${p.id}','${e2(p.groupName||'Group')}')">🤝 Join Group</button>`:
-              `<button class="btn" style="flex:1;" onclick="openChat('${e2(p.user?.name||'')}','${p.uid||''}')">💬 Message</button>`}
+        ${isG?`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${t('home_join_group')}</button>`:
+              `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
       </div>
     </div>`;
   });
   // Load More button — matches your screenshot style
   if(hasMore||posts.length===30){
-    f.innerHTML+=`<button onclick="loadMorePosts()" style="display:block;width:100%;padding:14px;margin-top:4px;border:none;border-radius:14px;background:var(--btnB);color:#fff;font-size:15px;font-weight:bold;cursor:pointer;letter-spacing:.3px;">Load more</button>`;
+    f.innerHTML+=`<button onclick="loadMorePosts()" style="display:block;width:100%;padding:14px;margin-top:4px;border:none;border-radius:14px;background:var(--btnB);color:#fff;font-size:15px;font-weight:bold;cursor:pointer;letter-spacing:.3px;">${t('home_load_more')}</button>`;
   }
 }
 
@@ -881,17 +1010,17 @@ function renderStatusBar(){
   const myStatus=activeStatusOf(mine);
   let html=`<div class="stItem" onclick="openStatusCreate()">
     <div class="stRing ring-add"><div class="stAvatar">+</div></div>
-    <div class="stLabel">Statut</div>
+    <div class="stLabel">${t('st_status')}</div>
   </div>`;
   if(myStatus){
     const av=myStatus.photo?`<img class="stThumb" src="${myStatus.photo}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
     const ringCls=myStatus.category?('ring-'+myStatus.category):'ring-photo';
     html+=`<div class="stItem" onclick="viewStatus('${CU.uid}')">
       <div class="stRing ${ringCls}">${av}</div>
-      <div class="stLabel">Toi</div>
+      <div class="stLabel">${t('st_you')}</div>
     </div>`;
   }
-  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
+  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
   others.forEach(u=>{
     const sp=u.statusPost;
     const seen=(sp.viewedBy||[]).includes(CU.uid);
@@ -921,6 +1050,9 @@ function statusVectorIcon(key){
   const paths={text:'<path d="M4 4h16v12H8l-4 4V4Z"/><path d="M8 8h8M8 11h5"/>',dispo:'<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 19c.5-3 2.5-4.5 6-4.5S14.5 16 15 19M14 14.5c3.5-.5 6 1 7 4.5"/>',aide:'<path d="M12 20V10M8 14l4 4 4-4M5 5h14v5H5z"/><path d="M8 5V3h8v2"/>'};
   return `<svg class="stVectorIcon" viewBox="0 0 24 24" aria-hidden="true">${paths[key]||paths.text}</svg>`;
 }
+function intentVectorIcon(key){
+  return statusVectorIcon(key).replace('<svg ','<svg style="display:inline-block!important;width:18px!important;height:18px!important;min-width:18px!important;min-height:18px!important;flex:0 0 18px!important;visibility:visible!important;opacity:1!important;color:currentColor!important;" ');
+}
 function openStatusCreate(arg){
   if(!MP?.name)return showToast('❌ Complete your profile first');
   pushModalState();
@@ -928,6 +1060,7 @@ function openStatusCreate(arg){
   if(arg&&typeof arg==='object')draft=arg;
   else if(typeof arg==='string')draft={photo:arg};
   selStatusCat=draft?.category||null;selStatusSubject=draft?.subject||null;selStatusGroup=null;
+  if(el('stVisibility'))el('stVisibility').value=MP?.statusVisibility||MP?.statusPost?.visibility||localStorage.getItem('statusVisibility')||'anyone';
   statusPhotoUrl=draft?.photo||null;
   forwardedFromDraft=draft?.from||null;
   el('stMsg').value=draft?.message||'';el('stCharCount').textContent=(draft?.message||'').length+' / 100';
@@ -939,11 +1072,7 @@ function openStatusCreate(arg){
     const selCls=k===selStatusCat?' sel':'';
     return `<div class="stCatCard cat-${k}${selCls}" id="stCat_${k}" onclick="selectStatusCat('${k}')"><div class="em">${statusVectorIcon(k)}</div><div class="nm">${catLabel(k)}</div></div>`;
   }).join('');
-  const subjWrap=el('stSubjSel');
-  subjWrap.innerHTML=SUBJECTS.map(s=>{
-    const selCls=s===selStatusSubject?' sel':'';
-    return `<button type="button" class="tag${selCls}" id="stSubj_${s.replace(/[^a-zA-Z0-9]/g,'')}" onclick="toggleStatusSubject('${e2(s)}')">${esc(s)}</button>`;
-  }).join('');
+    renderSubjectPicker('status');
   const myGroups=cachedPosts.filter(p=>p.type==='Group'&&p.uid===CU.uid);
   const grpWrap=el('stGroupSel');
   if(myGroups.length===0){
@@ -964,8 +1093,7 @@ function selectStatusCat(k){
 }
 function toggleStatusSubject(s){
   selStatusSubject=selStatusSubject===s?null:s;
-  document.querySelectorAll('#stSubjSel .tag').forEach(b=>b.classList.remove('sel'));
-  if(selStatusSubject){const btn=el('stSubj_'+s.replace(/[^a-zA-Z0-9]/g,''));if(btn)btn.classList.add('sel');}
+  renderSubjectPicker('status');
   updateStatusPreview();
 }
 function toggleStatusGroup(id,name){
@@ -999,27 +1127,30 @@ function removeStatusPhoto(){
 }
 function updateStatusPreview(){
   const p=el('stPreview');if(!p)return;
-  if(!selStatusCat&&!statusPhotoUrl){p.innerHTML='<span style="font-size:12px;color:var(--sub);">Choisis une catégorie, ou ajoute une photo, pour voir l\'aperçu</span>';return;}
+  if(!selStatusCat&&!statusPhotoUrl){p.innerHTML=`<span style="font-size:12px;color:var(--sub);">${t('st_preview_empty')}</span>`;return;}
   const c=selStatusCat?CATS[selStatusCat]:null;
   const av=statusPhotoUrl?`<img class="stThumb" src="${statusPhotoUrl}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
   const ringCls=selStatusCat?('ring-'+selStatusCat):'ring-photo';
-  const desc=c?(`${c.emoji} ${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}`):'📷 Photo';
+  const desc=c?(`${statusVectorIcon(selStatusCat)} <span>${catLabel(selStatusCat)}${selStatusSubject?' · '+esc(selStatusSubject):''}</span>`):`📷 ${t('st_preview_photo')}`;
   p.innerHTML=`<div class="stRing ${ringCls}" style="width:52px;height:52px;flex-shrink:0;">${av}</div>
-    <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||'Toi')}</b>${desc}</div>`;
+    <div style="font-size:12.5px;color:var(--sub);"><b style="color:var(--txt);font-size:14px;display:block;margin-bottom:2px;">${esc(MP?.name||t('st_you'))}</b>${desc}</div>`;
 }
 async function publishStatus(){
-  if(!MP?.name)return showToast('❌ Complete your profile first');
-  if(statusUploading)return showToast('❌ Photo en cours d\'envoi, patiente');
+  if(!MP?.name)return showToast(t('st_toast_complete_profile'));
+  if(statusUploading)return showToast(t('st_toast_photo_uploading'));
   const msg=v('stMsg');
   if(!statusPhotoUrl){
-    if(!selStatusCat)return showToast('❌ Choisis une catégorie');
-    if(!msg)return showToast('❌ Écris un message');
+    if(!selStatusCat)return showToast(t('st_toast_choose_category'));
+    if(!msg)return showToast(t('st_toast_write_message'));
   }
-  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const visibility=el('stVisibility')?.value||'anyone';
+  rememberStatusVisibility(visibility);
+  const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,visibility,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const col=creatingCategoryColor();
   el('ov').style.display='flex';
   try{
-    await db.collection('users').doc(CU.uid).update({statusPost:payload});
-    showToast('✅ Statut publié');
+    await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility});
+    showToast(t('st_toast_published'),col);
     forwardedFromDraft=null;
     closeStatusCreate();
   }catch(e){showToast('❌ '+(e.message||'Erreur'));}
@@ -1032,25 +1163,26 @@ function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
+  if(!canViewVisibility(sp,CU,u))return showToast(t('st_not_available'));
   pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
   const c=sp.category?CATS[sp.category]:null;
   el('stVAvatar').innerHTML=u.photo?`<img src="${u.photo}">`:esc((u.name||'?')[0]||'?').toUpperCase();
-  el('stVName').textContent=uid===CU.uid?'Toi':(u.name||'?');
+  el('stVName').textContent=uid===CU.uid?t('st_you'):(u.name||'?');
   const createdMs=statusMillis(sp.createdAt)||Date.now();
   const mins=Math.max(1,Math.round((Date.now()-createdMs)/60000));
-  const ago=mins<60?`Il y a ${mins} min`:`Il y a ${Math.round(mins/60)}h`;
+  const ago=mins<60?t('st_time_ago_min').replace('{n}',mins):t('st_time_ago_hour').replace('{n}',Math.round(mins/60));
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
-  el('stVTime').textContent=`${ago} · disparaît dans ${left}h`;
-  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').textContent=`${c.emoji} ${catLabel(sp.category)}`;}
+  el('stVTime').textContent=`${ago} · ${t('st_time_remaining').replace('{n}',left)}`;
+  if(c){el('stVBadge').style.display='inline-flex';el('stVBadge').innerHTML=`${statusVectorIcon(sp.category)}<span>${catLabel(sp.category)}</span>`;}
   else{el('stVBadge').style.display='none';}
   if(sp.message){el('stVMsg').style.display='block';el('stVMsg').textContent=sp.message;}
   else{el('stVMsg').style.display='none';}
   if(sp.subject){el('stVSubject').style.display='inline-block';el('stVSubject').textContent='📖 '+sp.subject;}
   else{el('stVSubject').style.display='none';}
-  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupBtn').textContent='Rejoindre '+sp.linkedGroupName;}
+  if(sp.linkedGroupId){el('stVJoinGroupBtn').style.display='inline-block';el('stVJoinGroupLabel').textContent=t('st_join_prefix')+(sp.linkedGroupName||'');}
   else{el('stVJoinGroupBtn').style.display='none';}
   const view=el('statusView');
   applyStatusTheme(view,statusThemeFor(sp.category,sp.photo,sp.message));
@@ -1185,7 +1317,8 @@ function saveStatusMedia(){
 async function deleteStatus(){
   el('stVMenu').style.display='none';
   if(!confirm(t('st_confirm_delete')))return;
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'));}
+  const col=viewingCategoryColor();
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'),col);}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
@@ -1200,24 +1333,27 @@ function viewStatusProfile(){
 function toggleStatusNotif(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
+  const col=viewingCategoryColor();
   if(confirm(t('st_confirm_notif').replace('{name}',u?.name||'cet utilisateur'))){
-    showToast(t('st_toast_notif_on'));
+    showToast(t('st_toast_notif_on'),col);
   }
 }
 function hideStatusUser(){
   el('stVMenu').style.display='none';
   const u=allUsers.find(x=>x.uid===curStatusUid);
+  const col=viewingCategoryColor();
   if(confirm(t('st_confirm_hide').replace('{name}',u?.name||'cet utilisateur'))){
     let hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
     if(!hidden.includes(curStatusUid))hidden.push(curStatusUid);
     localStorage.setItem('hiddenStatusUids',JSON.stringify(hidden));
-    closeStatusView();renderStatusBar();showToast(t('st_toast_hidden'));
+    closeStatusView();renderStatusBar();showToast(t('st_toast_hidden'),col);
   }
 }
 function reportStatus(){
   el('stVMenu').style.display='none';
+  const col=viewingCategoryColor();
   if(confirm('Signaler ce statut pour contenu inapproprié ?')){
-    showToast(t('st_toast_reported'));
+    showToast(t('st_toast_reported'),col);
   }
 }
 async function sendQuickStatusReply(toUid,text){
@@ -1242,6 +1378,7 @@ function resetStatusReplyButton(){
   const btn=el('stVReplyBtn');
   btn?.classList.remove('voice-pending','rec','voice-locked');
   if(btn)btn.style.background='';
+  const float=el('stVReplyFloat');if(float){float.classList.remove('is-visible');float.style.setProperty('--voice-float-y','0px');}
   setMicIcon('stVReplyIcon');
   const bar=el('stVReplyBar');if(bar)bar.style.display='none';
   const timer=el('stVReplyTimer');if(timer)timer.textContent='0:00';
@@ -1292,6 +1429,7 @@ async function startStatusVoice(fromGesture=false){
     stmr.start(200);stIsRec=true;stvSec=0;stVStartAt=Date.now();
     void keepVoiceScreenOn();
     const btn=el('stVReplyBtn');btn?.classList.remove('voice-pending');btn?.classList.add('rec');
+    const float=el('stVReplyFloat');if(float){float.classList.remove('is-visible');float.style.setProperty('--voice-float-y','0px');}
     if(btn)btn.style.background='';
     setSendIcon('stVReplyIcon');
     const bar=el('stVReplyBar');if(bar)bar.style.display='flex';
@@ -1319,23 +1457,24 @@ async function stopAndSendStatusVoice(){
   try{recorder.stream.getTracks().forEach(t=>t.stop());}catch(e){}
   void releaseVoiceScreen();recorder.ondataavailable=null;recorder.onstop=null;
   stvCh=[];stvSec=0;stmr=null;stVStartAt=0;
-  if(!chunks.length||!toUid||toUid===CU?.uid){stVoiceSending=false;stVFinalizing=false;recStatusUid=null;showToast('⚠️ Rien n’a été enregistré.');restartStatusReplyTimer();return;}
+  if(!chunks.length||!toUid||toUid===CU?.uid){stVoiceSending=false;stVFinalizing=false;recStatusUid=null;showToast('⚠️ Rien n’a été enregistré.',viewingCategoryColor());restartStatusReplyTimer();return;}
   const file=voiceFileFromChunks(chunks),mm=Math.floor(dur/60),ss=dur%60,cid=getCID(CU.uid,toUid),t=now();
   let msgRef=null,uploadCommitted=false;
   try{
     msgRef=await db.collection('chats').doc(cid).collection('messages').add({type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     let url=await uploadCloud(file,'audio'),fallbackError='';
     if(!url){try{const storageUrl=await uploadVoiceToFirebase(file);if(storageUrl){await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});url=storageUrl;uploadCommitted=true;}}catch(e){fallbackError=e?.message||'Firebase Storage upload failed';}}
+    if(!url){try{const alt=await uploadToFirebaseStorage(file,'status-voices');if(alt?.url){await msgRef.update({data:alt.url,status:'sent',storage:alt.storage});url=alt.url;uploadCommitted=true;}}catch(e){fallbackError=e?.message||fallbackError||'Firebase Storage fallback failed';}}
     if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
-    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
+    if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.',viewingCategoryColor());stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
     if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
     const upd={participants:[CU.uid,toUid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
     await db.collection('chats').doc(cid).set(upd,{merge:true});
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
     db.collection('users').doc(toUid).update(receiverUpd).catch(()=>{db.collection('users').doc(toUid).set(receiverUpd,{merge:true}).catch(()=>{});});
     db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
-    showToast('✅ Vocal envoyé');
-  }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.');}
+    showToast(t('st_toast_audio_sent'),viewingCategoryColor());
+  }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.',viewingCategoryColor());}
   stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();
 }
 function cancelStatusVoice(){
@@ -1349,7 +1488,7 @@ async function sendStatusReply(){
   if(curStatusUid===CU.uid)return showToast('Tu ne peux pas te répondre à toi-même');
   inp.value='';onStatusReplyInput();
   const ok=await sendQuickStatusReply(curStatusUid,text);
-  if(ok){showToast('Message envoyé');restartStatusReplyTimer();}
+  if(ok){showToast(t('st_toast_msg_sent'),viewingCategoryColor());restartStatusReplyTimer();}
 }
 function replyToStatus(){
   el('stVMenu').style.display='none';
@@ -1395,11 +1534,151 @@ function joinStatusGroup(){
   if(!sp?.linkedGroupId)return;
   const gid=sp.linkedGroupId,gname=sp.linkedGroupName;
   closeStatusView();
-  if(typeof openGroup==='function')openGroup(gid,gname);
-  else showToast('Groupe introuvable');
+  if(typeof handleGroupAccess==='function')handleGroupAccess(gid,gname);
+  else showToast(t('group_not_found'));
 }
 
 // ── FIND ──
+// ── FIND: top-level Students / Groups / Library ──
+let findTop='students';
+function switchFindTop(tab,el2){
+  findTop=tab;
+  document.querySelectorAll('#findTopTabs .stab').forEach(b=>{b.classList.remove('on');b.classList.remove('on-grp');});
+  el2.classList.add(tab==='groups'?'on-grp':'on');
+  el('findPanelStudents').style.display=tab==='students'?'block':'none';
+  el('findPanelGroups').style.display=tab==='groups'?'block':'none';
+  el('findPanelLibrary').style.display=tab==='library'?'block':'none';
+  if(tab==='groups')renderFindGroups();
+  if(tab==='library')renderFindLibrary();
+}
+async function renderFindGroups(q=""){
+  const f=el('findGroupsL');
+  f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_loading_groups')}</p>`;
+  let snap;
+  try{snap=await db.collection('groups').limit(200).get();}
+  catch(e){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_groups_error')}</p>`;return;}
+  let groups=snap.docs.map(d=>({id:d.id,...d.data()}));
+  groups.sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+  if(q){const s=q.toLowerCase();groups=groups.filter(g=>(g.name||'').toLowerCase().includes(s));}
+  const myGroups=groups.filter(g=>isGroupAdmin(g,CU?.uid));
+  const otherGroups=groups.filter(g=>!isGroupAdmin(g,CU?.uid));
+  if(!groups.length){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_no_groups')}</p>`;return;}
+  let html='';
+  if(myGroups.length){
+    html+=`<p style="font-weight:bold;font-size:13px;margin:6px 0;">${t('find_my_groups')}</p>`;
+    myGroups.forEach(g=>{html+=groupCardHtml(g,true);});
+  }
+  if(otherGroups.length){
+    html+=`<p style="font-weight:bold;font-size:13px;margin:14px 0 6px;">${t('find_discover_groups')}</p>`;
+    otherGroups.forEach(g=>{html+=groupCardHtml(g,false);});
+  }
+  f.innerHTML=html;
+}
+const RULE_ICONS={anyone:'🟢',country:'🌍',university:'🎓',major:'📚'};
+function normalizeGroupRules(g){
+  // Backward compatibility: legacy groups only had a single `accessRule` field.
+  if(g.whoCanJoin!==undefined)return{whoCanJoin:g.whoCanJoin,howCanJoin:g.howCanJoin||'direct'};
+  if(g.accessRule==='request')return{whoCanJoin:'anyone',howCanJoin:'request'};
+  return{whoCanJoin:g.accessRule||'anyone',howCanJoin:'direct'};
+}
+function accessRuleLabel(rule){
+  return {anyone:t('rule_anyone'),country:t('rule_country'),university:t('rule_university'),major:t('rule_major')}[rule]||t('rule_anyone');
+}
+function groupRuleBadgesHtml(g){
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
+  let html=`<span class="ruleBadge">${RULE_ICONS[whoCanJoin]||'🟢'} ${accessRuleLabel(whoCanJoin)}</span>`;
+  if(howCanJoin==='request')html+=`<span class="ruleBadge">🔒 ${t('rule_request')}</span>`;
+  return html;
+}
+function groupCardHtml(g,isMine){
+  const post=cachedPosts.find(p=>p.id===g.id);
+  const desc=post?.text||'';
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
+  const isMember=(g.members||[]).includes(CU?.uid);
+  const isPending=(g.pendingRequests||[]).includes(CU?.uid);
+  let actionLabel=t('home_join_group'),actionCls='o';
+  if(isMine)actionLabel=t('find_manage_group');
+  else if(isMember)actionLabel=t('group_open');
+  else if(isPending)actionLabel=t('pending');
+  else if(howCanJoin==='request')actionLabel=t('group_request_to_join');
+  return `<div class="card">
+    <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.name||'Group')}</b>
+    <div style="margin-top:4px;">${groupRuleBadgesHtml(g)}</div>
+    <p style="font-size:13px;margin:6px 0;">${esc(desc)}</p>
+    <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
+  </div>`;
+}
+async function handleGroupAccess(postId,name){
+  showOv(true);
+  let gs;
+  try{gs=await db.collection('groups').doc(postId).get();}catch(e){showOv(false);showToast(t('group_unavailable'));return;}
+  if(!gs.exists){showOv(false);showToast(t('group_not_found'));return;}
+  const g=gs.data();
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
+  if((g.members||[]).includes(CU.uid)){showOv(false);openGroup(postId,name);return;}
+  if((g.blockedUsers||[]).includes(CU.uid)){showOv(false);showToast(t('group_blocked_generic'));return;}
+  let eligible=true;
+  if(whoCanJoin==='country')eligible=(MP?.country||'')===g.creatorCountry;
+  else if(whoCanJoin==='university')eligible=(MP?.uni||'')===g.creatorUni;
+  else if(whoCanJoin==='major')eligible=(MP?.course||'')===g.creatorCourse;
+  if(!eligible){
+    showOv(false);
+    const reason={country:t('group_refused_country'),university:t('group_refused_university'),major:t('group_refused_major')}[whoCanJoin]||t('group_refused_generic');
+    showToast(reason);
+    return;
+  }
+  if(howCanJoin==='request'){
+    if((g.pendingRequests||[]).includes(CU.uid)){showOv(false);showToast(t('group_still_pending'));return;}
+    try{
+      await db.collection('groups').doc(postId).update({pendingRequests:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+      db.collection('notifications').add({toUid:g.creatorUid,icon:'🙋',title:t('notif_join_request_title'),body:(MP?.name||'Someone')+' '+t('notif_join_request_body')+' '+(g.name||name),read:false,groupId:postId,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+      showToast(t('group_request_sent'));
+    }catch(e){showToast('❌ '+e.message);}
+    showOv(false);return;
+  }
+  try{await db.collection('groups').doc(postId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});}catch(e){}
+  showOv(false);
+  openGroup(postId,name);
+}
+let libraryView={level:'categories',category:null};
+function renderFindLibrary(){
+  libraryView={level:'categories',category:null};
+  renderLibraryView();
+}
+function renderLibraryView(){
+  const crumb=el('libraryBreadcrumb');
+  const l=el('findLibraryL');
+  if(libraryView.level==='categories'){
+    crumb.style.display='none';
+    const cats=Object.keys(SUBJECT_CATEGORIES);
+    l.innerHTML=cats.map(k=>{
+      const c=SUBJECT_CATEGORIES[k];
+      const name=appLang==='fr'?c.fr:c.en;
+      return `<div class="card" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="openLibraryCategory('${k}')">
+        <b style="color:var(--btnB);font-size:14px;">📁 ${esc(name)}</b>
+        <span style="color:var(--sub);font-size:12px;">${c.items.length} ${t('library_courses_count')} ›</span>
+      </div>`;
+    }).join('');
+  }else if(libraryView.level==='courses'){
+    const c=SUBJECT_CATEGORIES[libraryView.category];
+    const name=appLang==='fr'?c.fr:c.en;
+    crumb.style.display='flex';
+    crumb.innerHTML=`<button onclick="backToLibraryCategories()" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;">← ${t('library_all_categories')}</button><span style="margin:0 6px;color:var(--sub);">/</span><b style="font-size:13px;">${esc(name)}</b>`;
+    l.innerHTML=c.items.map(course=>`<div class="card" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="openLibraryCourse('${e2(course)}')">
+      <b style="color:var(--btnB);font-size:14px;">📘 ${esc(course)}</b>
+      <span style="color:var(--sub);font-size:12px;">›</span>
+    </div>`).join('');
+  }else if(libraryView.level==='course'){
+    const c=SUBJECT_CATEGORIES[libraryView.category];
+    const catName=appLang==='fr'?c.fr:c.en;
+    crumb.style.display='flex';crumb.style.flexWrap='wrap';
+    crumb.innerHTML=`<button onclick="backToLibraryCategories()" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;">${t('library_all_categories')}</button><span style="margin:0 6px;color:var(--sub);">/</span><button onclick="openLibraryCategory('${libraryView.category}')" style="background:none;border:none;color:var(--btnB);font-weight:bold;font-size:13px;cursor:pointer;">${esc(catName)}</button><span style="margin:0 6px;color:var(--sub);">/</span><b style="font-size:13px;">${esc(libraryView.course)}</b>`;
+    l.innerHTML=`<p style='text-align:center;color:#888;padding:24px;'>${t('library_resources_empty')}</p>`;
+  }
+}
+function openLibraryCategory(key){libraryView={level:'courses',category:key};renderLibraryView();}
+function openLibraryCourse(course){libraryView.level='course';libraryView.course=course;renderLibraryView();}
+function backToLibraryCategories(){libraryView={level:'categories',category:null};renderLibraryView();}
 function switchFT(t,el2){ftab=t;document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));el2.classList.add('on');renderFind();}
 function toggleFav(uid){
   const wasFav=favs.has(uid);
@@ -1418,17 +1697,17 @@ function mscore(u){if(!MP)return 0;let s=0;if(u.country&&u.country===MP.country)
 function renderFind(q=""){
   const f=el('findL');
   if(!allUsers.length){
-    f.innerHTML="<p style='text-align:center;color:#888;'>Loading students...</p>";
+    f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_loading')}</p>`;
     db.collection('users').get().then(sn=>{allUsers=sn.docs.map(d=>({...d.data(),uid:d.id}));renderFind(q);});
     return;
   }
   let list=ftab==='fav'?allUsers.filter(u=>favs.has(u.uid)):[...allUsers];
   if(q)list=list.filter(u=>{
     const s=q.toLowerCase();
-    return(u.name||'').toLowerCase().includes(s)||(u.country||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s)||(u.course||'').toLowerCase().includes(s);
+    return(u.name||'').toLowerCase().includes(s)||(u.major||'').toLowerCase().includes(s)||(u.country||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s)||(u.course||'').toLowerCase().includes(s);
   });
   if(ftab==='match')list=list.filter(u=>u.uid!==CU?.uid).sort((a,b)=>mscore(b)-mscore(a));
-  if(!list.length){f.innerHTML="<p style='text-align:center;color:#888;'>No students found.</p>";return;}
+  if(!list.length){f.innerHTML=`<p style='text-align:center;color:#888;'>${t('find_no_results')}</p>`;return;}
   f.innerHTML='';
   list.forEach(u=>{
     const isSelf=u.uid===CU?.uid,isFav=favs.has(u.uid),sc=mscore(u);
@@ -1441,7 +1720,7 @@ function renderFind(q=""){
       <div style="display:flex;gap:10px;margin-bottom:6px;">
         <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(u.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;">${esc(u.name||'?')}${isSelf?' <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">You</span>':''}</b>
+          <b style="color:var(--btnB);font-size:14px;">${esc(u.name||'?')}${isSelf?` <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">${t('find_you_badge')}</span>`:''}</b>
           ${u.bio?`<p style="font-size:11px;font-style:italic;color:var(--sub);margin:1px 0;">${esc(u.bio)}</p>`:''}
           <p style="font-size:11px;color:var(--sub);margin:1px 0;">${getFlag(u.country||'')} ${u.country||'—'} | 🏛️ ${u.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:1px 0;">📖 ${u.course||'—'} ${u.year?'('+u.year+')':''}</p>
@@ -1450,8 +1729,8 @@ function renderFind(q=""){
       </div>
       ${langs?`<div style="margin:3px 0;">${langs}</div>`:''}
       ${skills?`<div style="margin:3px 0;">${skills}</div>`:''}
-      ${ftab==='match'&&!isSelf?`<div style="background:linear-gradient(135deg,var(--btnB),#1565c0);color:#fff;border-radius:10px;padding:9px;margin:6px 0;"><b style="font-size:24px;">${sc}%</b> Match<div style="height:5px;background:rgba(255,255,255,.3);border-radius:3px;margin:4px 0;"><div style="height:100%;width:${sc}%;background:#fff;border-radius:3px;"></div></div></div>`:''}
-      ${!isSelf?`<button class="btn" onclick="openChat('${e2(u.name||'')}','${u.uid||''}')">💬 Message</button>`:'<p style="font-size:11px;color:var(--sub);text-align:center;margin-top:6px;">This is your profile</p>'}
+      ${ftab==='match'&&!isSelf?`<div style="background:linear-gradient(135deg,var(--btnB),#1565c0);color:#fff;border-radius:10px;padding:9px;margin:6px 0;"><b style="font-size:24px;">${sc}%</b> ${t('find_match_label')}<div style="height:5px;background:rgba(255,255,255,.3);border-radius:3px;margin:4px 0;"><div style="height:100%;width:${sc}%;background:#fff;border-radius:3px;"></div></div></div>`:''}
+      ${!isSelf?`<button class="btn" onclick="openChat('${e2(u.name||'')}','${u.uid||''}')">💬 ${t('home_message')}</button>`:`<p style="font-size:11px;color:var(--sub);text-align:center;margin-top:6px;">${t('find_own_profile')}</p>`}
     </div>`;
   });
 }
@@ -1481,6 +1760,10 @@ function openChat(name,uid){
   const other=allUsers.find(u=>u.uid===uid);
   const st=getStatusInfo(other?.status,other?.lastSeen);
   el('chatSt').textContent=st.label;
+  const chatAvEl=el('chatAv');
+  if(chatAvEl)chatAvEl.innerHTML=other?.photo?`<img src="${other.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((name||'?')[0]||'?').toUpperCase();
+  const chatHdrInfoEl=el('chatHdrInfo');
+  if(chatHdrInfoEl)chatHdrInfoEl.onclick=()=>openProfile(uid);
   el('chatW').style.display='flex';
   el('rplybar').style.display='none';
   el('csBar').style.display='none';
@@ -1592,16 +1875,10 @@ function closeChat(){
 function onMsgInput(){
   if(!curChat)return;
   const hasText=el('mIn').value.trim().length>0;
-  // Update send button icon: send arrow when typing, mic when idle
   const icon=el('sendIcon');
-  if(hasText){
-    icon.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
-    el('sendB').style.background='var(--btnB)';
-  }else if(isRec){
-    // keep rec state
-  }else{
-    (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
-  }
+  if(hasText){setSendIcon('sendIcon');el('sendB').style.background='var(--btnB)';}
+  else if(isRec){/* keep the voice-send arrow while recording */}
+  else setMicIcon('sendIcon');
   const cid=getCID(CU.uid,curChat.uid);
   clearTimeout(typDebounce);
   if(hasText){
@@ -1613,11 +1890,9 @@ function onGMsgInput(){
   if(!curGrp)return;
   const hasText=el('gIn').value.trim().length>0;
   const icon=el('gSendIcon');
-  if(hasText){
-    icon.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
-  }else{
-    (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
-  }
+  if(hasText)setSendIcon('gSendIcon');
+  else if(gIsRec){/* keep the voice-send arrow while recording */}
+  else setMicIcon('gSendIcon');
   const gid=curGrp.id;clearTimeout(gTypDebounce);
   if(hasText){
     void setPresenceState('group',gid,'typing',true);
@@ -1629,14 +1904,14 @@ function smartSend(){
   if(vFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
   const hasText=el('mIn').value.trim().length>0;
   if(hasText){sendMsg();return;}
-  startVoice();
+  return;
 }
 function smartGSend(){
   if(gIsRec){stopAndSendGVoice();return;}
   if(gVFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
   const hasText=el('gIn').value.trim().length>0;
   if(hasText){sendGMsg();return;}
-  startGVoice();
+  return;
 }
 // Camera: open real device camera
 function openCamera(dest){
@@ -1732,10 +2007,10 @@ function sendSticker(sticker){
 function sendSpecial(type){
   if(!curChat)return;
   let text='';
-  if(type==='poll')text=prompt('Poll question:');
-  else if(type==='event')text=prompt('Event details:');
-  else if(type==='location')text=prompt('Location:');
-  else if(type==='link')text=prompt('Enter URL:');
+  if(type==='poll')text=prompt(t('prompt_poll_question'));
+  else if(type==='event')text=prompt(t('prompt_event_details'));
+  else if(type==='location')text=prompt(t('prompt_location'));
+  else if(type==='link')text=prompt(t('prompt_enter_url'));
   if(!text)return;
   const icons={poll:'📊',event:'📅',location:'📍',link:'🔗'};
   const cid=getCID(CU.uid,curChat.uid);
@@ -1749,9 +2024,7 @@ function sendSpecial(type){
 async function sendMsg(){
   const inp=el('mIn');if(!inp.value.trim()||!curChat)return;
   const text=inp.value.trim();inp.value='';
-  // Reset send button icon to mic
-  const icon=el('sendIcon');
-  (function(){if(icon){icon.setAttribute('viewBox','0 0 48 48');icon.setAttribute('width','26');icon.setAttribute('height','26');icon.innerHTML=MIC_SVG_INNER;}})();
+  setMicIcon('sendIcon');
   const cid=getCID(CU.uid,curChat.uid);const t=now();
   clearTimeout(typDebounce);void setPresenceState('private',cid,'typing',false);
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
@@ -1776,20 +2049,29 @@ async function sendMsg(){
 
 // ── GROUP ──
 async function openGroup(postId,name){
-  if(!postId||postId==='undefined'){showToast('❌ Group not found');return;}
+  if(!postId||postId==='undefined'){showToast(t('group_not_found'));return;}
   showOv(true);
+  const gref=db.collection('groups').doc(postId);
+  const localPost=cachedPosts.find(p=>p.id===postId&&p.type==='Group');
+  let groupData=null;
   try{
-    const gref=db.collection('groups').doc(postId);
     const gs=await gref.get();
-    if(!gs.exists){showToast('❌ Group not found');showOv(false);return;}
-    if(!(gs.data().members||[]).includes(CU.uid))await gref.update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
-    curGrp={id:postId,name};
+    if(gs.exists)groupData=gs.data()||{};
+  }catch(e){
+    // Firestore can reject a server read while the device is temporarily offline.
+    // The group post already contains enough information to open the conversation shell.
+    console.warn('Group metadata unavailable; using cached post:',e?.message||e);
+    groupData=localPost?{name:localPost.groupName||name,creatorUid:localPost.uid,members:localPost.members||[]} : null;
+  }
+  if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
+  try{
+    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default')};
     pushModalState();
-    el('grpT').textContent='🏫 '+name;el('groupW').style.display='flex';
+    el('grpT').textContent='🏫 '+curGrp.name;el('groupW').style.display='flex';
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
-    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||{};const c=(data.members||[]).length;el('grpM').textContent=c+' member'+(c!==1?'s':'');renderGroupPresence(data);});
+    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
     grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt').limitToLast(50).onSnapshot(sn=>{
       const mb=el('grpB');
       sn.docChanges().forEach(change=>{
@@ -1802,8 +2084,8 @@ async function openGroup(postId,name){
         else if(change.type==='modified'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(ex)ex.replaceWith(node);else mb.appendChild(node);}
       });
       mb.scrollTop=mb.scrollHeight;
-    },e=>console.log(e));
-  }catch(e){showToast('❌ '+e.message);}
+    },e=>console.warn('Group messages unavailable:',e?.message||e));
+  }catch(e){showToast(t('group_unavailable'));}
   showOv(false);
 }
 function closeGroup(){
@@ -1851,7 +2133,7 @@ function toggleSelectMsg(id,isGrp){
   if(selectedMsgs.size>0){
     let bar=document.getElementById('selBar');
     if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
-    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#e74c3c;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">🗑️ Everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#e67e22;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">🙈 For Me</button><button onclick="clearSelection()" style="background:rgba(255,255,255,.15);color:#fff;border:none;padding:9px 12px;border-radius:20px;font-size:13px;cursor:pointer;">✕</button>`;
+    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
   }else{clearSelection();}
 }
 function clearSelection(){
@@ -1869,9 +2151,9 @@ async function deleteSelectedMsgs(isGrp,scope){
     sheet.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
     sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:18px;">
       <p style="font-weight:bold;font-size:15px;text-align:center;margin-bottom:14px;">Delete ${count} message${count>1?'s':''}?</p>
-      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;border:1px solid rgba(30,136,229,.25);">Delete for Everyone</button>
-      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;border:1px solid rgba(30,136,229,.25);">Delete for Me</button>
-      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:transparent;color:#1e88e5;border-radius:12px;font-size:14px;cursor:pointer;border:1px solid rgba(30,136,229,.15);">Cancel</button>
+      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for everyone</button>
+      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for me</button>
+      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;">Cancel</button>
     </div>`;
     sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
     document.body.appendChild(sheet);
@@ -1901,16 +2183,35 @@ async function execDelMsgs(scope,isGrp){
     }catch(e){console.log(e);}
   }
   clearSelection();
-  showToast(scope==='everyone'?'🗑️ Deleted for everyone':'🗑️ Deleted for you');
+  showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
+}
+const pendingMedia={};
+function insertPendingBubble(m,isGrp){
+  const box=el(isGrp?'grpB':'msgB');
+  if(!box||box.querySelector(`.bw[data-id="${m.id}"]`))return;
+  const tmp=document.createElement('div');tmp.innerHTML=buildBbl(m,isGrp);
+  const node=tmp.firstElementChild;
+  if(node){box.appendChild(node);box.scrollTop=box.scrollHeight;}
+}
+function refreshPendingBubble(m,isGrp,attempt=0){
+  const old=document.querySelector(`.bw[data-id="${m.id}"]`);
+  if(!old){
+    if(attempt<8)setTimeout(()=>refreshPendingBubble(m,isGrp,attempt+1),50*(attempt+1));
+    return;
+  }
+  const tmp=document.createElement('div');tmp.innerHTML=buildBbl(m,isGrp);
+  const next=tmp.firstElementChild;if(next)old.replaceWith(next);
 }
 function buildBbl(m,isGrp){
   if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
   const type=m.type||'text';
-  const nameTag=isGrp&&!self?`<div class="bname">${esc(m.senderName||'')}</div>`:'';
-  const repBtn=!isGrp?`<button class="mabtn ${self?'op':''}" ${!self?'style="background:rgba(0,0,0,.08);color:var(--txt);"':''} onclick="startReply('${m.id}')">↩</button>`:'';
+  const pendingSrc=pendingMedia[m.id]||'';
+  const nameTag=isGrp&&!self?`<div class="bname" onclick="openProfile('${e2(m.senderUid||'')}')" style="cursor:pointer;display:flex;align-items:center;gap:5px;">${m.senderPhoto?`<img src="${esc(m.senderPhoto)}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0;">`:'<span style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.15);display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;">👤</span>'}<span>${esc(m.senderName||'')}</span></div>`:'';
+  const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
-  const receipt=self&&type==='text'?`<div class="receipt">${m.seen?'✓✓ Seen':'✓'}</div>`:'';
+  const receipt=self&&type==='text'?`<div class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
+  const mediaReceipt=self?`<div class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
   const rc=m.reactions||{},ec={};
   Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
   const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
@@ -1937,12 +2238,13 @@ function buildBbl(m,isGrp){
     inner=`${nameTag}${rq}${textPart}${linkCards}${!isGrp?`<div class="mar">${repBtn}</div>`:''} ${rcHtml}${receipt}`;
   }
   else if(type==='image'){
-    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">Sending...</div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','image')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','img.jpg')">⬇</button></div>${rcHtml}${self?'<div class="receipt">'+( m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    if(!m.data){inner=pendingSrc?`${nameTag}${rq}<img src="${pendingSrc}" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;opacity:.82;">${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','image')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','img.jpg')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='video'){
-    if(!m.data){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div><div style="font-size:12px;opacity:0.7;margin-top:4px;">Sending...</div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','video.mp4')">⬇</button></div>${rcHtml}${self?'<div class="receipt">'+( m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    if(m.status==='failed'){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);text-align:center;min-width:180px;color:#e74c3c;font-size:11px;">Video upload failed</div>${rcHtml}`;}
+    else if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','video.mp4')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='audio'){
     // Uploaded audio files use the same custom player as recorded voice notes.
@@ -1953,8 +2255,8 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
     const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     const audioDur=m.dur||'0:00';
-    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">🎵</div><div style="flex:1;"><div style="font-size:11px;color:${audioColor};">Sending audio...</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">🎵</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${self?'<div class="receipt">'+(m.seen?'✓✓ Seen':'✓')+'</div>':''}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">♫</div><div style="flex:1;"><div style="font-size:11px;color:transparent;">&nbsp;</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">♫</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','audio.mp3')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -1988,10 +2290,10 @@ function buildBbl(m,isGrp){
         <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Échec de l’envoi vocal</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Vérifiez la connexion puis réessayez.</div></div>
       </div>${rcHtml}`;
     }else if(!m.data){
-      // Still sending — show progress + "Sending..." + timer
+      // Still sending — show progress + "Sending" + timer
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
         <div style="flex:1;"><div class="vprog" style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:5px;"><div style="width:0%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;color:${self?'rgba(255,255,255,.8)':'var(--sub)'};">Sending...</span><span class="vdur">${durLabel}</span></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;color:transparent;">&nbsp;</span><span class="vdur">${durLabel}</span></div></div>
       </div>${rcHtml}`;
     }else{
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
@@ -2009,7 +2311,11 @@ function buildBbl(m,isGrp){
       </div>${rcHtml}`;
     }
   }
-  else if(type==='doc'){const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';inner=`${nameTag}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;}
+  else if(type==='doc'){
+    const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';
+    if(!m.data)inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${rcHtml}`;
+    else inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div>${self?`<span class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓'}</span>`:''}</div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;
+  }
   return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${m.time||''}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
@@ -2036,8 +2342,8 @@ async function toggleReact(id,emoji,dest){
   rc[CU.uid]=ur.includes(emoji)?ur.filter(e=>e!==emoji):[...ur,emoji];
   await ref.update({reactions:rc});
 }
-function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>🎵</h2><audio src="${src}" controls autoplay style="width:300px;"></audio></div>`:`<iframe src="${src}" style="width:100vw;height:100vh;border:none;"></iframe>`}</body></html>`);w.document.close();}
-function dlM(src,fname){const a=document.createElement('a');a.href=src;a.download=fname||'file';document.body.appendChild(a);a.click();setTimeout(()=>document.body.removeChild(a),200);}
+function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}const docUrl=encodeURIComponent(src);const body=type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>Music</h2><audio src="${src}" controls autoplay style="width:min(90vw,420px);"></audio></div>`:`<iframe src="https://docs.google.com/gview?embedded=1&url=${docUrl}" style="width:100vw;height:calc(100vh - 56px);border:none;background:#fff;"></iframe><a href="${src}" target="_blank" rel="noopener" download style="position:fixed;bottom:10px;right:10px;padding:12px 18px;background:#1e88e5;color:#fff;border-radius:22px;text-decoration:none;font-weight:bold;">Download</a>`;w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${body}</body></html>`);w.document.close();}
+function dlM(src,fname){if(!src)return;const a=document.createElement('a');a.href=src;a.download=fname||'file';a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(()=>document.body.removeChild(a),300);}
 
 async function markVoicePlayed(msgId,senderUid){
   if(!curChat||!CU)return;
@@ -2158,7 +2464,7 @@ async function handleF(e,dest){
   // Size limits
   if(fType==='video'&&file.size>200*1024*1024){showToast('⚠️ Video too large. Max 200MB.');return;}
   if(fType==='audio'&&file.size>50*1024*1024){showToast('⚠️ Audio too large. Max 50MB.');return;}
-  if(fType==='doc'&&file.size>50*1024*1024){showToast('⚠️ Document too large. Max 50MB.');return;}
+  if(fType==='doc'&&file.size>200*1024*1024){showToast('⚠️ Document too large. Max 200MB.');return;}
   const t=now();
   const ext=file.name.split('.').pop().toLowerCase();
   const localType=fType==='video'?'video':fType==='audio'?'audio':'doc';
@@ -2172,10 +2478,16 @@ async function handleF(e,dest){
   try{
     let msgRef;
     if(dest==='g'&&curGrp){
-      msgRef=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
+      msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
+      pendingMedia[msgRef.id]=URL.createObjectURL(file);
+      insertPendingBubble({...m,id:msgRef.id},true);
+      await msgRef.set({...m,senderPhoto:myPho||''});
     }else if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      msgRef=await db.collection('chats').doc(cid).collection('messages').add(m);
+      msgRef=db.collection('chats').doc(cid).collection('messages').doc();
+      pendingMedia[msgRef.id]=URL.createObjectURL(file);
+      insertPendingBubble({...m,id:msgRef.id},false);
+      await msgRef.set(m);
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:_typeLabel,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
       await db.collection('chats').doc(cid).set(_upd,{merge:true});
@@ -2183,20 +2495,17 @@ async function handleF(e,dest){
       _fRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
       db.collection('users').doc(curChat.uid).update(_fRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_fRecvUpd,{merge:true}).catch(()=>{});});
     }
+    // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
+    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
-      const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
-      fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${rtype}/upload`,{method:'POST',body:fd})
-        .then(r=>r.json())
-        .then(d=>{
-          if(d.secure_url){
-            msgRef.update({data:d.secure_url,status:'sent'});
-          }else{
-            msgRef.update({status:'failed'});
-            showToast('❌ Upload failed');
-          }
-        })
-        .catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
+      const uploadPromise=fType==='doc'?uploadDocument(file):fType==='video'?uploadToFirebaseStorage(file,'videos'):uploadCloud(file,localType);
+      uploadPromise.then(result=>{
+        const url=typeof result==='string'?result:result?.url;
+        if(url){msgRef.update({data:url,status:'sent',...((fType==='doc'||fType==='video')?{storage:result?.storage||'firebase-storage'}:{})});}
+        else{msgRef.update({status:'failed'});}
+        if(pendingMedia[msgRef.id]){URL.revokeObjectURL(pendingMedia[msgRef.id]);delete pendingMedia[msgRef.id];}
+      }).catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
     }
   }catch(ex){showToast('❌ '+ex.message);}
 }
@@ -2228,8 +2537,8 @@ function showImgPreview(file,dest){
       <img src="${url}" style="width:100%;height:100%;object-fit:contain;">
     </div>
     <div style="background:rgba(0,0,0,.85);padding:16px 20px;display:flex;gap:14px;justify-content:center;align-items:center;flex-shrink:0;">
-      <button onclick="cancelPreview()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:12px 28px;border-radius:24px;font-size:16px;cursor:pointer;font-weight:bold;">✕</button>
-      <button onclick="sendPreviewImg()" style="background:#27ae60;color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(39,174,96,.5);">✅ Send</button>
+      <button onclick="cancelPreview()" style="background:#1e88e5;color:#fff;border:none;padding:12px 28px;border-radius:24px;font-size:16px;cursor:pointer;font-weight:bold;">Cancel</button>
+      <button onclick="sendPreviewImg()" style="background:#1e88e5;color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(30,136,229,.35);">Send</button>
     </div>`;
   document.body.appendChild(modal);
 }
@@ -2237,20 +2546,27 @@ async function sendPreviewImg(){
   const modal=el('imgPreviewModal');if(modal)modal.remove();
   if(!_previewFile)return;
   // ✅ INSTANT: Show image message immediately with sending status
-  let fileToSend=_previewFile;
-  try{fileToSend=await compressImage(_previewFile);}catch(e){}
+  const fileToSendPromise=compressImage(_previewFile).catch(()=>_previewFile);
   const t=now();
   const m={type:'image',data:'',senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     if(_previewDest==='g'&&curGrp){
-      const ref=await db.collection('groups').doc(curGrp.id).collection('messages').add({...m,senderPhoto:myPho||''});
+      const ref=db.collection('groups').doc(curGrp.id).collection('messages').doc();
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      insertPendingBubble({...m,id:ref.id},true);
+      await ref.set({...m,senderPhoto:myPho||''});
+      refreshPendingBubble({...m,id:ref.id},true);
       // ✅ BACKGROUND UPLOAD
-      uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
+      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
     }else if(_previewDest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      const ref=await db.collection('chats').doc(cid).collection('messages').add(m);
+      const ref=db.collection('chats').doc(cid).collection('messages').doc();
+      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
+      insertPendingBubble({...m,id:ref.id},false);
+      await ref.set(m);
+      refreshPendingBubble({...m,id:ref.id},false);
       // ✅ BACKGROUND UPLOAD
-      uploadCloud(fileToSend,'image').then(url=>{if(url)ref.update({data:url,status:'sent'});});
+      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
       const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
       _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
       await db.collection('chats').doc(cid).set(_upd,{merge:true});
@@ -2318,6 +2634,7 @@ async function startVoice(fromGesture=false){
     // The direct pre-await pulse above is the reliable start feedback.
     // Button → blue recording state
     el('sendB').classList.add('rec');el('sendB').style.background='#1976d2';
+    el('recordFloatB')?.classList.remove('is-visible');el('recordFloatB')?.style.setProperty('--voice-float-y','0px');
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('vbar').style.display='flex';
     drawBars('vWave',()=>isRec,'#1976d2');
@@ -2375,7 +2692,7 @@ async function stopAndSendVoice(){
   // Android may deliver pointerup before MediaRecorder has emitted its first
   // dataavailable event. Let the recorder run briefly before stopping it.
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
-  el('sendB').classList.remove('rec','voice-pending');el('sendB').style.background='var(--btnB)';
+  el('sendB').classList.remove('rec','voice-pending','voice-locked');el('sendB').dataset.voiceLocked='0';el('sendB').style.setProperty('--voice-drag-y','0px');el('sendB').style.background='var(--btnB)';
   setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
   let chunks=[];
@@ -2449,7 +2766,7 @@ function cancelVoice(){
   stopWave('vWave');
   void releaseVoiceScreen();
 vCh=[];vSec=0;clearInterval(vInt);
-  el('sendB').classList.remove('rec');el('sendB').style.background='var(--btnB)';
+  el('sendB').classList.remove('rec','voice-pending','voice-locked');el('sendB').dataset.voiceLocked='0';el('sendB').style.setProperty('--voice-drag-y','0px');el('sendB').style.background='var(--btnB)';
   setMicIcon('sendIcon');
   el('vbar').style.display='none';el('vTimer').textContent='0:00';
 }
@@ -2483,6 +2800,7 @@ async function startGVoice(fromGesture=false){
     el('gSendB').classList.remove('voice-pending');
     // The direct pre-await pulse above is the reliable start feedback.
     el('gSendB').classList.add('rec');el('gSendB').style.background='#e67e22';
+    el('gRecordFloatB')?.classList.remove('is-visible');el('gRecordFloatB')?.style.setProperty('--voice-float-y','0px');
     el('gSendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('gvbar').style.display='flex';
     el('gRecIndicator')?.classList.add('recPulse');
@@ -2512,7 +2830,7 @@ async function stopAndSendGVoice(){
   const elapsed=Date.now()-(gVStartAt||Date.now());
   const dur=Math.max(gvSec,Math.floor(Math.max(0,elapsed)/1000));
   if(elapsed<350)await new Promise(resolve=>setTimeout(resolve,350-elapsed));
-  el('gSendB').classList.remove('rec','voice-pending');el('gSendB').style.background='#e67e22';
+  el('gSendB').classList.remove('rec','voice-pending','voice-locked');el('gSendB').dataset.voiceLocked='0';el('gSendB').style.setProperty('--voice-drag-y','0px');el('gSendB').style.background='#e67e22';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   let chunks=[];
@@ -2575,7 +2893,7 @@ function cancelGVoice(){
   stopWave('gvWave');
   void releaseVoiceScreen();
 gvCh=[];gvSec=0;clearInterval(gvInt);
-  el('gSendB').classList.remove('rec');el('gSendB').style.background='#e67e22';
+  el('gSendB').classList.remove('rec','voice-pending','voice-locked');el('gSendB').dataset.voiceLocked='0';el('gSendB').style.setProperty('--voice-drag-y','0px');el('gSendB').style.background='#e67e22';
   setMicIcon('gSendIcon');
   el('gvbar').style.display='none';el('gvTimer').textContent='0:00';
   el('gRecIndicator')?.classList.remove('recPulse');
@@ -2595,11 +2913,19 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   },{passive:true});
   const barId=isStatus?'stVReplyBar':(btnId==='gSendB'?'gvbar':'vbar');
   const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
+  const floatId=isStatus?'stVReplyFloat':(btnId==='gSendB'?'gRecordFloatB':'recordFloatB');
+  const float=el(floatId);
+  const setDragY=y=>{
+    const next=Math.round(y);
+    if(float){float.style.setProperty('--voice-float-y',`${next}px`);float.classList.toggle('is-visible',next< -4);}
+  };
   const vibrate=pattern=>pulseHaptic(pattern,btn);
   const hint=()=>el(barId)?.querySelector('[data-voice-hint],[data-status-voice-hint]');
   const setHint=text=>{const h=hint();if(h)h.textContent=text;};
   const resetState=()=>{
     state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
+    btn.dataset.voiceLocked='0';
+    setDragY(0);
     btn.classList.remove('voice-locked','voice-pending');
     btn.title='Hold and slide up to record';
     setHint('Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer');
@@ -2614,14 +2940,22 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     if(document.activeElement?.id===inputId)document.activeElement.blur();
     state.suppressClick=true;
     state.startX=e.clientX;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
+    setDragY(0);
     btn.classList.add('voice-pending');
     try{btn.setPointerCapture(e.pointerId);}catch(err){}
     // A locked recording is completed by the next tap, not by a second start.
-    if(btn.classList.contains('rec')&&state.locked){
+    // Keep the lock outside the transient pointer state so this also works
+    // after pointer capture has been released on the previous gesture.
+    if(btn.classList.contains('rec')&&(state.locked||btn.dataset.voiceLocked==='1')){
       vibrate(35);
       Promise.resolve(stopFn()).finally(resetState);
       return;
     }
+    // A previous vocal may have been sent by the fixed Send tap while this
+    // gesture instance was still locked. Start every new gesture cleanly.
+    state.locked=false;state.released=false;state.cancelled=false;
+    btn.dataset.voiceLocked='0';
+    btn.classList.remove('voice-locked');
     // Fire the device vibration directly in pointerdown, before getUserMedia()
     // can yield to a permission prompt or another asynchronous browser task.
     vibrate(55);
@@ -2638,13 +2972,19 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     if(!state.active||state.pointerId!==e.pointerId)return;
     e.preventDefault();
     const up=state.startY-e.clientY,left=e.clientX-state.startX;
+    // Visually follow the finger upward before the existing lock threshold.
+    // The recorder lifecycle itself is intentionally unchanged in this step.
+    if(!state.locked){
+      const visualY=up>30?Math.max(-225,-up*1.5):0;
+      setDragY(visualY);
+    }
     if(!state.locked&&left<-85){
       state.cancelled=true;state.active=false;vibrate([25,25]);cancelFn();releaseCapture();resetState();return;
     }
     if(!state.locked&&up>70){
       // Queue the lock even if getUserMedia is still pending. This prevents a
       // fast Android swipe from being lost during the permission/startup gap.
-      state.locked=true;state.active=false;btn.classList.remove('voice-pending');btn.classList.add('voice-locked');btn.title='Tap to send voice message';
+      state.locked=true;state.active=false;btn.dataset.voiceLocked='1';btn.classList.remove('voice-pending');btn.classList.add('voice-locked');btn.title='Tap to send voice message';
       setHint('🔒 locked · tap mic to send');vibrate([35,55,35]);releaseCapture();
     }
   },{passive:false});
@@ -2900,6 +3240,68 @@ function reportUser(uid,name){
 }
 
 // ── NOTIFICATIONS (alerts only - no messages) ──
+function notifCardHtml(n){
+  if(n.kind==='studyInvite'||n.kind==='groupInvite')return inviteCardHtml(n);
+  return `<div class="notif ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--brd);">
+    <span style="font-size:20px;flex-shrink:0;">${n.icon||'🔔'}</span>
+    <div style="flex:1;overflow:hidden;">
+      <b style="font-size:13px;display:block;">${esc(n.title||'')}</b>
+      <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(n.body||'')}</p>
+    </div>
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+  </div>`;
+}
+function inviteCardHtml(n){
+  const isGroup=n.kind==='groupInvite';
+  const isSender=n.role==='sender';
+  const state=n.state||'pending';
+  const av=n.personPhoto?`<img src="${n.personPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((n.personName||'?')[0]||'?').toUpperCase();
+  const typeLabel=isGroup?t('invite_card_group'):t('invite_card_study');
+  const subject=isGroup?(n.groupName||''):(n.course||'');
+  const stateLabel=state==='accepted'?t('invite_state_accepted'):state==='declined'?t('invite_state_declined'):'';
+  let line='';
+  if(state==='pending')line=isGroup?`${esc(n.personName||'')} ${t('invite_line_group_pending')}`:`${esc(n.personName||'')} ${t('invite_line_study_pending')} ${esc(subject)}.`;
+  else if(isSender)line=`${esc(n.personName||'')} ${state==='accepted'?t('invite_line_sender_accepted'):t('invite_line_sender_declined')}`;
+  else line=state==='accepted'?(isGroup?t('invite_line_you_joined'):t('invite_line_you_accepted')):t('invite_line_you_declined');
+  let actions='';
+  if(state==='pending'&&!isSender){
+    const fn=isGroup?`respondGroupInvite('${n.id}','${n.groupId}',true)`:`respondStudyInvite('${n.inviteId}',true)`;
+    const fn2=isGroup?`respondGroupInvite('${n.id}','${n.groupId}',false)`:`respondStudyInvite('${n.inviteId}',false)`;
+    actions=`<button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();${fn}">${t('accept')}</button>
+      <button class="btn r" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();${fn2}">${t('decline')}</button>`;
+  }else if(state==='pending'&&isSender){
+    actions=`<span style="font-size:11px;color:#7b2ff7;font-weight:700;">${t('pending')}</span>`;
+  }else if(state==='accepted'){
+    actions=isGroup
+      ?`<button class="btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
+      :`<button class="btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openChatFromInvite('${n.inviteId}')">${t('home_message')}</button>`;
+  }else if(state==='declined'&&isSender){
+    actions=isGroup
+      ?`<button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openManageGroup('${n.groupId}')">${t('invite_again')}</button>`
+      :`<button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();inviteAgainFromCard('${n.fromRecipientUid||''}','${e2(n.personName||'')}')">${t('invite_to_study')}</button>`;
+  }
+  return `<div class="notif inviteCard ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:12px 10px;border-bottom:1px solid var(--brd);border-left:3px solid #7b2ff7;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;">${av}</div>
+    <div style="flex:1;overflow:hidden;">
+      <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${typeLabel}</div>
+      <b style="font-size:13.5px;display:block;">${esc(subject)}${stateLabel?` — ${stateLabel}`:''}</b>
+      <p style="font-size:11.5px;color:var(--sub);margin:3px 0;">${line}</p>
+      ${state==='pending'&&n.customMessage?`<p style="font-size:11.5px;font-style:italic;color:var(--sub);margin:3px 0;">“${esc(n.customMessage)}”</p>`:''}
+      ${actions?`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">${actions}</div>`:''}
+    </div>
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+  </div>`;
+}
+async function openChatFromInvite(inviteId){
+  try{
+    const s=await db.collection('studyInvites').doc(inviteId).get();
+    if(!s.exists)return showToast(t('invite_not_found'));
+    const inv=s.data();
+    const otherUid=inv.fromUid===CU.uid?inv.toUid:inv.fromUid;
+    const otherName=inv.fromUid===CU.uid?inv.toName:inv.fromName;
+    tab('alerts');openChat(otherName||'',otherUid);
+  }catch(e){showToast('❌ '+e.message);}
+}
 function setupNotifL(){
   if(notifUnsub)notifUnsub();
   notifUnsub=db.collection('notifications').where('toUid','==',CU.uid).onSnapshot(sn=>{
@@ -2909,27 +3311,107 @@ function setupNotifL(){
     const f=el('notifL');
     if(!notifs.length){f.innerHTML="<p style='text-align:center;color:#888;'>No notifications</p>";return;}
     f.innerHTML='';
-    notifs.forEach(n=>{
-      f.innerHTML+=`<div class="notif ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--brd);">
-        <span style="font-size:20px;flex-shrink:0;">${n.icon||'🔔'}</span>
-        <div style="flex:1;overflow:hidden;">
-          <b style="font-size:13px;display:block;">${esc(n.title||'')}</b>
-          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(n.body||'')}</p>
-        </div>
-        ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
-      </div>`;
-    });
+    notifs.forEach(n=>{f.innerHTML+=notifCardHtml(n);});
   },e=>console.log('notif:',e));
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
-function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>b.delete(d.ref));return b.commit();});}
+function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>{const n=d.data();const isInvite=n.kind==='studyInvite'||n.kind==='groupInvite';if(isInvite&&n.state==='pending')return;b.delete(d.ref);});return b.commit();});}
 
 // ── I18N (merged from user branch) ──
 const I18N={
   fr:{
+    install_title:'Installer l’application StudyLink',install_hint:'Installez-la comme une vraie application, pas comme un simple raccourci.',install_button:'Installer l’app',install_close:'Fermer',install_manual:'Pour une vraie application : ouvrez ⋮ → « Install and create shortcut » → « Install ». Ne choisissez pas « Create shortcut ».',install_success:'StudyLink est en cours d’installation comme application.',install_error:'Utilisez le menu Chrome et choisissez « Install », pas « Create shortcut ».',install_done:'StudyLink est installé comme application sur votre écran d’accueil.',
+    home_feed_title:'Fil communautaire',loading:'Chargement...',home_no_posts:'Aucune publication pour l’instant. Sois le premier ! 🎓',
+    home_join_group:'Rejoindre le groupe',home_message:'Message',home_load_more:'Voir plus',
+    badge_needs_help:'Besoin d’aide',badge_can_help:'Peut aider',
+    status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
+    find_title:'Recherche & Match',find_search_ph:'Rechercher un nom, une filière, un cours, une université ou un pays',
+    find_tab_all:'Tous',find_tab_match:'Match',find_tab_favs:'Favoris',
+    find_loading:'Chargement des étudiants...',find_no_results:'Aucun étudiant trouvé.',
+    find_you_badge:'Toi',find_match_label:'Match',find_own_profile:'C’est ton profil',
+    find_top_students:'Étudiants',find_top_groups:'Groupes',find_top_library:'Bibliothèque',
+    find_groups_search_ph:'Rechercher un groupe...',find_loading_groups:'Chargement des groupes...',
+    find_groups_error:'Impossible de charger les groupes.',find_no_groups:'Aucun groupe pour l’instant.',
+    find_my_groups:'Mes groupes',find_discover_groups:'Découvrir',find_manage_group:'Gérer',
+    find_library_empty:'Aucun cours pour l’instant. Reviens bientôt !',library_resources_empty:'Aucune ressource pour l’instant. Reviens bientôt !',
+    library_courses_count:'cours',library_all_categories:'Toutes les catégories',
+    postRequestToJoin:'Demande d’accès',postWhoCanJoin:'Qui peut rejoindre ton groupe ?',
+    rule_anyone:'Tout le monde',rule_country:'Mon pays',rule_university:'Mon université',rule_major:'Mes cours',rule_request:'Sur demande',
+    group_open:'Ouvrir le groupe',pending:'En attente',group_request_to_join:'Demander à rejoindre',
+    group_who_can_join:'Qui peut rejoindre ?',group_how_can_join:'Comment peuvent-ils rejoindre ?',group_direct_join:'Adhésion directe',
+    role_owner:'Propriétaire',role_admin:'Admin',group_make_admin:'Nommer admin',group_remove_admin:'Retirer admin',
+    group_remove_member:'Retirer du groupe',group_confirm_remove:'Retirer ce membre du groupe ?',group_member_removed:'Membre retiré',
+    group_block_member:'Bloquer',group_confirm_block:'Bloquer cette personne ? Elle sera retirée du groupe et ne pourra plus le rejoindre.',group_member_blocked:'Membre bloqué',group_blocked_generic:'❌ Vous ne pouvez pas rejoindre ce groupe',
+    group_exit:'Quitter le groupe',group_confirm_exit:'Quitter ce groupe ?',group_exited:'Vous avez quitté le groupe',
+    group_who_can_invite:'Qui peut inviter ?',group_invite_admins_only:'Admins et propriétaire uniquement',group_member_check:'Membre',
+    post_group_settings_hint:'Tu pourras définir qui peut rejoindre et comment, après la création, dans Paramètres du groupe.',
+    group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',
+    group_invite_not_eligible:'❌ Cette personne n’est pas éligible à ce groupe',group_view_only:'Lecture seule',
+    group_settings:'Paramètres du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
+    group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer',group_settings_saved:'✅ Paramètres enregistrés',
+    group_delete:'Supprimer le groupe',group_confirm_delete:'Supprimer définitivement ce groupe ? Cette action est irréversible.',
+    group_deleted:'Groupe supprimé',
+    group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée',
+    group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
+    group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
+    group_refused_major:'❌ Ce groupe est réservé aux étudiants de la même matière',
+    group_refused_generic:'❌ Tu n’es pas éligible pour rejoindre ce groupe',
+    notif_join_request_title:'Nouvelle demande',notif_join_request_body:'veut rejoindre',
+    group_loading:'Chargement...',group_no_pending:'Aucune demande en attente',
+    accept:'Accepter',decline:'Refuser',group_member_added:'✅ Membre ajouté',
+    group_request_declined:'Demande refusée',group_pending_requests:'Demandes en attente',
+    group_members_label:'Membres',group_invite_members:'Inviter des membres',group_invite:'Inviter',
+    group_already_member:'Déjà membre',group_invite_sent:'Invitation envoyée à {name}',
+    notif_group_invite_title:'Invitation à un groupe',notif_group_invite_body:'t’a invité à rejoindre',
+    notif_request_accepted_title:'Demande acceptée',notif_request_accepted_body:'Ta demande pour rejoindre le groupe a été acceptée !',
+    notif_request_declined_title:'Demande refusée',notif_request_declined_body:'Ta demande pour rejoindre le groupe a été refusée.',
+    invite_to_study:'Inviter à étudier',invite_pending:'Invitation en attente',
+    invite_header_hint:'Choisis un cours pour cette invitation',invite_pick_course:'❌ Choisis un cours',
+    invite_already_accepted:'Vous étudiez déjà ce cours ensemble',
+    invite_card_study:'Invitation à étudier',invite_card_group:'Invitation de groupe',
+    invite_state_accepted:'Acceptée',invite_state_declined:'Refusée',
+    invite_line_study_pending:'t’a invité à étudier',invite_line_group_pending:'t’a invité à rejoindre ce groupe.',
+    invite_line_sender_accepted:'a accepté ton invitation.',invite_line_sender_declined:'a refusé ton invitation.',
+    invite_line_you_accepted:'Tu as accepté l’invitation.',invite_line_you_declined:'Tu as refusé l’invitation.',
+    invite_line_you_joined:'Tu as rejoint le groupe.',
+    invite_again:'Inviter à nouveau',study_together_label:'Vous étudiez ensemble',group_invite_to_join:'Inviter à rejoindre',
+    invite_course_label:'Cours (optionnel)',invite_type_label:'Type d’étude',
+    invite_message_label:'Message (optionnel)',invite_message_ph:'Étudions ensemble...',
+    invite_send:'Envoyer l’invitation',invite_sent:'✅ Invitation envoyée',
+    invite_already_pending:'Une invitation est déjà en attente',invite_not_found:'Invitation introuvable',
+    invite_accepted:'✅ Invitation acceptée',invite_declined:'Invitation refusée',
+    notif_study_invite_title:'Invitation à étudier',
+    notif_study_accepted_title:'Invitation acceptée',notif_study_accepted_body:'a accepté ton invitation à étudier',
+    notif_study_declined_title:'Invitation refusée',notif_study_declined_body:'a refusé ton invitation à étudier',
+    post_title:'Créer une publication',post_as_label:'Publier en tant que :',postWhoCanSee:'Qui peut voir ta publication ?',postAnyone:'Tout le monde',postCountry:'Uniquement mon pays',postUniversity:'Uniquement mon université',postMajorCourse:'Uniquement ma filière / mon cours',
+    post_individual:'Individuel',post_study_group:'Groupe d’étude',
+    post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',
+    post_tags_label:'Matières :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
+    post_submit:'Publier sur le fil',
+    msgs_title:'Messages',msgs_search_ph:'🔍 Rechercher une conversation...',msgs_no_convos:'Aucune conversation pour l’instant.',
+    me_title:'Mon profil',me_account:'Compte',me_disconnect:'Se déconnecter',me_edit_profile:'Modifier le profil',
+    me_full_name_ph:'Nom complet',me_bio_ph:'Bio / À propos de toi...',me_select_country:'Choisir un pays',
+    me_university_ph:'Université / École',me_course_ph:'Filière / Matière principale',me_year_ph:'Année d’étude',
+    me_languages_label:'Langues',me_languages_ph:'ex. Français, Anglais...',
+    me_skills_label:'Compétences',me_skills_ph:'ex. Python, Maths...',
+    me_here_to_label:'Je suis ici pour :',me_get_help:'Besoin d’aide',me_give_help:'Apporter de l’aide',me_both:'Les deux',
+    me_save:'Enregistrer',me_cancel:'Annuler',me_app_settings:'Paramètres de l’app',
+    me_toast_name_required:'❌ Le nom est requis',me_toast_saved:'✅ Enregistré !',
+    profile_title:'Profil',
+    chat_search_ph:'Rechercher des messages...',chat_msg_ph:'Message...',
+    chat_voice_hint:'Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer',
+    media_camera:'Caméra',media_image:'Image',media_video:'Vidéo',media_music:'Musique',media_drive:'Drive',
+    media_document:'Document',media_poll:'Sondage',media_event:'Événement',media_location:'Position',media_link:'Lien',
+    time_active_while_ago:'Actif il y a un moment',time_active_now:'Actif à l’instant',
+    time_active_s:'Actif il y a {n}s',time_active_m:'Actif il y a {n}m',time_active_h:'Actif il y a {n}h',
+    time_active_yesterday:'Actif hier',time_active_d:'Actif il y a {n}j',time_active_week_ago:'Actif il y a plus d’une semaine',
+    msg_seen:'Vu',
+    prompt_poll_question:'Question du sondage :',prompt_event_details:'Détails de l’événement :',
+    prompt_location:'Position :',prompt_enter_url:'Entre l’URL :',
+    group_member:'membre',group_members:'membres',group_not_found:'Groupe introuvable',group_unavailable:'Le groupe est temporairement indisponible. Vérifiez votre connexion et réessayez.',group_name_default:'Groupe',
     st_new_title:'Nouveau statut',st_publish:'Publier',st_photo_label:'Photo (optionnel)',
     st_add_photo:'Ajouter une photo',st_photo_hint:'Notes, bureau de révision, selfie...',
-    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',
+    st_category_label:'Catégorie',st_required_unless_photo:'(obligatoire sauf si tu ajoutes une photo)',stWhoCanSee:'Qui peut voir votre statut ?',stAnyone:'Tout le monde',stCountry:'Uniquement mon pays',stUniversity:'Uniquement mon université',stMajorCourse:'Uniquement ma filière / mon cours',st_not_available:'❌ Ce statut n’est pas disponible pour vous',
     st_subject_label:'Matière (optionnel)',st_link_group_label:'Lier un groupe (optionnel)',
     st_message_label:'Message',st_msg_placeholder:'Dispo pour étudier maintenant, qui veut rejoindre?',
     st_preview_label:'Aperçu',st_expiry_note:'⏱ Ton statut disparaît automatiquement après 24h',
@@ -2940,15 +3422,104 @@ const I18N={
     st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
     st_toast_published:'✅ Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
     st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
-    st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',
-    st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',
-    st_you:'Toi',st_status:'Statut',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
+    st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',st_preview_empty:'Choisis une catégorie, ou ajoute une photo, pour voir l’aperçu',st_preview_photo:'Photo',st_toast_photo_uploading:'❌ Photo en cours d’envoi, patiente',
+    st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',st_toast_msg_sent:'Message envoyé',st_toast_audio_sent:'Vocal envoyé',
+    st_you:'Toi',st_status:'Statut',st_time_ago_min:'Il y a {n} min',st_time_ago_hour:'Il y a {n} h',st_time_remaining:'disparaît dans {n} h',st_join_prefix:'Rejoindre ',st_confirm_delete:'Supprimer ton statut ?',
     st_confirm_notif:'Tu seras notifié quand {name} ajoute un nouveau statut.',
     st_confirm_hide:"Les statuts de {name} n'apparaîtront plus dans tes mises à jour."
   },
   en:{
+    install_title:'Install the StudyLink app',install_hint:'Install it as a real app, not as a simple shortcut.',install_button:'Install app',install_close:'Close',install_manual:'For a real app: open ⋮ → “Install and create shortcut” → “Install”. Do not choose “Create shortcut”.',install_success:'StudyLink is being installed as an app.',install_error:'Open the Chrome menu and choose “Install”, not “Create shortcut”.',install_done:'StudyLink is installed as an app on your home screen.',
+    home_feed_title:'Community Feed',loading:'Loading...',home_no_posts:'No posts yet. Be the first to post! 🎓',
+    home_join_group:'Join Group',home_message:'Message',home_load_more:'Load more',
+    badge_needs_help:'Needs Help',badge_can_help:'Can Help',
+    status_online:'🟢 Online',status_busy:'🔴 Busy',
+    find_title:'Find & Match',find_search_ph:'Search name, major, course, university or country',
+    find_tab_all:'All',find_tab_match:'Match',find_tab_favs:'Favs',
+    find_loading:'Loading students...',find_no_results:'No students found.',
+    find_you_badge:'You',find_match_label:'Match',find_own_profile:'This is your profile',
+    find_top_students:'Students',find_top_groups:'Groups',find_top_library:'Library',
+    find_groups_search_ph:'Search groups...',find_loading_groups:'Loading groups...',
+    find_groups_error:'Could not load groups.',find_no_groups:'No groups yet.',
+    find_my_groups:'My Groups',find_discover_groups:'Discover',find_manage_group:'Manage',
+    find_library_empty:'No courses yet. Check back soon!',library_resources_empty:'No resources yet. Check back soon!',
+    library_courses_count:'courses',library_all_categories:'All categories',
+    postRequestToJoin:'Request to Join',postWhoCanJoin:'Who can join your group?',
+    rule_anyone:'Anyone',rule_country:'My Country',rule_university:'My University',rule_major:'My Courses',rule_request:'Request to Join',
+    group_open:'Open Group',pending:'Pending',group_request_to_join:'Request to Join',
+    group_who_can_join:'Who can join?',group_how_can_join:'How can they join?',group_direct_join:'Direct Join',
+    role_owner:'Owner',role_admin:'Admin',group_make_admin:'Make Admin',group_remove_admin:'Remove Admin',
+    group_remove_member:'Remove from Group',group_confirm_remove:'Remove this member from the group?',group_member_removed:'Member removed',
+    group_block_member:'Block',group_confirm_block:'Block this person? They will be removed from the group and won\u2019t be able to rejoin.',group_member_blocked:'Member blocked',group_blocked_generic:'❌ You can\u2019t join this group',
+    group_exit:'Exit Group',group_confirm_exit:'Leave this group?',group_exited:'You left the group',
+    group_who_can_invite:'Who can invite?',group_invite_admins_only:'Admins & Owner only',group_member_check:'Member',
+    post_group_settings_hint:'You can set who can join and how after creating the group, in Group Settings.',
+    group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',
+    group_invite_not_eligible:'❌ This person isn’t eligible for this group',group_view_only:'View only',
+    group_settings:'Group Settings',group_settings_readonly:'Only the group owner can change these settings.',
+    group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_settings_saved:'✅ Settings saved',
+    group_delete:'Delete Group',group_confirm_delete:'Permanently delete this group? This cannot be undone.',
+    group_deleted:'Group deleted',
+    group_still_pending:'Your request is still pending',group_request_sent:'Request sent',
+    group_refused_country:'❌ This group is only for students from the same country',
+    group_refused_university:'❌ This group is only for students from the same university',
+    group_refused_major:'❌ This group is only for students in the same course',
+    group_refused_generic:'❌ You’re not eligible to join this group',
+    notif_join_request_title:'New request',notif_join_request_body:'wants to join',
+    group_loading:'Loading...',group_no_pending:'No pending requests',
+    accept:'Accept',decline:'Decline',group_member_added:'✅ Member added',
+    group_request_declined:'Request declined',group_pending_requests:'Pending Requests',
+    group_members_label:'Members',group_invite_members:'Invite Members',group_invite:'Invite',
+    group_already_member:'Already a member',group_invite_sent:'Invite sent to {name}',
+    notif_group_invite_title:'Group Invite',notif_group_invite_body:'invited you to join',
+    notif_request_accepted_title:'Request Accepted',notif_request_accepted_body:'Your request to join the group was accepted!',
+    notif_request_declined_title:'Request Declined',notif_request_declined_body:'Your request to join the group was declined.',
+    invite_to_study:'Invite to Study',invite_pending:'Invitation pending',
+    invite_header_hint:'Pick one course for this invitation',invite_pick_course:'❌ Pick a course',
+    invite_already_accepted:'You already study this course together',
+    invite_card_study:'Study Invitation',invite_card_group:'Group Invitation',
+    invite_state_accepted:'Accepted',invite_state_declined:'Declined',
+    invite_line_study_pending:'invited you to study',invite_line_group_pending:'invited you to join this group.',
+    invite_line_sender_accepted:'accepted your invitation.',invite_line_sender_declined:'declined your invitation.',
+    invite_line_you_accepted:'You accepted the invitation.',invite_line_you_declined:'You declined the invitation.',
+    invite_line_you_joined:'You joined the group.',
+    invite_again:'Invite Again',study_together_label:'Study Together',group_invite_to_join:'Invite to Join',
+    invite_course_label:'Course (optional)',invite_type_label:'Study Type',
+    invite_message_label:'Message (optional)',invite_message_ph:'Let’s study together...',
+    invite_send:'Send Invitation',invite_sent:'✅ Invitation sent',
+    invite_already_pending:'An invitation is already pending',invite_not_found:'Invitation not found',
+    invite_accepted:'✅ Invitation accepted',invite_declined:'Invitation declined',
+    notif_study_invite_title:'Study Invitation',
+    notif_study_accepted_title:'Invitation Accepted',notif_study_accepted_body:'accepted your study invitation',
+    notif_study_declined_title:'Invitation Declined',notif_study_declined_body:'declined your study invitation',
+    post_title:'Create Post',post_as_label:'Post As:',postWhoCanSee:'Who can see your post?',postAnyone:'Anyone',postCountry:'Only my country',postUniversity:'Only my university',postMajorCourse:'Only my major/Course',
+    post_individual:'Individual',post_study_group:'Study Group',
+    post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',
+    post_tags_label:'Subject Tags:',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
+    post_submit:'Post to Feed',
+    msgs_title:'Messages',msgs_search_ph:'🔍 Search conversations...',msgs_no_convos:'No conversations yet.',
+    me_title:'My Profile',me_account:'Account',me_disconnect:'Log out',me_edit_profile:'Edit Profile',
+    me_full_name_ph:'Full Name',me_bio_ph:'Bio / About you...',me_select_country:'Select Country',
+    me_university_ph:'University / School',me_course_ph:'Course / Major',me_year_ph:'Year of Study',
+    me_languages_label:'Languages',me_languages_ph:'e.g. English, French...',
+    me_skills_label:'Skills',me_skills_ph:'e.g. Python, Math...',
+    me_here_to_label:'I am here to:',me_get_help:'Get Help',me_give_help:'Give Help',me_both:'Both',
+    me_save:'Save',me_cancel:'Cancel',me_app_settings:'App Settings',
+    me_toast_name_required:'❌ Name required',me_toast_saved:'✅ Saved!',
+    profile_title:'Profile',
+    chat_search_ph:'Search messages...',chat_msg_ph:'Message...',
+    chat_voice_hint:'Hold · slide up to lock · tap mic to send',
+    media_camera:'Camera',media_image:'Image',media_video:'Video',media_music:'Music',media_drive:'Drive',
+    media_document:'Document',media_poll:'Poll',media_event:'Event',media_location:'Location',media_link:'Link',
+    time_active_while_ago:'Active a while ago',time_active_now:'Active just now',
+    time_active_s:'Active {n}s ago',time_active_m:'Active {n}m ago',time_active_h:'Active {n}h ago',
+    time_active_yesterday:'Active yesterday',time_active_d:'Active {n}d ago',time_active_week_ago:'Active over a week ago',
+    msg_seen:'Seen',
+    prompt_poll_question:'Poll question:',prompt_event_details:'Event details:',
+    prompt_location:'Location:',prompt_enter_url:'Enter URL:',
+    group_member:'member',group_members:'members',group_not_found:'Group not found',group_unavailable:'The group is temporarily unavailable. Check your connection and try again.',group_name_default:'Group',
     st_new_title:'New status',st_publish:'Post',st_photo_label:'Photo (optional)',st_add_photo:'Add a photo',
-    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',
+    st_photo_hint:'Notes, study desk, selfie...',st_category_label:'Category',st_required_unless_photo:'(required unless you add a photo)',stWhoCanSee:'Who can see your status?',stAnyone:'Anyone',stCountry:'Only my country',stUniversity:'Only my university',stMajorCourse:'Only my major/Course',st_not_available:'❌ This status is not available to you',
     st_subject_label:'Subject (optional)',st_link_group_label:'Link a group (optional)',st_message_label:'Message',
     st_msg_placeholder:'Free to study now, who wants to join?',st_preview_label:'Preview',
     st_expiry_note:'⏱ Your status disappears automatically after 24h',st_reply_placeholder:'Reply...',
@@ -2958,9 +3529,9 @@ const I18N={
     st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
     st_toast_published:'✅ Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
     st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
-    st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',
-    st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",
-    st_you:'You',st_status:'Status',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
+    st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',st_preview_empty:'Choose a category, or add a photo, to see the preview',st_preview_photo:'Photo',st_toast_photo_uploading:'❌ Photo uploading, please wait',
+    st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",st_toast_msg_sent:'Message sent',st_toast_audio_sent:'Voice sent',
+    st_you:'You',st_status:'Status',st_time_ago_min:'{n} min ago',st_time_ago_hour:'{n} h ago',st_time_remaining:'disappears in {n} h',st_join_prefix:'Join ',st_confirm_delete:'Delete your status?',
     st_confirm_notif:'You will be notified when {name} adds a new status.',
     st_confirm_hide:"{name}'s statuses will no longer appear in your updates."
   }
@@ -2971,12 +3542,387 @@ const STATUS_I18N_KEYS={dispo:'st_cat_dispo',revision:'st_cat_revision',aide:'st
 function catLabel(key){return t(STATUS_I18N_KEYS[key])||CATS[key]?.label||key;}
 function applyTranslations(){
   document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=t(node.getAttribute('data-i18n'));});
+  if(curStatusUid){const su=allUsers.find(x=>x.uid===curStatusUid),ssp=activeStatusOf(su);if(ssp?.linkedGroupId&&el('stVJoinGroupLabel'))el('stVJoinGroupLabel').textContent=t('st_join_prefix')+(ssp.linkedGroupName||'');}
   document.querySelectorAll('[data-i18n-ph]').forEach(node=>{node.placeholder=t(node.getAttribute('data-i18n-ph'));});
+  document.querySelectorAll('[data-i18n-aria]').forEach(node=>{node.setAttribute('aria-label',t(node.getAttribute('data-i18n-aria')));});
   const langBtn=document.getElementById('langBtn');if(langBtn)langBtn.textContent=appLang.toUpperCase();
   document.querySelectorAll('#stCatGrid .stCatCard .nm').forEach((node,index)=>{const key=Object.keys(CATS)[index];if(key)node.textContent=catLabel(key);});
+  if(el('postSubjectCats'))renderSubjectPicker('post');
+  if(el('statusSubjectCats'))renderSubjectPicker('status');
   if(document.getElementById('statusCreate')?.style.display==='flex'){updateStatusPreview();}
 }
-function toggleLang(){appLang=appLang==='fr'?'en':'fr';localStorage.setItem('appLang',appLang);applyTranslations();if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);}
+function toggleLang(){
+  appLang=appLang==='fr'?'en':'fr';
+  localStorage.setItem('appLang',appLang);
+  applyTranslations();
+  renderStatusBar();
+  if(typeof updatePC==='function'&&MP)updatePC();
+  if(typeof renderHome==='function'&&Array.isArray(cachedPosts)&&cachedPosts.length&&el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
+  if(el('Pfind')?.style.display!=='none'){
+    if(findTop==='students')renderFind(el('findQ')?.value||'');
+    else if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
+    else if(findTop==='library')renderLibraryView();
+  }
+  if(curStatusUid&&document.getElementById('statusView')?.style.display==='flex')viewStatus(curStatusUid);
+}
+
+// ── GROUP MANAGEMENT (owner) ──
+let curManageGroupId=null;
+function isGroupOwner(g,uid){return g.ownerUid===uid||g.creatorUid===uid;}
+function isGroupAdmin(g,uid){return isGroupOwner(g,uid)||(g.admins||[]).includes(uid);}
+async function openManageGroup(postId){
+  curManageGroupId=postId;
+  pushModalState();
+  el('groupManageView').style.display='flex';
+  el('gmTitle').textContent=t('group_loading');
+  el('gmPending').innerHTML='';el('gmMembers').innerHTML='';
+  let gs;
+  try{gs=await db.collection('groups').doc(postId).get();}catch(e){showToast(t('group_unavailable'));closeGroupManage();return;}
+  if(!gs.exists){showToast(t('group_not_found'));closeGroupManage();return;}
+  const g=gs.data();
+  const viewerIsOwner=isGroupOwner(g,CU.uid);
+  const viewerIsAdmin=isGroupAdmin(g,CU.uid);
+  el('gmTitle').textContent='🏫 '+(g.name||'');
+  const pendingIds=g.pendingRequests||[];
+  const memberIds=g.members||[];
+  const pendingSection=el('gmPending').closest?el('gmPending').parentElement:null;
+  if(!viewerIsAdmin){
+    el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_view_only')}</p>`;
+  }else if(!pendingIds.length){
+    el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_no_pending')}</p>`;
+  }else{
+    el('gmPending').innerHTML=pendingIds.map(uid=>{
+      const u=allUsers.find(x=>x.uid===uid);
+      const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
+      return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+        <div onclick="openProfile('${uid}')" style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
+        <b onclick="openProfile('${uid}')" style="flex:1;font-size:14px;cursor:pointer;">${esc(u?.name||'Utilisateur')}</b>
+        <button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',true)">${t('accept')}</button>
+        <button class="btn r" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',false)">${t('decline')}</button>
+      </div>`;
+    }).join('');
+  }
+  el('gmMembers').innerHTML=memberIds.map(uid=>{
+    const u=allUsers.find(x=>x.uid===uid);
+    const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
+    const uOwner=isGroupOwner(g,uid),uAdmin=!uOwner&&(g.admins||[]).includes(uid);
+    const roleTag=uOwner?`👑 ${t('role_owner')}`:uAdmin?`🛡️ ${t('role_admin')}`:'';
+    let mgmt='';
+    if(viewerIsOwner&&!uOwner){
+      mgmt+=uAdmin
+        ?`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',false)">${t('group_remove_admin')}</button>`
+        :`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',true)">${t('group_make_admin')}</button>`;
+    }
+    if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
+      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
+      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="blockGroupMember('${uid}')">${t('group_block_member')}</button>`;
+    }
+    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
+      <div onclick="openProfile('${uid}')" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
+      <span onclick="openProfile('${uid}')" style="font-size:13px;flex:1;cursor:pointer;">${esc(u?.name||'Utilisateur')}${roleTag?' · '+roleTag:''}</span>
+      ${mgmt?`<div style="display:flex;gap:5px;flex-wrap:wrap;width:100%;justify-content:flex-end;margin-top:4px;">${mgmt}</div>`:''}
+    </div>`;
+  }).join('');
+  el('gmInviteBtn').style.display=viewerIsAdmin?'block':'none';
+  el('gmSettingsBtn').style.display='block';
+  el('gmExitBtn').style.display=(!viewerIsOwner&&memberIds.includes(CU.uid))?'block':'none';
+}
+async function toggleGroupAdmin(uid,makeAdmin){
+  if(!curManageGroupId)return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      admins:makeAdmin?firebase.firestore.FieldValue.arrayUnion(uid):firebase.firestore.FieldValue.arrayRemove(uid)
+    });
+    showToast(makeAdmin?t('group_admin_added'):t('group_admin_removed'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function removeGroupMember(uid){
+  if(!curManageGroupId)return;
+  if(!confirm(t('group_confirm_remove')))return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      members:firebase.firestore.FieldValue.arrayRemove(uid),
+      admins:firebase.firestore.FieldValue.arrayRemove(uid)
+    });
+    showToast(t('group_member_removed'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function blockGroupMember(uid){
+  if(!curManageGroupId)return;
+  if(!confirm(t('group_confirm_block')))return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      members:firebase.firestore.FieldValue.arrayRemove(uid),
+      admins:firebase.firestore.FieldValue.arrayRemove(uid),
+      blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)
+    });
+    showToast(t('group_member_blocked'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function exitGroup(){
+  if(!curManageGroupId)return;
+  if(!confirm(t('group_confirm_exit')))return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      members:firebase.firestore.FieldValue.arrayRemove(CU.uid),
+      admins:firebase.firestore.FieldValue.arrayRemove(CU.uid)
+    });
+    showToast(t('group_exited'));
+    closeGroupManage();
+    closeGroup();
+    if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
+  }catch(e){showToast('❌ '+e.message);}
+}
+function closeGroupManage(){el('groupManageView').style.display='none';curManageGroupId=null;consumeModalState();}
+async function respondGroupRequest(uid,accept){
+  if(!curManageGroupId)return;
+  const gref=db.collection('groups').doc(curManageGroupId);
+  try{
+    const gchk=await gref.get();
+    if(!isGroupAdmin(gchk.data()||{},CU.uid)){showToast(t('group_not_authorized'));return;}
+    if(accept){
+      await gref.update({members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
+      db.collection('notifications').add({toUid:uid,icon:'✅',title:t('notif_request_accepted_title'),body:t('notif_request_accepted_body'),read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+    }else{
+      await gref.update({pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
+      db.collection('notifications').add({toUid:uid,icon:'❌',title:t('notif_request_declined_title'),body:t('notif_request_declined_body'),read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+    }
+    showToast(accept?t('group_member_added'):t('group_request_declined'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+// ── GROUP SETTINGS (owner edits, admins view) ──
+async function openGroupSettings(){
+  if(!curManageGroupId)return;
+  pushModalState();
+  el('groupSettingsView').style.display='flex';
+  let gs;
+  try{gs=await db.collection('groups').doc(curManageGroupId).get();}catch(e){showToast(t('group_unavailable'));closeGroupSettings();return;}
+  if(!gs.exists){showToast(t('group_not_found'));closeGroupSettings();return;}
+  const g=gs.data();
+  const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
+  el('gsWhoCanJoin').value=whoCanJoin;
+  el('gsHowCanJoin').value=howCanJoin;
+  el('gsWhoCanBeInvited').value=g.whoCanBeInvited||'anyone';
+  const viewerIsOwner=isGroupOwner(g,CU.uid);
+  ['gsWhoCanJoin','gsHowCanJoin','gsWhoCanBeInvited'].forEach(id=>el(id).disabled=!viewerIsOwner);
+  el('gsReadOnlyNote').style.display=viewerIsOwner?'none':'block';
+  el('gsSaveBtn').style.display=viewerIsOwner?'block':'none';
+  el('gsDeleteBtn').style.display=viewerIsOwner?'block':'none';
+}
+function closeGroupSettings(){el('groupSettingsView').style.display='none';consumeModalState();}
+async function saveGroupSettings(){
+  if(!curManageGroupId)return;
+  try{
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    if(!isGroupOwner(gs.data()||{},CU.uid))return showToast(t('group_not_authorized'));
+    const whoCanJoin=el('gsWhoCanJoin').value,howCanJoin=el('gsHowCanJoin').value,whoCanBeInvited=el('gsWhoCanBeInvited').value;
+    await db.collection('groups').doc(curManageGroupId).update({whoCanJoin,howCanJoin,whoCanBeInvited});
+    // Mirror the join rules onto the linked post so feed/group cards show the real, current rule.
+    await db.collection('posts').doc(curManageGroupId).update({whoCanJoin,howCanJoin}).catch(()=>{});
+    const cachedPost=cachedPosts.find(p=>p.id===curManageGroupId);
+    if(cachedPost){cachedPost.whoCanJoin=whoCanJoin;cachedPost.howCanJoin=howCanJoin;}
+    showToast(t('group_settings_saved'));
+    closeGroupSettings();
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function deleteGroup(){
+  if(!curManageGroupId)return;
+  const gid=curManageGroupId;
+  try{
+    const gs=await db.collection('groups').doc(gid).get();
+    if(!isGroupOwner(gs.data()||{},CU.uid))return showToast(t('group_not_authorized'));
+  }catch(e){showToast('❌ '+e.message);return;}
+  if(!confirm(t('group_confirm_delete')))return;
+  showOv(true);
+  try{
+    await db.collection('groups').doc(gid).delete();
+    await db.collection('posts').doc(gid).delete().catch(()=>{});
+    cachedPosts=cachedPosts.filter(p=>p.id!==gid);
+    if(el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
+    showOv(false);
+    showToast(t('group_deleted'));
+    closeGroupSettings();closeGroupManage();
+    if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
+  }catch(e){showOv(false);showToast('❌ '+e.message);}
+}
+function openInviteMembers(){
+  el('inviteSearchQ').value='';
+  el('inviteMembersView').style.display='flex';
+  pushModalState();
+  loadInviteState();
+}
+function closeInviteMembers(){el('inviteMembersView').style.display='none';consumeModalState();}
+let curInviteMembers=[],curInviteStateMap={};
+async function loadInviteState(){
+  el('inviteSearchL').innerHTML=`<p style="text-align:center;color:#888;">${t('group_loading')}</p>`;
+  curInviteMembers=[];curInviteStateMap={};
+  if(!curManageGroupId)return renderInviteSearch('');
+  try{
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    curInviteMembers=(gs.data()||{}).members||[];
+  }catch(e){}
+  try{
+    const ns=await db.collection('notifications').where('kind','==','groupInvite').where('groupId','==',curManageGroupId).where('role','==','recipient').get();
+    ns.docs.forEach(d=>{const n=d.data();curInviteStateMap[n.toUid]=n.state||'pending';});
+  }catch(e){}
+  renderInviteSearch(el('inviteSearchQ')?.value||'');
+}
+function renderInviteSearch(q){
+  const l=el('inviteSearchL');
+  let list=allUsers.filter(u=>u.uid!==CU?.uid);
+  if(q){const s=q.toLowerCase();list=list.filter(u=>(u.name||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s));}
+  list=list.slice(0,30);
+  if(!list.length){l.innerHTML=`<p style="text-align:center;color:#888;">${t('find_no_results')}</p>`;return;}
+  l.innerHTML=list.map(u=>{
+    const av=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
+    const isMember=curInviteMembers.includes(u.uid);
+    const state=isMember?'member':(curInviteStateMap[u.uid]==='pending'?'pending':'invite');
+    const btn=state==='member'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" disabled>✅ ${t('group_member_check')}</button>`
+      :state==='pending'?`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" disabled>${t('pending')}</button>`
+      :`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button>`;
+    return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+      <div onclick="openProfile('${u.uid}')" style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
+      <span onclick="openProfile('${u.uid}')" style="flex:1;font-size:13px;cursor:pointer;">${esc(u.name||'?')}</span>
+      ${btn}
+    </div>`;
+  }).join('');
+}
+async function sendGroupInvite(uid,name){
+  if(!curManageGroupId)return;
+  try{
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    const g=gs.data()||{};
+    if(!isGroupAdmin(g,CU.uid))return showToast(t('group_not_authorized'));
+    if((g.members||[]).includes(uid))return showToast(t('group_already_member'));
+    const invitee=allUsers.find(x=>x.uid===uid)||{};
+    const whoCanBeInvited=g.whoCanBeInvited||'anyone';
+    let eligible=true;
+    if(whoCanBeInvited==='country')eligible=(invitee.country||'')===g.creatorCountry;
+    else if(whoCanBeInvited==='university')eligible=(invitee.uni||'')===g.creatorUni;
+    else if(whoCanBeInvited==='major')eligible=(invitee.course||'')===g.creatorCourse;
+    if(!eligible)return showToast(t('group_invite_not_eligible'));
+    const notifRef=db.collection('notifications').doc('grpinv_'+curManageGroupId+'_'+uid);
+    const existing=await notifRef.get();
+    if(existing.exists&&existing.data().state==='pending')return showToast(t('invite_already_pending'));
+    await notifRef.set({
+      toUid:uid,kind:'groupInvite',role:'recipient',groupId:curManageGroupId,groupName:g.name||'',
+      personName:MP?.name||'',personPhoto:myPho||'',fromUid:CU.uid,
+      state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast(t('group_invite_sent').replace('{name}',name));
+    curInviteStateMap[uid]='pending';
+    renderInviteSearch(el('inviteSearchQ')?.value||'');
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function respondGroupInvite(notifId,groupId,accept){
+  try{
+    const newState=accept?'accepted':'declined';
+    if(accept)await db.collection('groups').doc(groupId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+    await db.collection('notifications').doc(notifId).update({state:newState,read:true});
+    const ns=await db.collection('notifications').doc(notifId).get();
+    const n=ns.data()||{};
+    await db.collection('notifications').add({
+      toUid:n.fromUid,kind:'groupInvite',role:'sender',groupId:groupId,groupName:n.groupName||'',
+      personName:MP?.name||'',personPhoto:myPho||'',
+      state:newState,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast(accept?t('group_member_added'):t('invite_declined'));
+  }catch(e){showToast('❌ '+e.message);}
+}
+
+
+// ── INVITE TO STUDY (person-to-person) ──
+let siTargetUid=null,siTargetName='',siTargetPhoto='',siSelSubject=null,siSelCat=null;
+function openStudyInvite(uid,name){
+  const u=allUsers.find(x=>x.uid===uid)||{};
+  siTargetUid=uid;siTargetName=name||u.name||'';siTargetPhoto=u.photo||'';
+  siSelSubject=null;siSelCat=Object.keys(SUBJECT_CATEGORIES)[0];
+  el('siMsg').value='';
+  const av=siTargetPhoto?`<img src="${siTargetPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((siTargetName||'?')[0]||'?').toUpperCase();
+  el('siTargetHeader').innerHTML=`<div style="width:46px;height:46px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;">${av}</div><div><b style="font-size:15px;">${esc(siTargetName)}</b><div style="font-size:12px;color:var(--sub);">${t('invite_header_hint')}</div></div>`;
+  renderInviteCats();
+  closeProfileView(true);
+  el('studyInviteView').style.display='flex';
+  pushModalState();
+}
+function renderInviteCats(){
+  el('siCatSel').innerHTML=Object.keys(SUBJECT_CATEGORIES).map(k=>{
+    const c=SUBJECT_CATEGORIES[k];
+    const name=appLang==='fr'?c.fr:c.en;
+    const on=k===siSelCat?'background:#7b2ff7;color:#fff;border-color:#7b2ff7;':'';
+    return `<button type="button" class="tag" style="${on}" onclick="selectInviteCat('${k}')">${esc(name)}</button>`;
+  }).join('');
+  renderInviteSubjects();
+}
+function selectInviteCat(k){siSelCat=k;siSelSubject=null;renderInviteCats();}
+function renderInviteSubjects(){
+  const items=SUBJECT_CATEGORIES[siSelCat]?.items||[];
+  el('siSubjSel').innerHTML=items.map(s=>{
+    const on=s===siSelSubject?'background:#7b2ff7;color:#fff;border-color:#7b2ff7;':'';
+    return `<button type="button" class="tag" style="${on}" onclick="toggleInviteSubject('${e2(s)}')">${esc(s)}</button>`;
+  }).join('');
+}
+function toggleInviteSubject(s){siSelSubject=siSelSubject===s?null:s;renderInviteSubjects();}
+function closeStudyInvite(){el('studyInviteView').style.display='none';siTargetUid=null;consumeModalState();}
+async function sendStudyInvite(){
+  if(!siTargetUid)return;
+  if(!MP?.name)return showToast(t('st_toast_complete_profile'));
+  if(!siSelSubject)return showToast(t('invite_pick_course'));
+  const msg=v('siMsg');
+  showOv(true);
+  try{
+    const [sent,received]=await Promise.all([
+      db.collection('studyInvites').where('fromUid','==',CU.uid).where('toUid','==',siTargetUid).where('course','==',siSelSubject).get(),
+      db.collection('studyInvites').where('fromUid','==',siTargetUid).where('toUid','==',CU.uid).where('course','==',siSelSubject).get()
+    ]);
+    const all=[...sent.docs,...received.docs].map(d=>d.data());
+    const accepted=all.find(x=>x.status==='accepted');
+    if(accepted){showOv(false);showToast(t('invite_already_accepted'));return;}
+    const pendingMine=sent.docs.map(d=>d.data()).find(x=>x.status==='pending');
+    if(pendingMine){showOv(false);showToast(t('invite_already_pending'));return;}
+    const ref=await db.collection('studyInvites').add({
+      fromUid:CU.uid,fromName:MP.name,fromPhoto:myPho||'',
+      toUid:siTargetUid,toName:siTargetName,toPhoto:siTargetPhoto||'',
+      course:siSelSubject,message:msg||null,
+      status:'pending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('notifications').add({
+      toUid:siTargetUid,kind:'studyInvite',role:'recipient',inviteId:ref.id,
+      personName:MP.name,personPhoto:myPho||'',course:siSelSubject,customMessage:msg||null,
+      state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showOv(false);showToast(t('invite_sent'));closeStudyInvite();
+  }catch(e){showOv(false);showToast('❌ '+e.message);}
+}
+async function respondStudyInvite(inviteId,accept){
+  try{
+    const iref=db.collection('studyInvites').doc(inviteId);
+    const isnap=await iref.get();
+    if(!isnap.exists){showToast(t('invite_not_found'));return;}
+    const inv=isnap.data();
+    const newState=accept?'accepted':'declined';
+    await iref.update({status:newState,respondedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const mine=await db.collection('notifications').where('inviteId','==',inviteId).where('toUid','==',CU.uid).get();
+    const b=db.batch();
+    mine.docs.forEach(d=>b.update(d.ref,{state:newState,read:true}));
+    await b.commit();
+    await db.collection('notifications').add({
+      toUid:inv.fromUid,kind:'studyInvite',role:'sender',inviteId:inviteId,
+      personName:MP?.name||'',personPhoto:myPho||'',course:inv.course,fromRecipientUid:CU.uid,
+      state:newState,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showToast(accept?t('invite_accepted'):t('invite_declined'));
+  }catch(e){showToast('❌ '+e.message);}
+}
+function inviteAgainFromCard(uid,name){
+  const u=allUsers.find(x=>x.uid===uid);
+  if(!u)return showToast(t('group_not_found'));
+  openStudyInvite(uid,name||u.name||'');
+}
 
 // ── HELPERS ──
 function el(id){return document.getElementById(id);}
@@ -2991,7 +3937,32 @@ function openPhoneSettings(){
   else{showToast('⚙️ Open your device Settings app to change language, time, and other preferences.');}
 }
 function toggleDark(){dark=!dark;document.body.classList.toggle('dark',dark);}
-function showToast(msg){const t=el('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',4000);}
+const TOAST_PAIRS=[
+  ['❌ Statut expiré','❌ Status expired'],['Profil','Profile'],['Profil introuvable','Profile not found'],['Groupe introuvable','Group not found'],['Tu ne peux pas répondre à ton propre statut',"You can't reply to your own status"],['Tu ne peux pas te répondre à toi-même',"You can't reply to yourself"],['Transféré depuis un autre statut','Forwarded from another status'],['Rien à enregistrer, statut texte seul','Nothing to save, text-only status'],['📷 Photo prête','📷 Photo ready'],['📁 Fichier partagé !','📁 File shared!'],['✅ Vocal envoyé','✅ Voice sent'],['❌ Impossible de copier','❌ Unable to copy'],['Partage non supporté sur cet appareil','Sharing is not supported on this device'],['❌ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.','❌ Unable to play this audio. The file is unavailable or the network was interrupted.'],['⚠️ Cet audio est indisponible.','⚠️ This audio is unavailable.'],['⚠️ Lecture impossible. Appuyez de nouveau sur lecture.','⚠️ Playback failed. Press play again.'],['⚠️ Lecture audio interrompue.','⚠️ Audio playback interrupted.'],['⚠️ Rien n’a été enregistré.','⚠️ Nothing was recorded.'],['⚠️ L’audio n’a pas pu être envoyé. Réessayez.','⚠️ The audio could not be sent. Try again.'],['⚠️ Envoi vocal impossible. Réessayez.','⚠️ Voice message could not be sent. Try again.'],['🎙️ Erreur du microphone. Réessayez.','🎙️ Microphone error. Try again.'],['🎙️ Microphone non supporté. Utilisez Chrome.','🎙️ Microphone not supported. Use Chrome.'],['⚠️ Vidéo trop volumineuse. Maximum 200 Mo.','⚠️ Video too large. Maximum 200 MB.'],['⚠️ Audio trop volumineux. Maximum 50 Mo.','⚠️ Audio too large. Maximum 50 MB.'],['⚠️ Document trop volumineux. Maximum 50 Mo.','⚠️ Document too large. Maximum 50 MB.'],['✅ Fil actualisé','✅ Feed refreshed'],['✅ Toutes les publications sont chargées','✅ All posts loaded'],['📢 Publication publiée !','📢 Post published!'],['❌ Veuillez coller un lien d’abord','❌ Please paste a link first'],['❌ Veuillez coller un lien valide','❌ Please paste a valid link'],['🚩 Signalement envoyé. Merci.','🚩 Report submitted. Thank you.'],['❌ Impossible d’envoyer le signalement','❌ Could not submit report'],['⚙️ Ouvrez les Paramètres de votre appareil pour modifier la langue, l’heure et les autres préférences.','⚙️ Open your device Settings app to change language, time, and other preferences.']
+];
+function localizeToastMessage(msg){
+  const raw=String(msg??'');
+  const pair=TOAST_PAIRS.find(([fr,en])=>raw===fr||raw===en);
+  return pair?(appLang==='en'?pair[1]:pair[0]):raw;
+}
+function showToast(msg,color){
+  const t=el('toast');
+  t.textContent=localizeToastMessage(msg);
+  const statusOpen=el('statusView')?.style.display!=='none'&&el('statusView')?.style.display;
+  const themedColor=color||(statusOpen?viewingCategoryColor():null);
+  t.style.background=themedColor||'';
+  t.style.display='block';
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>t.style.display='none',4000);
+}
+const CAT_TOAST_COLOR={dispo:'#1e8a4c',revision:'#1d4ed8',aide:'#c2570a',session:'#6b21c9',pause:'#5c6478',objectif:'#a67c00',givehelp:'#000'};
+function creatingCategoryColor(){return selStatusCat?CAT_TOAST_COLOR[selStatusCat]:null;}
+function viewingCategoryColor(){
+  if(!curStatusUid)return null;
+  const u=allUsers.find(x=>x.uid===curStatusUid);
+  const sp=activeStatusOf(u);
+  return sp?.category?CAT_TOAST_COLOR[sp.category]:null;
+}
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 function showOv(v){el('ov').style.display=v?'flex':'none';}
 function tab(id){
@@ -3045,7 +4016,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-58',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-74',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
@@ -3061,16 +4032,16 @@ function setupPWA(){
   });
   window.setTimeout(show,900);
   installBtn?.addEventListener('click',async()=>{
-    if(!installEvent){showToast('Pour une vraie application : ouvrez ⋮ → « Install and create shortcut » → « Install ». Ne choisissez pas « Create shortcut ».');return;}
+    if(!installEvent){showToast(t('install_manual'));return;}
     const event=installEvent;installEvent=null;hide();
     try{
       await event.prompt();
       const choice=await event.userChoice;
-      if(choice?.outcome==='accepted')showToast('StudyLink est en cours d’installation comme application.');
-    }catch(e){console.warn('Install prompt unavailable:',e);showToast('Utilisez le menu Chrome et choisissez « Install », pas « Create shortcut ».');}
+      if(choice?.outcome==='accepted')showToast(t('install_success'));
+    }catch(e){console.warn('Install prompt unavailable:',e);showToast(t('install_error'));}
   });
   dismiss?.addEventListener('click',()=>{try{localStorage.setItem('studylinkInstallDismissed','1');}catch{}hide();});
-  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast('StudyLink est installé comme application sur votre écran d’accueil.');});
+  window.addEventListener('appinstalled',()=>{installEvent=null;hide();showToast(t('install_done'));});
 }
 function bootstrapStudyLink(){
   applyTranslations();
@@ -3080,13 +4051,9 @@ function bootstrapStudyLink(){
   disconnectButton?.addEventListener('click',()=>{void doOut();});
   // Countries
   const uc=el('uC');COUNTRIES.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;uc.appendChild(o);});
-  // Tags
-  const ts=el('tagSel');
-  SUBJECTS.forEach(s=>{
-    const b=document.createElement('button');b.className='tag';b.textContent=s;b.type='button';
-    b.onclick=()=>{selTags.includes(s)?selTags=selTags.filter(t=>t!==s):selTags.push(s);b.classList.toggle('sel');};
-    ts.appendChild(b);
-  });
+  // Categorized subject pickers used by Post and Statut
+  renderSubjectPicker('post');
+  setupSubjectPicker();
   el('mIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartSend();}});
   el('gIn').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();smartGSend();}});
   el('stVReplyInput')?.addEventListener('input',onStatusReplyInput);
