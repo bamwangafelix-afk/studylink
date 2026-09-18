@@ -594,7 +594,13 @@
       <b id="grpT"></b>
       <div id="grpM" style="font-size:10px;opacity:.85;"></div>
     </div>
-    <button onclick="curGrp&&openManageGroup(curGrp.id)" style="color:#fff;background:none;border:none;font-size:18px;cursor:pointer;width:30px;" aria-label="Group info">ℹ️</button>
+    <div style="position:relative;">
+      <button onclick="toggleGroupChatMenu()" style="color:#fff;background:none;border:none;font-size:20px;cursor:pointer;width:30px;" aria-label="Menu">⋮</button>
+      <div id="groupChatMenu" style="display:none;position:absolute;top:36px;right:0;background:var(--card,#fff);color:var(--txt);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:170px;z-index:50;overflow:hidden;">
+        <button onclick="closeGroupChatMenu();curGrp&&openManageGroup(curGrp.id);" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_info">Group Info</button>
+        <button id="gcmExitBtn" onclick="closeGroupChatMenu();quickExitGroup();" style="display:none;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:#c0392b;" data-i18n="group_exit">Exit Group</button>
+      </div>
+    </div>
   </div>
   <div id="gTypebar"></div>
   <div class="cmsgbox" id="grpB"></div>

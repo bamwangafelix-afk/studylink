@@ -964,12 +964,12 @@ function renderHome(posts,limit){
     const intent=du.intent||'';
     f.innerHTML+=`<div class="card ${isG?'grp':''}">
       <div style="display:flex;gap:10px;margin-bottom:8px;">
-        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${p.uid||''}')"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;">${esc(du.name||'?')}${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}</b>
+          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | 🏛️ ${du.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">📖 ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
-          <div style="margin-top:2px;">${isG?groupRuleBadgesHtml(p):`<span class="ruleBadge">${RULE_ICONS[p.visibility]||'🟢'} ${accessRuleLabel(p.visibility)}</span>`}</div>
+          ${isG?`<div style="margin-top:2px;">${groupRuleBadgesHtml(p)}</div>`:''}
           ${getIntentBadge(intent)}
         </div>
       </div>
@@ -1718,9 +1718,9 @@ function renderFind(q=""){
     f.innerHTML+=`<div class="card">
       ${!isSelf?`<button class="fav-btn" onclick="toggleFav('${u.uid}')">${isFav?'⭐':'☆'}</button>`:''}
       <div style="display:flex;gap:10px;margin-bottom:6px;">
-        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(u.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${u.uid}')"><div class="avatar ${statusRingOutlineClass(u.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;">${esc(u.name||'?')}${isSelf?` <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">${t('find_you_badge')}</span>`:''}</b>
+          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${u.uid}')">${esc(u.name||'?')}${isSelf?` <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">${t('find_you_badge')}</span>`:''}</b>
           ${u.bio?`<p style="font-size:11px;font-style:italic;color:var(--sub);margin:1px 0;">${esc(u.bio)}</p>`:''}
           <p style="font-size:11px;color:var(--sub);margin:1px 0;">${getFlag(u.country||'')} ${u.country||'—'} | 🏛️ ${u.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:1px 0;">📖 ${u.course||'—'} ${u.year?'('+u.year+')':''}</p>
@@ -2065,7 +2065,7 @@ async function openGroup(postId,name){
   }
   if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
   try{
-    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default')};
+    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||''};
     pushModalState();
     el('grpT').textContent='🏫 '+curGrp.name;el('groupW').style.display='flex';
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
@@ -3347,7 +3347,7 @@ const I18N={
     post_group_settings_hint:'Tu pourras définir qui peut rejoindre et comment, après la création, dans Paramètres du groupe.',
     group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',
     group_invite_not_eligible:'❌ Cette personne n’est pas éligible à ce groupe',group_view_only:'Lecture seule',
-    group_settings:'Paramètres du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
+    group_settings:'Paramètres du groupe',group_info:'Infos du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
     group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer',group_settings_saved:'✅ Paramètres enregistrés',
     group_delete:'Supprimer le groupe',group_confirm_delete:'Supprimer définitivement ce groupe ? Cette action est irréversible.',
     group_deleted:'Groupe supprimé',
@@ -3456,7 +3456,7 @@ const I18N={
     post_group_settings_hint:'You can set who can join and how after creating the group, in Group Settings.',
     group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',
     group_invite_not_eligible:'❌ This person isn’t eligible for this group',group_view_only:'View only',
-    group_settings:'Group Settings',group_settings_readonly:'Only the group owner can change these settings.',
+    group_settings:'Group Settings',group_info:'Group Info',group_settings_readonly:'Only the group owner can change these settings.',
     group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_settings_saved:'✅ Settings saved',
     group_delete:'Delete Group',group_confirm_delete:'Permanently delete this group? This cannot be undone.',
     group_deleted:'Group deleted',
@@ -3615,7 +3615,7 @@ async function openManageGroup(postId){
     }
     if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
       mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
-      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="blockGroupMember('${uid}')">${t('group_block_member')}</button>`;
+      mgmt+=`<button class="btn warn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="blockGroupMember('${uid}')">${t('group_block_member')}</button>`;
     }
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
       <div onclick="openProfile('${uid}')" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
@@ -3624,7 +3624,7 @@ async function openManageGroup(postId){
     </div>`;
   }).join('');
   el('gmInviteBtn').style.display=viewerIsAdmin?'block':'none';
-  el('gmSettingsBtn').style.display='block';
+  el('gmSettingsBtn').style.display=viewerIsOwner?'block':'none';
   el('gmExitBtn').style.display=(!viewerIsOwner&&memberIds.includes(CU.uid))?'block':'none';
 }
 async function toggleGroupAdmin(uid,makeAdmin){
@@ -3661,6 +3661,18 @@ async function blockGroupMember(uid){
     showToast(t('group_member_blocked'));
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
+}
+function toggleGroupChatMenu(){
+  const m=el('groupChatMenu');
+  const isOwner=curGrp&&curGrp.ownerUid===CU?.uid;
+  el('gcmExitBtn').style.display=isOwner?'none':'block';
+  m.style.display=m.style.display==='block'?'none':'block';
+}
+function closeGroupChatMenu(){const m=el('groupChatMenu');if(m)m.style.display='none';}
+function quickExitGroup(){
+  if(!curGrp)return;
+  curManageGroupId=curGrp.id;
+  exitGroup();
 }
 async function exitGroup(){
   if(!curManageGroupId)return;

@@ -432,6 +432,8 @@ body.dark .subjectCategoryTab.active{background:#7cb8ff;border-color:#7cb8ff;col
 
 /* ── INVITATION FAMILY (violet) ── */
 .btn.inv{background:#7b2ff7;color:#fff;}
+.btn.warn{background:#8a7a63;color:#fff;}
+.btn.warn:hover{background:#7a6b57;}
 .btn.inv:disabled{background:#c9b3ef;cursor:default;}
 .notif.inviteCard{background:rgba(123,47,247,.035);}
 body.dark .notif.inviteCard{background:rgba(123,47,247,.12);}
