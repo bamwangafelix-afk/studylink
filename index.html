@@ -9,21 +9,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyLink">
 <meta name="description" content="StudyLink — Connect, Learn, Grow.">
-<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-84">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-84">
-<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-84">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-85">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-85">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-85">
 <title>StudyLink Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-84">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-85">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
 <div id="toast" style="display:none;"></div>
 <div id="installBanner" role="status" aria-live="polite">
-  <img src="icons/studylink-192.png?v=studylink-pwa-84" alt="StudyLink" width="42" height="42">
+  <img src="icons/studylink-192.png?v=studylink-pwa-85" alt="StudyLink" width="42" height="42">
   <div class="install-copy"><strong data-i18n="install_title">Installer l’application StudyLink</strong><span data-i18n="install_hint">Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
   <button type="button" id="installBtn" data-i18n="install_button">Installer l’app</button>
   <button type="button" id="installDismiss" data-i18n-aria="install_close" aria-label="Fermer">×</button>
@@ -82,7 +82,7 @@
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-84" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-85" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     <div style="display:flex;gap:6px;align-items:center;">
@@ -163,6 +163,11 @@
     <div id="gnW" style="display:none;">
       <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_name_label">Group Name:</label>
       <input id="gName" placeholder="e.g. Python Coders..." data-i18n-ph="post_group_name_ph">
+      <label style="font-size:13px;font-weight:bold;margin-top:8px;display:block;" data-i18n="post_group_photo_label">Group Photo (optional):</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+        <div id="gPhotoPreview" style="width:52px;height:52px;border-radius:12px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px;">🏷️</div>
+        <input type="file" id="gPhotoFile" accept="image/*" onchange="previewGroupPhoto(this)" style="font-size:12px;">
+      </div>
       <p style="font-size:11px;color:var(--sub);margin:6px 0 0;" data-i18n="post_group_settings_hint">You can set who can join and how after creating the group, in Group Settings.</p>
     </div>
     <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
@@ -171,6 +176,10 @@
       <div class="subjectCategoryTabs" id="postSubjectCats" role="tablist"></div>
       <div class="subjectSelected" id="postSubjectSelected"></div>
       <div id="tagSel" class="subjectOptions" aria-live="polite"></div>
+    </div>
+    <div id="gnDescW" style="display:none;">
+      <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_desc_label">Group Description:</label>
+      <textarea id="gDesc" rows="2" placeholder="What is this group about?" data-i18n-ph="post_group_desc_ph"></textarea>
     </div>
     <label style="font-size:13px;font-weight:bold;" data-i18n="post_message_label">Your Message:</label>
     <textarea id="pText" rows="4" placeholder="Write your study request..." data-i18n-ph="post_message_ph"></textarea>
@@ -371,13 +380,48 @@
     <div style="width:24px;"></div>
   </div>
   <div style="overflow-y:auto;flex:1;padding:18px 16px 40px;">
+    <div id="gmInfoBox" class="card" style="margin-bottom:16px;"></div>
     <p style="font-weight:bold;font-size:13px;margin-bottom:8px;" data-i18n="group_pending_requests">Pending Requests</p>
     <div id="gmPending"></div>
-    <p style="font-weight:bold;font-size:13px;margin:18px 0 8px;" data-i18n="group_members_label">Members</p>
     <div id="gmMembers"></div>
     <button class="btn inv" id="gmInviteBtn" style="margin-top:16px;" onclick="openInviteMembers()" data-i18n="group_invite_members">Invite Members</button>
+    <button class="btn grp-open" id="gmEditBtn" style="margin-top:8px;display:none;" onclick="openEditGroupInfo()" data-i18n="group_edit_info">Edit Group Information</button>
     <button class="btn grp-open" id="gmSettingsBtn" style="margin-top:8px;" onclick="openGroupSettings()" data-i18n="group_settings">Group Settings</button>
-    <button class="btn r" id="gmExitBtn" style="margin-top:8px;display:none;" onclick="exitGroup()" data-i18n="group_exit">Exit Group</button>
+    <button class="btn r" id="gmExitBtn" style="margin-top:8px;display:none;" onclick="exitGroup()" data-i18n="group_leave">Leave Group</button>
+  </div>
+</div>
+
+<!-- EDIT GROUP INFO -->
+<div class="cwin" id="groupEditInfoView" style="z-index:283;">
+  <div class="chdr" style="align-items:center;">
+    <button class="profile-back-btn" onclick="closeEditGroupInfo()" aria-label="Retour">←</button>
+    <div class="profile-header-title" data-i18n="group_edit_info">Edit Group Information</div>
+  </div>
+  <div style="overflow-y:auto;flex:1;padding:18px 16px 40px;">
+    <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_name_label">Group Name:</label>
+    <input id="giName">
+    <label style="font-size:13px;font-weight:bold;margin-top:10px;display:block;" data-i18n="post_group_photo_label">Group Photo (optional):</label>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+      <div id="giPhotoPreview" style="width:52px;height:52px;border-radius:12px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px;">🏷️</div>
+      <input type="file" id="giPhotoFile" accept="image/*" onchange="previewEditGroupPhoto(this)" style="font-size:12px;">
+    </div>
+    <label style="font-size:13px;font-weight:bold;margin-top:10px;display:block;" data-i18n="post_group_desc_label">Group Description:</label>
+    <textarea id="giDesc" rows="3"></textarea>
+    <button class="btn" style="margin-top:16px;" onclick="saveGroupInfo()" data-i18n="group_save_settings">Save Settings</button>
+  </div>
+</div>
+
+<!-- GROUP RESOURCES -->
+<div class="cwin" id="groupResourcesView" style="z-index:283;">
+  <div class="chdr" style="align-items:center;">
+    <button class="profile-back-btn" onclick="closeGroupResources()" aria-label="Retour">←</button>
+    <div class="profile-header-title" data-i18n="group_resources">Resources</div>
+  </div>
+  <div style="overflow-y:auto;flex:1;padding:18px 16px 40px;">
+    <input id="resTitle" placeholder="Title (e.g. Chapter 1 notes)" data-i18n-ph="group_resource_title_ph" style="margin-bottom:6px;">
+    <input id="resLink" placeholder="Link (optional, e.g. Google Drive URL)" data-i18n-ph="group_resource_link_ph" style="margin-bottom:6px;">
+    <button class="btn" onclick="addGroupResource()" data-i18n="group_resource_add">Add Resource</button>
+    <div id="resList" style="margin-top:16px;"></div>
   </div>
 </div>
 
@@ -596,11 +640,21 @@
     </div>
     <div style="position:relative;">
       <button onclick="toggleGroupChatMenu()" style="color:#fff;background:none;border:none;font-size:20px;cursor:pointer;width:30px;" aria-label="Menu">⋮</button>
-      <div id="groupChatMenu" style="display:none;position:absolute;top:36px;right:0;background:var(--card,#fff);color:var(--txt);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:170px;z-index:50;overflow:hidden;">
+      <div id="groupChatMenu" style="display:none;position:absolute;top:36px;right:0;background:var(--card,#fff);color:var(--txt);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25);min-width:190px;z-index:50;overflow:hidden;">
+        <button onclick="closeGroupChatMenu();openInviteMembers();curManageGroupId=curGrp&&curGrp.id;" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_invite_members">Invite Members</button>
         <button onclick="closeGroupChatMenu();curGrp&&openManageGroup(curGrp.id);" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_info">Group Info</button>
-        <button id="gcmExitBtn" onclick="closeGroupChatMenu();quickExitGroup();" style="display:none;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:#c0392b;" data-i18n="group_exit">Exit Group</button>
+        <button onclick="closeGroupChatMenu();curGrp&&openGroupResources(curGrp.id);" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_resources">Resources</button>
+        <button onclick="closeGroupChatMenu();openGroupSearch();" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_search">Search</button>
+        <button onclick="closeGroupChatMenu();toggleGroupMute();" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" id="gcmMuteBtn" data-i18n="group_notifications">Notifications</button>
+        <button onclick="closeGroupChatMenu();shareGroupLink();" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_share_invite">Share / Invite</button>
+        <button id="gcmSettingsBtn" onclick="closeGroupChatMenu();curGrp&&openManageGroup(curGrp.id);openGroupSettings();" style="display:none;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_settings">Group Settings</button>
+        <button onclick="closeGroupChatMenu();reportGroup();" style="display:block;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:var(--txt);" data-i18n="group_report">Report Group</button>
+        <button id="gcmExitBtn" onclick="closeGroupChatMenu();quickExitGroup();" style="display:none;width:100%;text-align:left;padding:11px 14px;background:none;border:none;font-size:13px;cursor:pointer;color:#c0392b;" data-i18n="group_leave">Leave Group</button>
       </div>
     </div>
+  </div>
+  <div id="groupSearchBar" style="display:none;padding:8px 12px;background:var(--hdr);">
+    <input id="groupSearchQ" placeholder="Search messages..." data-i18n-ph="group_search_ph" oninput="filterGroupMessages(this.value)" style="width:100%;">
   </div>
   <div id="gTypebar"></div>
   <div class="cmsgbox" id="grpB"></div>
@@ -731,6 +785,6 @@
   </div>
 </div>
 
-<script defer src="js/app-v20.js?v=studylink-pwa-84"></script>
+<script defer src="js/app-v20.js?v=studylink-pwa-85"></script>
 </body>
 </html>
