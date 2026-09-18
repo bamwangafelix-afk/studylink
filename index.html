@@ -163,18 +163,7 @@
     <div id="gnW" style="display:none;">
       <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_name_label">Group Name:</label>
       <input id="gName" placeholder="e.g. Python Coders..." data-i18n-ph="post_group_name_ph">
-      <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="group_who_can_join">Who can join?</label>
-      <select id="gWhoCanJoin">
-        <option value="anyone" data-i18n="postAnyone">Anyone</option>
-        <option value="country" data-i18n="postCountry">Only my Country</option>
-        <option value="university" data-i18n="postUniversity">Only my University</option>
-        <option value="major" data-i18n="postMajorCourse">Only my Major/Course</option>
-      </select>
-      <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="group_how_can_join">How can they join?</label>
-      <select id="gHowCanJoin">
-        <option value="direct" data-i18n="group_direct_join">Direct Join</option>
-        <option value="request" data-i18n="postRequestToJoin">Request to Join</option>
-      </select>
+      <p style="font-size:11px;color:var(--sub);margin:6px 0 0;" data-i18n="post_group_settings_hint">You can set who can join and how after creating the group, in Group Settings.</p>
     </div>
     <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
     <div class="subjectPicker" id="postSubjectPicker">
@@ -224,7 +213,7 @@
   </div>
   <div class="card">
     <p style="font-weight:bold;margin-bottom:8px;" data-i18n="me_account">Account</p>
-    <button type="button" class="btn g" id="disconnectBtn" data-i18n="me_disconnect">Disconnect</button>
+    <button type="button" class="btn r" id="disconnectBtn" data-i18n="me_disconnect">Log out</button>
     <button class="btn" style="margin-top:6px;" onclick="showEF()" data-i18n="me_edit_profile">Edit Profile</button>
   </div>
   <div id="EF" class="card" style="display:none;text-align:center;">
@@ -388,6 +377,7 @@
     <div id="gmMembers"></div>
     <button class="btn inv" id="gmInviteBtn" style="margin-top:16px;" onclick="openInviteMembers()" data-i18n="group_invite_members">Invite Members</button>
     <button class="btn grp-open" id="gmSettingsBtn" style="margin-top:8px;" onclick="openGroupSettings()" data-i18n="group_settings">Group Settings</button>
+    <button class="btn r" id="gmExitBtn" style="margin-top:8px;display:none;" onclick="exitGroup()" data-i18n="group_exit">Exit Group</button>
   </div>
 </div>
 
@@ -412,7 +402,9 @@
       <option value="direct" data-i18n="group_direct_join">Direct Join</option>
       <option value="request" data-i18n="postRequestToJoin">Request to Join</option>
     </select>
-    <label style="font-size:13px;font-weight:bold;display:block;margin-top:10px;" data-i18n="group_who_can_be_invited">Who can be invited?</label>
+    <label style="font-size:13px;font-weight:bold;display:block;margin-top:10px;" data-i18n="group_who_can_invite">Who can invite?</label>
+    <p style="font-size:13px;margin:4px 0 0;color:var(--sub);">👑🛡️ <span data-i18n="group_invite_admins_only">Admins &amp; Owner only</span></p>
+    <label style="font-size:13px;font-weight:bold;display:block;margin-top:14px;" data-i18n="group_who_can_be_invited">Who can be invited?</label>
     <select id="gsWhoCanBeInvited">
       <option value="anyone" data-i18n="postAnyone">Anyone</option>
       <option value="country" data-i18n="postCountry">Only my Country</option>
@@ -481,9 +473,12 @@
 <div class="cwin" id="chatW">
   <div class="chdr" style="background:var(--hdr);">
     <button onclick="closeChat()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button>
-    <div style="text-align:center;cursor:pointer;">
-      <b id="chatT"></b>
-      <div id="chatSt" style="font-size:10px;opacity:.8;"></div>
+    <div id="chatHdrInfo" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+      <div id="chatAv" style="width:32px;height:32px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;font-size:13px;color:#0A3C6D;"></div>
+      <div style="text-align:left;">
+        <b id="chatT"></b>
+        <div id="chatSt" style="font-size:10px;opacity:.8;"></div>
+      </div>
     </div>
     <button onclick="toggleCS()" style="color:#fff;background:none;border:none;cursor:pointer;">
       <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff;"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -595,11 +590,11 @@
 <div class="cwin" id="groupW">
   <div class="chdr" style="background:#e67e22;">
     <button onclick="closeGroup()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button>
-    <div style="text-align:center;">
+    <div style="text-align:center;cursor:pointer;" onclick="curGrp&&openManageGroup(curGrp.id)">
       <b id="grpT"></b>
       <div id="grpM" style="font-size:10px;opacity:.85;"></div>
     </div>
-    <span style="width:30px;"></span>
+    <button onclick="curGrp&&openManageGroup(curGrp.id)" style="color:#fff;background:none;border:none;font-size:18px;cursor:pointer;width:30px;" aria-label="Group info">ℹ️</button>
   </div>
   <div id="gTypebar"></div>
   <div class="cmsgbox" id="grpB"></div>
