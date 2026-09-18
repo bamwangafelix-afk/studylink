@@ -851,10 +851,10 @@ function rememberStatusVisibility(value){
   if(CU)db.collection('users').doc(CU.uid).set({statusVisibility:value},{merge:true}).catch(()=>{});
 }
 function canViewVisibility(content,viewer,owner){
-  if(!viewer||!owner)return false;
-  if(content?.uid&&content.uid===viewer.uid)return true;
   const rule=visibilityText(content?.visibility);
   if(!rule||rule==='anyone'||rule==='public')return true;
+  if(!viewer||!owner)return false;
+  if(content?.uid&&content.uid===viewer.uid)return true;
   const vp=viewer.uid===CU?.uid?(allUsers.find(u=>u.uid===viewer.uid)||MP):(viewer.profile||viewer);
   if(rule==='country')return sameAudienceField(owner,vp,'country');
   if(rule==='university'||rule==='uni')return sameAudienceField(owner,vp,'university');
