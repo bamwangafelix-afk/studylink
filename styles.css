@@ -79,7 +79,7 @@ body.dark #statusCreate .stSection,body.dark #statusCreate .stPhotoEmpty,body.da
 .mp-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;}
 .mpbtn span{font-size:10px;color:var(--sub);}
 /* CHAT INPUT BAR */
-.cin-wrap{display:flex;align-items:center;gap:6px;padding:8px 10px;}
+.cin-wrap{display:flex;align-items:center;gap:6px;padding:8px 10px;position:relative;}
 .cin-emoji{background:none;border:none;cursor:pointer;font-size:22px;flex-shrink:0;padding:4px;}
 .cin-input{flex:1;padding:9px 14px;border-radius:22px;font-size:14px;border:1px solid var(--brd);background:var(--inp);color:var(--txt);margin:0;outline:none;}
 .cin-attach{background:none;border:none;cursor:pointer;flex-shrink:0;padding:4px;color:var(--sub);}
@@ -91,12 +91,16 @@ body.dark #statusCreate .stSection,body.dark #statusCreate .stPhotoEmpty,body.da
 .cin-action:active{transform:scale(.96);}
 .cin-action.voice-pending{background:#1565c0;box-shadow:0 0 0 4px rgba(33,150,243,.22);}
 .cin-action.rec{background:#1976d2;animation:pulse 1s infinite;}
-.cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);transform:translateY(-2px);}
+.cin-action.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);}
 .cin-action.haptic-pulse{animation:hapticPulse .26s ease-out;}
 /* Group chat keeps its orange identity in every microphone state; private chat remains blue. */
 #gSendB,#gSendB.voice-pending,#gSendB.rec,#gSendB.voice-locked{background:#e67e22;}
-@keyframes hapticPulse{0%{transform:scale(1)}35%{transform:scale(1.12);box-shadow:0 0 0 5px rgba(33,150,243,.32)}100%{transform:scale(1);box-shadow:none}}
+@keyframes hapticPulse{0%{transform:translateY(var(--voice-drag-y,0px)) scale(1)}35%{transform:translateY(var(--voice-drag-y,0px)) scale(1.12);box-shadow:0 0 0 5px rgba(33,150,243,.32)}100%{transform:translateY(var(--voice-drag-y,0px)) scale(1);box-shadow:none}}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.voice-float-indicator{position:absolute;right:10px;bottom:8px;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--btnB);background:var(--card);border:2px solid currentColor;box-shadow:0 4px 14px rgba(0,0,0,.22);opacity:0;pointer-events:none;z-index:4;translate:0 var(--voice-float-y,0px);transition:opacity .1s linear,translate .06s linear;}
+.voice-float-indicator.voice-float-group{color:#e67e22;}
+.voice-float-indicator svg{width:26px;height:26px;fill:currentColor;}
+.voice-float-indicator.is-visible{opacity:1;}
 #vbar,#gvbar{display:none;align-items:center;gap:8px;padding:8px 12px;background:linear-gradient(90deg,#e3f2fd,#f5fbff);border-top:1px solid #90caf9;}
 #gvbar{background:linear-gradient(90deg,#fff3e0,#fffaf5);border-top-color:#e67e22;}
 #gvbar button,#gvbar [data-voice-hint],#gvbar>span:first-of-type{color:#e67e22;}
@@ -207,7 +211,7 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 #csBar{display:none;background:var(--card);padding:6px 10px;border-bottom:1px solid var(--brd);}
 
 /* ── STATUS BAR (Home) ── */
-.statusStrip{position:relative;top:auto;z-index:90;background:var(--bg);padding:0 0 8px 0;border-bottom:1px solid var(--brd);margin:0;}
+.statusStrip{position:relative;top:auto;z-index:90;background:var(--bg);padding:8px 0 8px 0;border-bottom:1px solid var(--brd);margin:0;}
 .statusScroll{display:flex;gap:8px;overflow-x:auto;padding:0 14px;scrollbar-width:none;}
 .statusScroll::-webkit-scrollbar{display:none;}
 .stItem{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;width:56px;cursor:pointer;}
@@ -236,7 +240,9 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
 .stCatCard{border-radius:12px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;border:2px solid transparent;cursor:pointer;}
 .stCatCard .em{font-size:20px;display:flex;align-items:center;justify-content:center;height:30px;}
 .stVectorIcon,.stPhotoVector svg{width:26px;height:26px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-.stCatCard .stVectorIcon,.stVBadge .stVectorIcon{width:1em;height:1em;}
+.stCatCard .stVectorIcon,.stVBadge .stVectorIcon{width:1em;height:1em;flex:0 0 1em;display:inline-block;visibility:visible;opacity:1;}
+.intent-badge .stVectorIcon,#eNeedBtn .stVectorIcon,#eHelpBtn .stVectorIcon{width:1.15em;height:1.15em;flex:0 0 1.15em;display:inline-block;visibility:visible;opacity:1;fill:currentColor;stroke:currentColor;}
+.intent-badge .stVectorIcon[viewBox="0 0 479.978439 479.970603"],#eNeedBtn .stVectorIcon[viewBox="0 0 479.978439 479.970603"],#eHelpBtn .stVectorIcon[viewBox="0 0 479.978439 479.970603"]{fill:currentColor;stroke:none;}
 /* Illustrated icons (Révision, Session, Objectif, Pause, Give Help) are filled traces, not line-strokes */
 .em .stVectorIcon[viewBox="0 0 429.819299 511.627946"],
 .em .stVectorIcon[viewBox="0 0 417.505327 467.921033"],
@@ -277,14 +283,14 @@ body.dark .cat-givehelp .stVectorIcon{color:#fff!important;}
 .stVMsg{color:#fff;font-size:21px;font-weight:700;line-height:1.4;text-shadow:0 2px 10px rgba(0,0,0,.25);}
 .stVSubject{margin-top:16px;background:rgba(255,255,255,.14);color:#fff;font-size:13px;font-weight:700;padding:6px 14px;border-radius:14px;}
 .stVBottom{display:flex;flex-direction:column;align-items:stretch;gap:8px;padding:14px 16px 22px;position:relative;z-index:3;margin-top:auto;flex-shrink:0;}
-.stVReplyRow{display:flex;align-items:center;gap:10px;width:100%;}
+.stVReplyRow{display:flex;align-items:center;gap:10px;width:100%;position:relative;}
 .stVReplyInput{flex:1;min-width:0;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.4);border-radius:24px;padding:12px 16px;color:#fff;font-size:14px;outline:none;}
 .stVReplyInput::placeholder{color:rgba(255,255,255,.7);}
-.stVReplyBtn{width:50px;height:50px;min-width:50px;border-radius:50%;background:rgba(255,255,255,.18);border:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;cursor:pointer;touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+.stVReplyBtn{width:50px;height:50px;min-width:50px;border-radius:50%;background:rgba(255,255,255,.18);border:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;flex-shrink:0;cursor:pointer;touch-action:none;user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .08s linear,box-shadow .16s ease;translate:none;}
 .stVReplyBtn svg{width:22px;height:22px;fill:#fff;}
 .stVReplyBtn.voice-pending{background:#1565c0;box-shadow:0 0 0 4px rgba(33,150,243,.22);}
 .stVReplyBtn.rec{background:#1976d2;animation:pulse 1s infinite;}
-.stVReplyBtn.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);transform:translateY(-2px);}
+.stVReplyBtn.voice-locked{background:#0d47a1;box-shadow:0 0 0 5px rgba(33,150,243,.28);translate:0 calc(var(--voice-drag-y,0px) - 2px);}
 .stVReplyBtn.haptic-pulse{animation:hapticPulse .26s ease-out;}
 .stVReplyBar{max-width:100%;}
 .stVReplyBar canvas{min-width:0;}
@@ -354,6 +360,8 @@ body.dark .cat-givehelp .stVectorIcon{color:#fff!important;}
 #statusView .stVReplyBtn.voice-pending{background:color-mix(in srgb,var(--status-accent) 78%,#000 22%);}
 #statusView .stVReplyBtn.voice-locked{background:var(--status-header);}
 #statusView .stVReplyBtn.voice-locked{background:color-mix(in srgb,var(--status-accent) 62%,#000 38%);}
+.status-voice-float{right:0;bottom:0;color:var(--status-accent);background:var(--status-header);border-color:var(--status-accent);}
+#statusView .status-voice-float{color:var(--status-accent);background:var(--status-header);border-color:var(--status-accent);}
 /* Color Companion: a StudyLink accessory bar positioned above the system keyboard. */
 .status-color-companion{display:none;position:fixed;left:10px;right:10px;bottom:calc(10px + var(--status-keyboard-offset,0px));z-index:5000;align-items:center;justify-content:space-between;gap:10px;min-height:42px;padding:6px 8px 6px 12px;border:1px solid var(--status-accent);border-radius:14px;background:var(--status-header);box-shadow:0 8px 24px rgba(0,0,0,.22);box-sizing:border-box;transition:bottom .18s ease,background .18s ease,border-color .18s ease;}
 .status-color-companion.is-visible{display:flex;}
@@ -392,13 +400,53 @@ body.dark #profileView .chdr .profile-header-title,
 body.dark #profileView #pvName{color:#fff!important;}
 .stVMain #stVMsg + #stVBadge{margin-top:16px;margin-bottom:0;}
 
-
-/* pwa-50 profile refinements: Give Help status ring and dark header contrast */
-.ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
-#profileView #pvAvatar.ring-outline-givehelp{box-shadow:0 0 0 4px #000;}
+/* Give Help ring: same dimensions as every other category ring. */
+.stRing.ring-givehelp{background:#000;box-shadow:none;}
+.ring-outline-givehelp{box-shadow:none;}
+#profileView #pvAvatar.ring-outline-givehelp{box-shadow:none;}
 body.dark #profileView .chdr .profile-back-btn,body.dark #profileView .chdr .profile-header-title{color:#fff!important;}
+body.dark #profileView #pvName{color:#fff!important;}
 
-/* Give Help ring: matches the exact size/weight of every other category ring, black/white theme only. */
-.stRing.ring-givehelp{background:#000;box-shadow:0 0 0 3px #000;}
-.ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
-#profileView #pvAvatar.ring-outline-givehelp{box-shadow:0 0 0 3px #000;}
+/* Categorized subject picker */
+.subjectPicker{margin:6px 0 10px;padding:8px;border:1px solid var(--brd);border-radius:12px;background:color-mix(in srgb,var(--card) 92%,var(--bg) 8%);}
+.subjectSearch{margin:0 0 7px!important;padding:8px 10px!important;font-size:13px!important;border-radius:9px!important;background:var(--inp)!important;}
+.subjectCategoryTabs{display:flex;gap:5px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:none;}
+.subjectCategoryTabs::-webkit-scrollbar{display:none;}
+.subjectCategoryTab{flex:0 0 auto;border:1px solid var(--brd);border-radius:999px;background:transparent;color:var(--sub);padding:6px 9px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap;}
+.subjectCategoryTab.active{background:var(--btnB);border-color:var(--btnB);color:#fff;}
+.subjectSelected{display:flex;flex-wrap:wrap;gap:3px;min-height:0;margin:1px 0 4px;}
+.subjectSelected:empty{display:none;}
+.subjectSelected .subjectChip{background:var(--btnB);color:#fff;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800;}
+.subjectSelected .subjectChip button{border:0;background:none;color:inherit;font-weight:900;cursor:pointer;padding:0 0 0 4px;}
+.subjectOptions{display:flex;flex-wrap:wrap;gap:3px;max-height:122px;overflow-y:auto;padding:1px;}
+.subjectOptions .tag{margin:0;padding:5px 8px;font-size:10px;}
+.subjectEmpty{font-size:11px;color:var(--sub);padding:7px 2px;}
+body.dark .subjectPicker{background:#142437;}
+body.dark .subjectCategoryTab{border-color:#466078;color:#c8d9ee;}
+body.dark .subjectCategoryTab.active{background:#7cb8ff;border-color:#7cb8ff;color:#07182b;}
+@media(max-width:380px){.subjectCategoryTab{padding:5px 7px;font-size:9px}.subjectOptions .tag{font-size:9px;padding:4px 7px;}}
+
+/* Separate Record and Send controls */
+.cin-send-action{position:relative;z-index:2;}
+
+
+/* ── INVITATION FAMILY (violet) ── */
+.btn.inv{background:#7b2ff7;color:#fff;}
+.btn.inv:disabled{background:#c9b3ef;cursor:default;}
+.notif.inviteCard{background:rgba(123,47,247,.035);}
+body.dark .notif.inviteCard{background:rgba(123,47,247,.12);}
+
+/* Groups tab uses the StudyLink group colour (orange) when active */
+.stab.on-grp{background:#e67e22;color:#fff;}
+
+/* ── Group rule badges + orange "Open/Settings" actions ── */
+.ruleBadge{display:inline-block;font-size:10px;background:var(--card2,#eef2f9);color:var(--sub);padding:2px 7px;border-radius:8px;margin-right:4px;}
+body.dark .ruleBadge{background:#243448;color:#cfe0f5;}
+/* Dark-theme readability fix: header titles/back-buttons inside ANY overlay window
+   (.cwin) — group manage, group settings, invite members, chat, group chat, etc. —
+   must stay white on dark headers, not just inside #profileView. */
+body.dark .cwin .chdr,
+body.dark .cwin .chdr button,
+body.dark .cwin .profile-header-title,
+body.dark .cwin .profile-back-btn{color:#fff!important;}
+.btn.grp-open{background:#e67e22;color:#fff;}
