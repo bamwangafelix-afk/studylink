@@ -35,6 +35,8 @@ function closeTopModal(){
   if(el('statusCreate')?.style.display==='flex'){closeStatusCreate();return;}
   if(el('studyInviteView')?.style.display==='flex'){closeStudyInvite();return;}
   if(el('groupSettingsView')?.style.display==='flex'){closeGroupSettings();return;}
+  if(el('groupEditInfoView')?.style.display==='flex'){closeEditGroupInfo();return;}
+  if(el('groupResourcesView')?.style.display==='flex'){closeGroupResources();return;}
   if(el('inviteMembersView')?.style.display==='flex'){closeInviteMembers();return;}
   if(el('groupManageView')?.style.display==='flex'){closeGroupManage();return;}
   if(el('profileView')?.style.display==='flex'){closeProfileView();return;}
@@ -488,6 +490,7 @@ auth.onAuthStateChanged(async u=>{
     try{listenUsers();}catch(e){}
     try{setupNotifL();}catch(e){}
     try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
+    try{handleJoinGroupDeepLink();}catch(e){}
   }else{
     // Firebase can call this branch after a successful sign-out and later after a new login.
     // Always release the click guard so Disconnect works on every session, not only the first one.
@@ -903,7 +906,17 @@ function loadMorePosts(){
 }
 function toggleGN(val){
   el('gnW').style.display=val==='Group'?'block':'none';
+  el('gnDescW').style.display=val==='Group'?'block':'none';
   el('pVisWrap').style.display=val==='Group'?'none':'block';
+}
+let gPhotoDataUrl=null;
+function previewGroupPhoto(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  gPhotoDataUrl=file;
+  const reader=new FileReader();
+  reader.onload=()=>{el('gPhotoPreview').innerHTML=`<img src="${reader.result}" style="width:100%;height:100%;object-fit:cover;">`;};
+  reader.readAsDataURL(file);
 }
 async function addPost(){
   if(!MP?.name)return alert('Complete your profile first');
@@ -912,17 +925,20 @@ async function addPost(){
   const visibility=type==='Group'?'anyone':(el('pVisibility')?.value||'anyone');
   const whoCanJoin='anyone',howCanJoin='direct'; // group access rules are configured afterwards in Group Settings, not at creation
   const gname=type==='Group'?v('gName'):'';
+  const gdesc=type==='Group'?v('gDesc'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
   showOv(true);
   try{
+    let groupPhoto='';
+    if(type==='Group'&&gPhotoDataUrl){groupPhoto=await uploadCloud(gPhotoDataUrl,'image')||'';}
     const postData={type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
-    if(type==='Group'){postData.whoCanJoin=whoCanJoin;postData.howCanJoin=howCanJoin;}
+    if(type==='Group'){postData.whoCanJoin=whoCanJoin;postData.howCanJoin=howCanJoin;postData.groupPhoto=groupPhoto;}
     const ref=await db.collection('posts').add(postData);
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,description:gdesc,photo:groupPhoto,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];renderSubjectPicker('post');
-    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';
+    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gDesc').value='';gPhotoDataUrl=null;el('gPhotoPreview').innerHTML='🏷️';if(el('gPhotoFile'))el('gPhotoFile').value='';
     showToast('📢 Posted!');tab('home');
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
@@ -964,12 +980,12 @@ function renderHome(posts,limit){
     const intent=du.intent||'';
     f.innerHTML+=`<div class="card ${isG?'grp':''}">
       <div style="display:flex;gap:10px;margin-bottom:8px;">
-        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${p.uid||''}')"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;">${esc(du.name||'?')}${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}</b>
+          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | 🏛️ ${du.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">📖 ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
-          <div style="margin-top:2px;">${isG?groupRuleBadgesHtml(p):`<span class="ruleBadge">${RULE_ICONS[p.visibility]||'🟢'} ${accessRuleLabel(p.visibility)}</span>`}</div>
+          ${isG?`<div style="margin-top:2px;">${groupRuleBadgesHtml(p)}</div>`:''}
           ${getIntentBadge(intent)}
         </div>
       </div>
@@ -980,6 +996,7 @@ function renderHome(posts,limit){
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
       </div>
+      ${isG&&p.groupPhoto?`<div style="position:absolute;bottom:-6px;right:-6px;width:30px;height:30px;border-radius:50%;overflow:hidden;border:2px solid var(--card,#fff);box-shadow:0 1px 4px rgba(0,0,0,.3);"><img src="${p.groupPhoto}" style="width:100%;height:100%;object-fit:cover;"></div>`:''}
     </div>`;
   });
   // Load More button — matches your screenshot style
@@ -1718,9 +1735,9 @@ function renderFind(q=""){
     f.innerHTML+=`<div class="card">
       ${!isSelf?`<button class="fav-btn" onclick="toggleFav('${u.uid}')">${isFav?'⭐':'☆'}</button>`:''}
       <div style="display:flex;gap:10px;margin-bottom:6px;">
-        <div class="av-wrap" style="width:54px;height:54px;"><div class="avatar ${statusRingOutlineClass(u.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
+        <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${u.uid}')"><div class="avatar ${statusRingOutlineClass(u.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;">${esc(u.name||'?')}${isSelf?` <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">${t('find_you_badge')}</span>`:''}</b>
+          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${u.uid}')">${esc(u.name||'?')}${isSelf?` <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">${t('find_you_badge')}</span>`:''}</b>
           ${u.bio?`<p style="font-size:11px;font-style:italic;color:var(--sub);margin:1px 0;">${esc(u.bio)}</p>`:''}
           <p style="font-size:11px;color:var(--sub);margin:1px 0;">${getFlag(u.country||'')} ${u.country||'—'} | 🏛️ ${u.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:1px 0;">📖 ${u.course||'—'} ${u.year?'('+u.year+')':''}</p>
@@ -2065,7 +2082,7 @@ async function openGroup(postId,name){
   }
   if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
   try{
-    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default')};
+    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||''};
     pushModalState();
     el('grpT').textContent='🏫 '+curGrp.name;el('groupW').style.display='flex';
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
@@ -3339,15 +3356,21 @@ const I18N={
     rule_anyone:'Tout le monde',rule_country:'Mon pays',rule_university:'Mon université',rule_major:'Mes cours',rule_request:'Sur demande',
     group_open:'Ouvrir le groupe',pending:'En attente',group_request_to_join:'Demander à rejoindre',
     group_who_can_join:'Qui peut rejoindre ?',group_how_can_join:'Comment peuvent-ils rejoindre ?',group_direct_join:'Adhésion directe',
-    role_owner:'Propriétaire',role_admin:'Admin',group_make_admin:'Nommer admin',group_remove_admin:'Retirer admin',
+    role_owner:'Propriétaire',role_admin:'Admin',role_member:'Membre',group_make_admin:'Nommer admin',group_remove_admin:'Retirer admin',
     group_remove_member:'Retirer du groupe',group_confirm_remove:'Retirer ce membre du groupe ?',group_member_removed:'Membre retiré',
     group_block_member:'Bloquer',group_confirm_block:'Bloquer cette personne ? Elle sera retirée du groupe et ne pourra plus le rejoindre.',group_member_blocked:'Membre bloqué',group_blocked_generic:'❌ Vous ne pouvez pas rejoindre ce groupe',
     group_exit:'Quitter le groupe',group_confirm_exit:'Quitter ce groupe ?',group_exited:'Vous avez quitté le groupe',
     group_who_can_invite:'Qui peut inviter ?',group_invite_admins_only:'Admins et propriétaire uniquement',group_member_check:'Membre',
     post_group_settings_hint:'Tu pourras définir qui peut rejoindre et comment, après la création, dans Paramètres du groupe.',
-    group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',
+    group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',group_created_by:'Créé par',group_created_on:'Créé le',group_edit_info:'Modifier les infos du groupe',
+    group_resources:'Ressources',group_resources_error:'Impossible de charger les ressources.',group_resource_title_ph:'Titre (ex. Notes chapitre 1)',group_resource_link_ph:'Lien (facultatif, ex. Google Drive)',group_resource_add:'Ajouter une ressource',group_resources_empty:'Aucune ressource pour l’instant.',group_resource_added:'✅ Ressource ajoutée',
+    group_search:'Rechercher',group_search_ph:'Rechercher dans les messages...',
+    group_notifications:'Notifications',group_mute:'Couper les notifications',group_unmute:'Réactiver les notifications',group_muted:'🔕 Groupe en sourdine',group_unmuted:'🔔 Notifications réactivées',
+    group_share_invite:'Partager / Inviter',group_link_copied:'🔗 Lien copié',
+    group_report:'Signaler le groupe',group_report_prompt:'Pourquoi signales-tu ce groupe ?',group_report_sent:'✅ Signalement envoyé',
+    group_leave:'Quitter le groupe',
     group_invite_not_eligible:'❌ Cette personne n’est pas éligible à ce groupe',group_view_only:'Lecture seule',
-    group_settings:'Paramètres du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
+    group_settings:'Paramètres du groupe',group_info:'Infos du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
     group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer',group_settings_saved:'✅ Paramètres enregistrés',
     group_delete:'Supprimer le groupe',group_confirm_delete:'Supprimer définitivement ce groupe ? Cette action est irréversible.',
     group_deleted:'Groupe supprimé',
@@ -3385,7 +3408,7 @@ const I18N={
     notif_study_declined_title:'Invitation refusée',notif_study_declined_body:'a refusé ton invitation à étudier',
     post_title:'Créer une publication',post_as_label:'Publier en tant que :',postWhoCanSee:'Qui peut voir ta publication ?',postAnyone:'Tout le monde',postCountry:'Uniquement mon pays',postUniversity:'Uniquement mon université',postMajorCourse:'Uniquement ma filière / mon cours',
     post_individual:'Individuel',post_study_group:'Groupe d’étude',
-    post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',
+    post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',post_group_photo_label:'Photo du groupe (facultatif) :',post_group_desc_label:'Description du groupe :',post_group_desc_ph:'De quoi parle ce groupe ?',
     post_tags_label:'Matières :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
     post_submit:'Publier sur le fil',
     msgs_title:'Messages',msgs_search_ph:'🔍 Rechercher une conversation...',msgs_no_convos:'Aucune conversation pour l’instant.',
@@ -3448,15 +3471,21 @@ const I18N={
     rule_anyone:'Anyone',rule_country:'My Country',rule_university:'My University',rule_major:'My Courses',rule_request:'Request to Join',
     group_open:'Open Group',pending:'Pending',group_request_to_join:'Request to Join',
     group_who_can_join:'Who can join?',group_how_can_join:'How can they join?',group_direct_join:'Direct Join',
-    role_owner:'Owner',role_admin:'Admin',group_make_admin:'Make Admin',group_remove_admin:'Remove Admin',
+    role_owner:'Owner',role_admin:'Admin',role_member:'Member',group_make_admin:'Make Admin',group_remove_admin:'Remove Admin',
     group_remove_member:'Remove from Group',group_confirm_remove:'Remove this member from the group?',group_member_removed:'Member removed',
     group_block_member:'Block',group_confirm_block:'Block this person? They will be removed from the group and won\u2019t be able to rejoin.',group_member_blocked:'Member blocked',group_blocked_generic:'❌ You can\u2019t join this group',
     group_exit:'Exit Group',group_confirm_exit:'Leave this group?',group_exited:'You left the group',
     group_who_can_invite:'Who can invite?',group_invite_admins_only:'Admins & Owner only',group_member_check:'Member',
     post_group_settings_hint:'You can set who can join and how after creating the group, in Group Settings.',
-    group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',
+    group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',group_created_by:'Created by',group_created_on:'Created on',group_edit_info:'Edit Group Information',
+    group_resources:'Resources',group_resources_error:'Could not load resources.',group_resource_title_ph:'Title (e.g. Chapter 1 notes)',group_resource_link_ph:'Link (optional, e.g. Google Drive URL)',group_resource_add:'Add Resource',group_resources_empty:'No resources yet.',group_resource_added:'✅ Resource added',
+    group_search:'Search',group_search_ph:'Search messages...',
+    group_notifications:'Notifications',group_mute:'Mute notifications',group_unmute:'Unmute notifications',group_muted:'🔕 Group muted',group_unmuted:'🔔 Notifications unmuted',
+    group_share_invite:'Share / Invite',group_link_copied:'🔗 Link copied',
+    group_report:'Report Group',group_report_prompt:'Why are you reporting this group?',group_report_sent:'✅ Report sent',
+    group_leave:'Leave Group',
     group_invite_not_eligible:'❌ This person isn’t eligible for this group',group_view_only:'View only',
-    group_settings:'Group Settings',group_settings_readonly:'Only the group owner can change these settings.',
+    group_settings:'Group Settings',group_info:'Group Info',group_settings_readonly:'Only the group owner can change these settings.',
     group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_settings_saved:'✅ Settings saved',
     group_delete:'Delete Group',group_confirm_delete:'Permanently delete this group? This cannot be undone.',
     group_deleted:'Group deleted',
@@ -3494,7 +3523,7 @@ const I18N={
     notif_study_declined_title:'Invitation Declined',notif_study_declined_body:'declined your study invitation',
     post_title:'Create Post',post_as_label:'Post As:',postWhoCanSee:'Who can see your post?',postAnyone:'Anyone',postCountry:'Only my country',postUniversity:'Only my university',postMajorCourse:'Only my major/Course',
     post_individual:'Individual',post_study_group:'Study Group',
-    post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',
+    post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',post_group_photo_label:'Group Photo (optional):',post_group_desc_label:'Group Description:',post_group_desc_ph:'What is this group about?',
     post_tags_label:'Subject Tags:',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
     post_submit:'Post to Feed',
     msgs_title:'Messages',msgs_search_ph:'🔍 Search conversations...',msgs_no_convos:'No conversations yet.',
@@ -3575,7 +3604,7 @@ async function openManageGroup(postId){
   pushModalState();
   el('groupManageView').style.display='flex';
   el('gmTitle').textContent=t('group_loading');
-  el('gmPending').innerHTML='';el('gmMembers').innerHTML='';
+  el('gmInfoBox').innerHTML='';el('gmPending').innerHTML='';el('gmMembers').innerHTML='';
   let gs;
   try{gs=await db.collection('groups').doc(postId).get();}catch(e){showToast(t('group_unavailable'));closeGroupManage();return;}
   if(!gs.exists){showToast(t('group_not_found'));closeGroupManage();return;}
@@ -3585,6 +3614,22 @@ async function openManageGroup(postId){
   el('gmTitle').textContent='🏫 '+(g.name||'');
   const pendingIds=g.pendingRequests||[];
   const memberIds=g.members||[];
+  const ownerIds=memberIds.filter(uid=>isGroupOwner(g,uid));
+  const adminIds=memberIds.filter(uid=>!isGroupOwner(g,uid)&&(g.admins||[]).includes(uid));
+  const regularIds=memberIds.filter(uid=>!ownerIds.includes(uid)&&!adminIds.includes(uid));
+  const creator=allUsers.find(u=>u.uid===(g.ownerUid||g.creatorUid))||{};
+  const creatorAv=creator.photo?`<img src="${creator.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((creator.name||'?')[0]||'?').toUpperCase();
+  const createdDate=g.createdAt?.toDate?g.createdAt.toDate():null;
+  const createdStr=createdDate?createdDate.toLocaleString(appLang==='fr'?'fr-FR':'en-US',{dateStyle:'medium',timeStyle:'short'}):'—';
+  el('gmInfoBox').innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:#dbe2f0;overflow:hidden;flex-shrink:0;font-size:9px;display:flex;align-items:center;justify-content:center;">${creatorAv}</div>
+      <span style="font-size:12px;color:var(--sub);">${t('group_created_by')}: <b style="color:var(--txt);">${esc(creator.name||'—')}</b></span>
+    </div>
+    <p style="font-size:12px;color:var(--sub);margin:2px 0;">📅 ${t('group_created_on')}: ${createdStr}</p>
+    <p style="font-size:12px;color:var(--sub);margin:6px 0 0;">👥 ${t('group_members_label')}: <b style="color:var(--txt);">${memberIds.length}</b> · 👑 ${t('role_owner')}: <b style="color:var(--txt);">${ownerIds.length}</b> · 🛡️ ${t('role_admin')}: <b style="color:var(--txt);">${adminIds.length}</b> · 🙂 ${t('role_member')}: <b style="color:var(--txt);">${regularIds.length}</b></p>
+    ${g.description?`<p style="font-size:13px;margin-top:10px;">${esc(g.description)}</p>`:''}
+  `;
   const pendingSection=el('gmPending').closest?el('gmPending').parentElement:null;
   if(!viewerIsAdmin){
     el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_view_only')}</p>`;
@@ -3602,11 +3647,10 @@ async function openManageGroup(postId){
       </div>`;
     }).join('');
   }
-  el('gmMembers').innerHTML=memberIds.map(uid=>{
+  function rowHtml(uid){
     const u=allUsers.find(x=>x.uid===uid);
     const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
     const uOwner=isGroupOwner(g,uid),uAdmin=!uOwner&&(g.admins||[]).includes(uid);
-    const roleTag=uOwner?`👑 ${t('role_owner')}`:uAdmin?`🛡️ ${t('role_admin')}`:'';
     let mgmt='';
     if(viewerIsOwner&&!uOwner){
       mgmt+=uAdmin
@@ -3615,17 +3659,63 @@ async function openManageGroup(postId){
     }
     if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
       mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
-      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="blockGroupMember('${uid}')">${t('group_block_member')}</button>`;
+      mgmt+=`<button class="btn warn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="blockGroupMember('${uid}')">${t('group_block_member')}</button>`;
     }
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
       <div onclick="openProfile('${uid}')" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
-      <span onclick="openProfile('${uid}')" style="font-size:13px;flex:1;cursor:pointer;">${esc(u?.name||'Utilisateur')}${roleTag?' · '+roleTag:''}</span>
+      <span onclick="openProfile('${uid}')" style="font-size:13px;flex:1;cursor:pointer;">${esc(u?.name||'Utilisateur')}</span>
       ${mgmt?`<div style="display:flex;gap:5px;flex-wrap:wrap;width:100%;justify-content:flex-end;margin-top:4px;">${mgmt}</div>`:''}
     </div>`;
-  }).join('');
+  }
+  el('gmMembers').innerHTML=[
+    ownerIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">👑 ${t('role_owner')} (${ownerIds.length})</p>${ownerIds.map(rowHtml).join('')}`:'',
+    adminIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🛡️ ${t('role_admin')} (${adminIds.length})</p>${adminIds.map(rowHtml).join('')}`:'',
+    regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🙂 ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
+  ].join('');
   el('gmInviteBtn').style.display=viewerIsAdmin?'block':'none';
-  el('gmSettingsBtn').style.display='block';
+  el('gmEditBtn').style.display=viewerIsOwner?'block':'none';
+  el('gmSettingsBtn').style.display=viewerIsOwner?'block':'none';
   el('gmExitBtn').style.display=(!viewerIsOwner&&memberIds.includes(CU.uid))?'block':'none';
+}
+function openEditGroupInfo(){
+  if(!curManageGroupId)return;
+  db.collection('groups').doc(curManageGroupId).get().then(gs=>{
+    const g=gs.data()||{};
+    el('giName').value=g.name||'';
+    el('giDesc').value=g.description||'';
+    el('giPhotoPreview').innerHTML=g.photo?`<img src="${g.photo}" style="width:100%;height:100%;object-fit:cover;">`:'🏷️';
+    giPhotoDataUrl=null;
+    el('groupEditInfoView').style.display='flex';
+    pushModalState();
+  });
+}
+function closeEditGroupInfo(){el('groupEditInfoView').style.display='none';consumeModalState();}
+let giPhotoDataUrl=null;
+function previewEditGroupPhoto(input){
+  const file=input.files&&input.files[0];
+  if(!file)return;
+  giPhotoDataUrl=file;
+  const reader=new FileReader();
+  reader.onload=()=>{el('giPhotoPreview').innerHTML=`<img src="${reader.result}" style="width:100%;height:100%;object-fit:cover;">`;};
+  reader.readAsDataURL(file);
+}
+async function saveGroupInfo(){
+  if(!curManageGroupId)return;
+  const name=v('giName');
+  if(!name)return alert('Enter group name');
+  showOv(true);
+  try{
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    if(!isGroupOwner(gs.data()||{},CU.uid)){showOv(false);return showToast(t('group_not_authorized'));}
+    const update={name,description:v('giDesc')};
+    if(giPhotoDataUrl){const url=await uploadCloud(giPhotoDataUrl,'image');if(url)update.photo=url;}
+    await db.collection('groups').doc(curManageGroupId).update(update);
+    await db.collection('posts').doc(curManageGroupId).update({groupName:update.name,groupPhoto:update.photo||undefined}).catch(()=>{});
+    showToast(t('group_settings_saved'));
+    closeEditGroupInfo();
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+  showOv(false);
 }
 async function toggleGroupAdmin(uid,makeAdmin){
   if(!curManageGroupId)return;
@@ -3661,6 +3751,110 @@ async function blockGroupMember(uid){
     showToast(t('group_member_blocked'));
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
+}
+function toggleGroupChatMenu(){
+  const m=el('groupChatMenu');
+  const willOpen=m.style.display!=='block';
+  if(willOpen){
+    const isOwner=curGrp&&curGrp.ownerUid===CU?.uid;
+    el('gcmExitBtn').style.display=isOwner?'none':'block';
+    el('gcmSettingsBtn').style.display=isOwner?'block':'none';
+    if(curGrp&&CU){
+      db.collection('users').doc(CU.uid).get().then(us=>{
+        const muted=((us.data()||{}).mutedGroups||[]).includes(curGrp.id);
+        el('gcmMuteBtn').textContent=muted?('🔔 '+t('group_unmute')):('🔕 '+t('group_mute'));
+      }).catch(()=>{});
+    }
+  }
+  m.style.display=willOpen?'block':'none';
+}
+function closeGroupChatMenu(){const m=el('groupChatMenu');if(m)m.style.display='none';}
+async function openGroupResources(groupId){
+  el('groupResourcesView').style.display='flex';
+  pushModalState();
+  el('resList').innerHTML=`<p style="text-align:center;color:#888;">${t('group_loading')}</p>`;
+  try{
+    const snap=await db.collection('groups').doc(groupId).collection('resources').orderBy('createdAt','desc').limit(100).get();
+    if(!snap.docs.length){el('resList').innerHTML=`<p style="text-align:center;color:#888;padding:16px;">${t('group_resources_empty')}</p>`;return;}
+    el('resList').innerHTML=snap.docs.map(d=>{
+      const r=d.data();
+      const author=allUsers.find(u=>u.uid===r.uid);
+      return `<div class="card" style="padding:12px;">
+        <b style="font-size:14px;">📎 ${esc(r.title||'')}</b>
+        ${r.link?`<p style="font-size:12px;margin:4px 0;word-break:break-all;"><a href="${esc(r.link)}" target="_blank" style="color:var(--btnB);">${esc(r.link)}</a></p>`:''}
+        <p style="font-size:11px;color:var(--sub);margin-top:4px;">${t('group_created_by')}: ${esc(author?.name||'?')}</p>
+      </div>`;
+    }).join('');
+  }catch(e){el('resList').innerHTML=`<p style="text-align:center;color:#888;">${t('group_resources_error')}</p>`;}
+}
+function closeGroupResources(){el('groupResourcesView').style.display='none';consumeModalState();}
+async function addGroupResource(){
+  if(!curGrp)return;
+  const title=v('resTitle');
+  if(!title)return alert('Enter a title');
+  const link=v('resLink');
+  try{
+    await db.collection('groups').doc(curGrp.id).collection('resources').add({title,link,uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    el('resTitle').value='';el('resLink').value='';
+    showToast(t('group_resource_added'));
+    openGroupResources(curGrp.id);
+  }catch(e){showToast('❌ '+e.message);}
+}
+function openGroupSearch(){
+  const bar=el('groupSearchBar');
+  bar.style.display=bar.style.display==='none'?'block':'none';
+  if(bar.style.display==='block')el('groupSearchQ')?.focus();else filterGroupMessages('');
+}
+function filterGroupMessages(q){
+  const s=(q||'').toLowerCase();
+  document.querySelectorAll('#grpB .bbl').forEach(b=>{
+    const text=(b.textContent||'').toLowerCase();
+    b.style.display=(!s||text.includes(s))?'':'none';
+  });
+}
+async function toggleGroupMute(){
+  if(!curGrp||!CU)return;
+  try{
+    const uref=db.collection('users').doc(CU.uid);
+    const us=await uref.get();
+    const muted=(us.data()||{}).mutedGroups||[];
+    const isMuted=muted.includes(curGrp.id);
+    await uref.update({mutedGroups:isMuted?firebase.firestore.FieldValue.arrayRemove(curGrp.id):firebase.firestore.FieldValue.arrayUnion(curGrp.id)});
+    showToast(isMuted?t('group_unmuted'):t('group_muted'));
+  }catch(e){showToast('❌ '+e.message);}
+}
+function shareGroupLink(){
+  if(!curGrp)return;
+  const url=`${location.origin}${location.pathname}?joinGroup=${curGrp.id}`;
+  if(navigator.share){navigator.share({title:curGrp.name,url}).catch(()=>{});return;}
+  if(navigator.clipboard?.writeText){navigator.clipboard.writeText(url).then(()=>showToast(t('group_link_copied'))).catch(()=>prompt(t('group_share_invite'),url));}
+  else prompt(t('group_share_invite'),url);
+}
+async function reportGroup(){
+  if(!curGrp||!CU)return;
+  const reason=prompt(t('group_report_prompt'));
+  if(!reason)return;
+  try{
+    await db.collection('reports').add({type:'group',groupId:curGrp.id,groupName:curGrp.name||'',reason,reporterUid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    showToast(t('group_report_sent'));
+  }catch(e){showToast('❌ '+e.message);}
+}
+function handleJoinGroupDeepLink(){
+  try{
+    const params=new URLSearchParams(location.search);
+    const gid=params.get('joinGroup');
+    if(!gid)return;
+    history.replaceState({},document.title,location.pathname);
+    db.collection('groups').doc(gid).get().then(gs=>{
+      if(!gs.exists)return;
+      handleGroupAccess(gid,gs.data().name||'Group');
+    });
+  }catch(e){}
+}
+function quickExitGroup(){
+  if(!curGrp)return;
+  curManageGroupId=curGrp.id;
+  exitGroup();
 }
 async function exitGroup(){
   if(!curManageGroupId)return;
@@ -4016,7 +4210,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-74',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-75',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
