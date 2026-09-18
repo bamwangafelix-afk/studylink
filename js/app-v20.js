@@ -910,14 +910,15 @@ async function addPost(){
   const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
   const visibility=type==='Group'?'anyone':(el('pVisibility')?.value||'anyone');
-  const whoCanJoin=type==='Group'?(el('gWhoCanJoin')?.value||'anyone'):'anyone';
-  const howCanJoin=type==='Group'?(el('gHowCanJoin')?.value||'direct'):'direct';
+  const whoCanJoin='anyone',howCanJoin='direct'; // group access rules are configured afterwards in Group Settings, not at creation
   const gname=type==='Group'?v('gName'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
   showOv(true);
   try{
-    const ref=await db.collection('posts').add({type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'admins',whoCanBeInvited:'anyone',creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const postData={type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+    if(type==='Group'){postData.whoCanJoin=whoCanJoin;postData.howCanJoin=howCanJoin;}
+    const ref=await db.collection('posts').add(postData);
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];renderSubjectPicker('post');
@@ -968,6 +969,7 @@ function renderHome(posts,limit){
           <b style="color:var(--btnB);font-size:14px;">${esc(du.name||'?')}${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}</b>
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | 🏛️ ${du.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">📖 ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
+          <div style="margin-top:2px;">${isG?groupRuleBadgesHtml(p):`<span class="ruleBadge">${RULE_ICONS[p.visibility]||'🟢'} ${accessRuleLabel(p.visibility)}</span>`}</div>
           ${getIntentBadge(intent)}
         </div>
       </div>
@@ -1614,6 +1616,7 @@ async function handleGroupAccess(postId,name){
   const g=gs.data();
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
   if((g.members||[]).includes(CU.uid)){showOv(false);openGroup(postId,name);return;}
+  if((g.blockedUsers||[]).includes(CU.uid)){showOv(false);showToast(t('group_blocked_generic'));return;}
   let eligible=true;
   if(whoCanJoin==='country')eligible=(MP?.country||'')===g.creatorCountry;
   else if(whoCanJoin==='university')eligible=(MP?.uni||'')===g.creatorUni;
@@ -1757,6 +1760,10 @@ function openChat(name,uid){
   const other=allUsers.find(u=>u.uid===uid);
   const st=getStatusInfo(other?.status,other?.lastSeen);
   el('chatSt').textContent=st.label;
+  const chatAvEl=el('chatAv');
+  if(chatAvEl)chatAvEl.innerHTML=other?.photo?`<img src="${other.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((name||'?')[0]||'?').toUpperCase();
+  const chatHdrInfoEl=el('chatHdrInfo');
+  if(chatHdrInfoEl)chatHdrInfoEl.onclick=()=>openProfile(uid);
   el('chatW').style.display='flex';
   el('rplybar').style.display='none';
   el('csBar').style.display='none';
@@ -2200,7 +2207,7 @@ function buildBbl(m,isGrp){
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
   const type=m.type||'text';
   const pendingSrc=pendingMedia[m.id]||'';
-  const nameTag=isGrp&&!self?`<div class="bname">${esc(m.senderName||'')}</div>`:'';
+  const nameTag=isGrp&&!self?`<div class="bname" onclick="openProfile('${e2(m.senderUid||'')}')" style="cursor:pointer;display:flex;align-items:center;gap:5px;">${m.senderPhoto?`<img src="${esc(m.senderPhoto)}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0;">`:'<span style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.15);display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;">👤</span>'}<span>${esc(m.senderName||'')}</span></div>`:'';
   const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
   const receipt=self&&type==='text'?`<div class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
@@ -3333,7 +3340,11 @@ const I18N={
     group_open:'Ouvrir le groupe',pending:'En attente',group_request_to_join:'Demander à rejoindre',
     group_who_can_join:'Qui peut rejoindre ?',group_how_can_join:'Comment peuvent-ils rejoindre ?',group_direct_join:'Adhésion directe',
     role_owner:'Propriétaire',role_admin:'Admin',group_make_admin:'Nommer admin',group_remove_admin:'Retirer admin',
-    group_remove_member:'Retirer',group_confirm_remove:'Retirer ce membre du groupe ?',group_member_removed:'Membre retiré',
+    group_remove_member:'Retirer du groupe',group_confirm_remove:'Retirer ce membre du groupe ?',group_member_removed:'Membre retiré',
+    group_block_member:'Bloquer',group_confirm_block:'Bloquer cette personne ? Elle sera retirée du groupe et ne pourra plus le rejoindre.',group_member_blocked:'Membre bloqué',group_blocked_generic:'❌ Vous ne pouvez pas rejoindre ce groupe',
+    group_exit:'Quitter le groupe',group_confirm_exit:'Quitter ce groupe ?',group_exited:'Vous avez quitté le groupe',
+    group_who_can_invite:'Qui peut inviter ?',group_invite_admins_only:'Admins et propriétaire uniquement',group_member_check:'Membre',
+    post_group_settings_hint:'Tu pourras définir qui peut rejoindre et comment, après la création, dans Paramètres du groupe.',
     group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',
     group_invite_not_eligible:'❌ Cette personne n’est pas éligible à ce groupe',group_view_only:'Lecture seule',
     group_settings:'Paramètres du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
@@ -3378,7 +3389,7 @@ const I18N={
     post_tags_label:'Matières :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
     post_submit:'Publier sur le fil',
     msgs_title:'Messages',msgs_search_ph:'🔍 Rechercher une conversation...',msgs_no_convos:'Aucune conversation pour l’instant.',
-    me_title:'Mon profil',me_account:'Compte',me_disconnect:'Déconnexion',me_edit_profile:'Modifier le profil',
+    me_title:'Mon profil',me_account:'Compte',me_disconnect:'Se déconnecter',me_edit_profile:'Modifier le profil',
     me_full_name_ph:'Nom complet',me_bio_ph:'Bio / À propos de toi...',me_select_country:'Choisir un pays',
     me_university_ph:'Université / École',me_course_ph:'Filière / Matière principale',me_year_ph:'Année d’étude',
     me_languages_label:'Langues',me_languages_ph:'ex. Français, Anglais...',
@@ -3438,7 +3449,11 @@ const I18N={
     group_open:'Open Group',pending:'Pending',group_request_to_join:'Request to Join',
     group_who_can_join:'Who can join?',group_how_can_join:'How can they join?',group_direct_join:'Direct Join',
     role_owner:'Owner',role_admin:'Admin',group_make_admin:'Make Admin',group_remove_admin:'Remove Admin',
-    group_remove_member:'Remove',group_confirm_remove:'Remove this member from the group?',group_member_removed:'Member removed',
+    group_remove_member:'Remove from Group',group_confirm_remove:'Remove this member from the group?',group_member_removed:'Member removed',
+    group_block_member:'Block',group_confirm_block:'Block this person? They will be removed from the group and won\u2019t be able to rejoin.',group_member_blocked:'Member blocked',group_blocked_generic:'❌ You can\u2019t join this group',
+    group_exit:'Exit Group',group_confirm_exit:'Leave this group?',group_exited:'You left the group',
+    group_who_can_invite:'Who can invite?',group_invite_admins_only:'Admins & Owner only',group_member_check:'Member',
+    post_group_settings_hint:'You can set who can join and how after creating the group, in Group Settings.',
     group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',
     group_invite_not_eligible:'❌ This person isn’t eligible for this group',group_view_only:'View only',
     group_settings:'Group Settings',group_settings_readonly:'Only the group owner can change these settings.',
@@ -3483,7 +3498,7 @@ const I18N={
     post_tags_label:'Subject Tags:',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
     post_submit:'Post to Feed',
     msgs_title:'Messages',msgs_search_ph:'🔍 Search conversations...',msgs_no_convos:'No conversations yet.',
-    me_title:'My Profile',me_account:'Account',me_disconnect:'Disconnect',me_edit_profile:'Edit Profile',
+    me_title:'My Profile',me_account:'Account',me_disconnect:'Log out',me_edit_profile:'Edit Profile',
     me_full_name_ph:'Full Name',me_bio_ph:'Bio / About you...',me_select_country:'Select Country',
     me_university_ph:'University / School',me_course_ph:'Course / Major',me_year_ph:'Year of Study',
     me_languages_label:'Languages',me_languages_ph:'e.g. English, French...',
@@ -3580,8 +3595,8 @@ async function openManageGroup(postId){
       const u=allUsers.find(x=>x.uid===uid);
       const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
       return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
-        <b style="flex:1;font-size:14px;">${esc(u?.name||'Utilisateur')}</b>
+        <div onclick="openProfile('${uid}')" style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
+        <b onclick="openProfile('${uid}')" style="flex:1;font-size:14px;cursor:pointer;">${esc(u?.name||'Utilisateur')}</b>
         <button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',true)">${t('accept')}</button>
         <button class="btn r" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',false)">${t('decline')}</button>
       </div>`;
@@ -3600,15 +3615,17 @@ async function openManageGroup(postId){
     }
     if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
       mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
+      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="blockGroupMember('${uid}')">${t('group_block_member')}</button>`;
     }
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
-      <div style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
-      <span style="font-size:13px;flex:1;">${esc(u?.name||'Utilisateur')}${roleTag?' · '+roleTag:''}</span>
-      ${mgmt?`<div style="display:flex;gap:5px;width:100%;justify-content:flex-end;margin-top:4px;">${mgmt}</div>`:''}
+      <div onclick="openProfile('${uid}')" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
+      <span onclick="openProfile('${uid}')" style="font-size:13px;flex:1;cursor:pointer;">${esc(u?.name||'Utilisateur')}${roleTag?' · '+roleTag:''}</span>
+      ${mgmt?`<div style="display:flex;gap:5px;flex-wrap:wrap;width:100%;justify-content:flex-end;margin-top:4px;">${mgmt}</div>`:''}
     </div>`;
   }).join('');
   el('gmInviteBtn').style.display=viewerIsAdmin?'block':'none';
   el('gmSettingsBtn').style.display='block';
+  el('gmExitBtn').style.display=(!viewerIsOwner&&memberIds.includes(CU.uid))?'block':'none';
 }
 async function toggleGroupAdmin(uid,makeAdmin){
   if(!curManageGroupId)return;
@@ -3630,6 +3647,33 @@ async function removeGroupMember(uid){
     });
     showToast(t('group_member_removed'));
     openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function blockGroupMember(uid){
+  if(!curManageGroupId)return;
+  if(!confirm(t('group_confirm_block')))return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      members:firebase.firestore.FieldValue.arrayRemove(uid),
+      admins:firebase.firestore.FieldValue.arrayRemove(uid),
+      blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)
+    });
+    showToast(t('group_member_blocked'));
+    openManageGroup(curManageGroupId);
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function exitGroup(){
+  if(!curManageGroupId)return;
+  if(!confirm(t('group_confirm_exit')))return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({
+      members:firebase.firestore.FieldValue.arrayRemove(CU.uid),
+      admins:firebase.firestore.FieldValue.arrayRemove(CU.uid)
+    });
+    showToast(t('group_exited'));
+    closeGroupManage();
+    closeGroup();
+    if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
   }catch(e){showToast('❌ '+e.message);}
 }
 function closeGroupManage(){el('groupManageView').style.display='none';curManageGroupId=null;consumeModalState();}
@@ -3675,11 +3719,12 @@ async function saveGroupSettings(){
   try{
     const gs=await db.collection('groups').doc(curManageGroupId).get();
     if(!isGroupOwner(gs.data()||{},CU.uid))return showToast(t('group_not_authorized'));
-    await db.collection('groups').doc(curManageGroupId).update({
-      whoCanJoin:el('gsWhoCanJoin').value,
-      howCanJoin:el('gsHowCanJoin').value,
-      whoCanBeInvited:el('gsWhoCanBeInvited').value
-    });
+    const whoCanJoin=el('gsWhoCanJoin').value,howCanJoin=el('gsHowCanJoin').value,whoCanBeInvited=el('gsWhoCanBeInvited').value;
+    await db.collection('groups').doc(curManageGroupId).update({whoCanJoin,howCanJoin,whoCanBeInvited});
+    // Mirror the join rules onto the linked post so feed/group cards show the real, current rule.
+    await db.collection('posts').doc(curManageGroupId).update({whoCanJoin,howCanJoin}).catch(()=>{});
+    const cachedPost=cachedPosts.find(p=>p.id===curManageGroupId);
+    if(cachedPost){cachedPost.whoCanJoin=whoCanJoin;cachedPost.howCanJoin=howCanJoin;}
     showToast(t('group_settings_saved'));
     closeGroupSettings();
   }catch(e){showToast('❌ '+e.message);}
@@ -3708,9 +3753,24 @@ function openInviteMembers(){
   el('inviteSearchQ').value='';
   el('inviteMembersView').style.display='flex';
   pushModalState();
-  renderInviteSearch('');
+  loadInviteState();
 }
 function closeInviteMembers(){el('inviteMembersView').style.display='none';consumeModalState();}
+let curInviteMembers=[],curInviteStateMap={};
+async function loadInviteState(){
+  el('inviteSearchL').innerHTML=`<p style="text-align:center;color:#888;">${t('group_loading')}</p>`;
+  curInviteMembers=[];curInviteStateMap={};
+  if(!curManageGroupId)return renderInviteSearch('');
+  try{
+    const gs=await db.collection('groups').doc(curManageGroupId).get();
+    curInviteMembers=(gs.data()||{}).members||[];
+  }catch(e){}
+  try{
+    const ns=await db.collection('notifications').where('kind','==','groupInvite').where('groupId','==',curManageGroupId).where('role','==','recipient').get();
+    ns.docs.forEach(d=>{const n=d.data();curInviteStateMap[n.toUid]=n.state||'pending';});
+  }catch(e){}
+  renderInviteSearch(el('inviteSearchQ')?.value||'');
+}
 function renderInviteSearch(q){
   const l=el('inviteSearchL');
   let list=allUsers.filter(u=>u.uid!==CU?.uid);
@@ -3719,10 +3779,15 @@ function renderInviteSearch(q){
   if(!list.length){l.innerHTML=`<p style="text-align:center;color:#888;">${t('find_no_results')}</p>`;return;}
   l.innerHTML=list.map(u=>{
     const av=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
+    const isMember=curInviteMembers.includes(u.uid);
+    const state=isMember?'member':(curInviteStateMap[u.uid]==='pending'?'pending':'invite');
+    const btn=state==='member'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" disabled>✅ ${t('group_member_check')}</button>`
+      :state==='pending'?`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" disabled>${t('pending')}</button>`
+      :`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button>`;
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
-      <div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
-      <span style="flex:1;font-size:13px;">${esc(u.name||'?')}</span>
-      <button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button>
+      <div onclick="openProfile('${u.uid}')" style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
+      <span onclick="openProfile('${u.uid}')" style="flex:1;font-size:13px;cursor:pointer;">${esc(u.name||'?')}</span>
+      ${btn}
     </div>`;
   }).join('');
 }
@@ -3749,8 +3814,8 @@ async function sendGroupInvite(uid,name){
       state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
     showToast(t('group_invite_sent').replace('{name}',name));
-    const btn=el('inviteBtn_'+uid);
-    if(btn){btn.textContent=t('pending');btn.disabled=true;btn.classList.remove('inv');}
+    curInviteStateMap[uid]='pending';
+    renderInviteSearch(el('inviteSearchQ')?.value||'');
   }catch(e){showToast('❌ '+e.message);}
 }
 async function respondGroupInvite(notifId,groupId,accept){

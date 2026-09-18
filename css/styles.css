@@ -441,4 +441,12 @@ body.dark .notif.inviteCard{background:rgba(123,47,247,.12);}
 
 /* ── Group rule badges + orange "Open/Settings" actions ── */
 .ruleBadge{display:inline-block;font-size:10px;background:var(--card2,#eef2f9);color:var(--sub);padding:2px 7px;border-radius:8px;margin-right:4px;}
+body.dark .ruleBadge{background:#243448;color:#cfe0f5;}
+/* Dark-theme readability fix: header titles/back-buttons inside ANY overlay window
+   (.cwin) — group manage, group settings, invite members, chat, group chat, etc. —
+   must stay white on dark headers, not just inside #profileView. */
+body.dark .cwin .chdr,
+body.dark .cwin .chdr button,
+body.dark .cwin .profile-header-title,
+body.dark .cwin .profile-back-btn{color:#fff!important;}
 .btn.grp-open{background:#e67e22;color:#fff;}
