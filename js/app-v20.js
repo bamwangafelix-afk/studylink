@@ -2082,9 +2082,24 @@ async function openGroup(postId,name){
   }
   if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
   try{
-    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||''};
+    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||'',photo:groupData.photo||localPost?.groupPhoto||''};
     pushModalState();
-    el('grpT').textContent='🏫 '+curGrp.name;el('groupW').style.display='flex';
+    el('grpT').textContent=curGrp.name;el('groupW').style.display='flex';
+    el('grpAv').innerHTML=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:'🏫';
+    const owner=allUsers.find(u=>u.uid===curGrp.ownerUid);
+    el('grpOwnerLine').innerHTML=owner?`👑 ${esc(owner.name||'')}`:'';
+    // Fresh chat shell each time — a group opened before could otherwise leave its
+    // messages and welcome card behind when a different group is opened next.
+    const createdDate=groupData.createdAt?.toDate?groupData.createdAt.toDate():null;
+    const createdStr=createdDate?createdDate.toLocaleDateString(appLang==='fr'?'fr-FR':'en-US',{year:'numeric',month:'long',day:'numeric'}):'';
+    const introPhoto=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:'🏫';
+    el('grpB').innerHTML=`<div class="card" style="text-align:center;margin:10px auto;max-width:320px;">
+      <div style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:#e67e22;display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 12px;">${introPhoto}</div>
+      <b style="font-size:16px;display:block;">${esc(curGrp.name)}</b>
+      ${groupData.description?`<p style="font-size:13px;color:var(--sub);margin-top:8px;">${esc(groupData.description)}</p>`:''}
+      ${owner?`<p style="font-size:12px;color:var(--sub);margin-top:8px;cursor:pointer;" onclick="openProfile('${owner.uid}')">👑 ${t('group_created_by')}: <b style="color:var(--txt);">${esc(owner.name||'')}</b></p>`:''}
+      ${createdStr?`<p style="font-size:11px;color:var(--sub);margin-top:4px;">📅 ${createdStr}</p>`:''}
+    </div>`;
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
