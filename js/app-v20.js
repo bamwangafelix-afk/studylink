@@ -851,10 +851,10 @@ function rememberStatusVisibility(value){
   if(CU)db.collection('users').doc(CU.uid).set({statusVisibility:value},{merge:true}).catch(()=>{});
 }
 function canViewVisibility(content,viewer,owner){
-  const rule=visibilityText(content?.visibility);
-  if(!rule||rule==='anyone'||rule==='public')return true;
   if(!viewer||!owner)return false;
   if(content?.uid&&content.uid===viewer.uid)return true;
+  const rule=visibilityText(content?.visibility);
+  if(!rule||rule==='anyone'||rule==='public')return true;
   const vp=viewer.uid===CU?.uid?(allUsers.find(u=>u.uid===viewer.uid)||MP):(viewer.profile||viewer);
   if(rule==='country')return sameAudienceField(owner,vp,'country');
   if(rule==='university'||rule==='uni')return sameAudienceField(owner,vp,'university');
@@ -3316,7 +3316,7 @@ async function openChatFromInvite(inviteId){
     const inv=s.data();
     const otherUid=inv.fromUid===CU.uid?inv.toUid:inv.fromUid;
     const otherName=inv.fromUid===CU.uid?inv.toName:inv.fromName;
-    tab('alerts');openChat(otherName||'',otherUid);
+    tab('msgs');openChat(otherName||'',otherUid);
   }catch(e){showToast('❌ '+e.message);}
 }
 function setupNotifL(){
@@ -4163,7 +4163,7 @@ function tab(id){
   document.querySelectorAll('.page').forEach(p=>p.style.display='none');
   el('P'+id).style.display='block';
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
-  el('n'+id).classList.add('on');
+  el('n'+id)?.classList.add('on');
   if(id==='home'&&cachedPosts.length>0){
     _feedShown=10;
     renderHome(cachedPosts,_feedShown);
@@ -4210,7 +4210,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v51.js?v=studylink-pwa-86',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-75',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
