@@ -634,9 +634,13 @@
 <div class="cwin" id="groupW">
   <div class="chdr" style="background:#e67e22;">
     <button onclick="closeGroup()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button>
-    <div style="text-align:center;cursor:pointer;" onclick="curGrp&&openManageGroup(curGrp.id)">
-      <b id="grpT"></b>
-      <div id="grpM" style="font-size:10px;opacity:.85;"></div>
+    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;" onclick="curGrp&&openManageGroup(curGrp.id)">
+      <div id="grpAv" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:15px;">🏫</div>
+      <div style="text-align:left;">
+        <b id="grpT"></b>
+        <div id="grpM" style="font-size:10px;opacity:.85;"></div>
+        <div id="grpOwnerLine" style="font-size:10px;opacity:.9;"></div>
+      </div>
     </div>
     <div style="position:relative;">
       <button onclick="toggleGroupChatMenu()" style="color:#fff;background:none;border:none;font-size:20px;cursor:pointer;width:30px;" aria-label="Menu">⋮</button>
