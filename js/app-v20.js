@@ -67,6 +67,7 @@ const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
+let myPendingJoinGroupIds=new Set();
 
 // ── STATUSES ──
 const STATUS_TTL_MS=24*60*60*1000;
@@ -992,7 +993,9 @@ function renderHome(posts,limit){
       ${tags?`<div style="margin-bottom:6px;">${tags}</div>`:''}
       <p style="font-size:13px;margin-bottom:8px;">${esc(p.text)}</p>
       <div style="display:flex;gap:6px;">
-        ${isG?`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${t('home_join_group')}</button>`:
+        ${isG?(myPendingJoinGroupIds.has(p.id)
+              ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>⏳ ${t('group_request_sent_btn')}</button>`
+              :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${t('home_join_group')}</button>`):
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
       </div>
@@ -1648,7 +1651,9 @@ async function handleGroupAccess(postId,name){
     if((g.pendingRequests||[]).includes(CU.uid)){showOv(false);showToast(t('group_still_pending'));return;}
     try{
       await db.collection('groups').doc(postId).update({pendingRequests:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
-      db.collection('notifications').add({toUid:g.creatorUid,icon:'🙋',title:t('notif_join_request_title'),body:(MP?.name||'Someone')+' '+t('notif_join_request_body')+' '+(g.name||name),read:false,groupId:postId,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
+      await sendJoinRequestNotifications(postId,g,name);
+      myPendingJoinGroupIds.add(postId);
+      if(el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
       showToast(t('group_request_sent'));
     }catch(e){showToast('❌ '+e.message);}
     showOv(false);return;
@@ -1656,6 +1661,22 @@ async function handleGroupAccess(postId,name){
   try{await db.collection('groups').doc(postId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});}catch(e){}
   showOv(false);
   openGroup(postId,name);
+}
+async function sendJoinRequestNotifications(groupId,g,fallbackName){
+  const groupName=g.name||fallbackName||'';
+  const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(Boolean);
+  const batchOps=recipients.map(toUid=>db.collection('notifications').doc(`joinreq_${groupId}_${CU.uid}_${toUid}`).set({
+    toUid,kind:'groupJoinRequest',groupId,groupName,
+    requesterUid:CU.uid,requesterName:MP?.name||'',requesterPhoto:myPho||'',requesterCountry:MP?.country||'',requesterUni:MP?.uni||'',requesterCourse:MP?.course||'',
+    state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  batchOps.push(db.collection('notifications').doc(`joinstatus_${groupId}_${CU.uid}`).set({
+    toUid:CU.uid,kind:'groupJoinStatus',groupId,groupName,state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  }));
+  await Promise.all(batchOps.map(p=>p.catch(()=>{})));
+}
+async function requestJoinAgain(groupId,groupName){
+  await handleGroupAccess(groupId,groupName);
 }
 let libraryView={level:'categories',category:null};
 function renderFindLibrary(){
@@ -3274,11 +3295,49 @@ function reportUser(uid,name){
 // ── NOTIFICATIONS (alerts only - no messages) ──
 function notifCardHtml(n){
   if(n.kind==='studyInvite'||n.kind==='groupInvite')return inviteCardHtml(n);
+  if(n.kind==='groupJoinRequest')return joinRequestCardHtml(n);
+  if(n.kind==='groupJoinStatus')return joinStatusCardHtml(n);
   return `<div class="notif ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--brd);">
     <span style="font-size:20px;flex-shrink:0;">${n.icon||'🔔'}</span>
     <div style="flex:1;overflow:hidden;">
       <b style="font-size:13px;display:block;">${esc(n.title||'')}</b>
       <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(n.body||'')}</p>
+    </div>
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+  </div>`;
+}
+function joinRequestCardHtml(n){
+  const av=n.requesterPhoto?`<img src="${n.requesterPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((n.requesterName||'?')[0]||'?').toUpperCase();
+  const loc=[n.requesterCountry,n.requesterUni,n.requesterCourse].filter(Boolean).join(' • ');
+  return `<div class="notif inviteCard ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:12px 10px;border-bottom:1px solid var(--brd);border-left:3px solid #7b2ff7;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${av}</div>
+    <div style="flex:1;overflow:hidden;">
+      <b style="font-size:13.5px;display:block;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(n.requesterName||'')}</b>
+      <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>
+      <p style="font-size:11.5px;margin:4px 0;">${t('group_wants_to_join')} <b>${esc(n.groupName||'')}</b></p>
+      <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">
+        <button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',true,'${n.groupId}')">${t('accept')}</button>
+        <button class="btn r" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',false,'${n.groupId}')">${t('decline')}</button>
+      </div>
+    </div>
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+  </div>`;
+}
+function joinStatusCardHtml(n){
+  const state=n.state||'pending';
+  const line=state==='pending'?t('group_request_waiting'):state==='accepted'?t('group_request_was_accepted'):t('group_request_was_declined');
+  const action=state==='accepted'
+    ?`<button class="btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
+    :state==='declined'
+    ?`<button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();requestJoinAgain('${n.groupId}','${e2(n.groupName||'')}')">${t('group_request_again')}</button>`
+    :'';
+  return `<div class="notif inviteCard ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:12px 10px;border-bottom:1px solid var(--brd);border-left:3px solid #7b2ff7;">
+    <span style="font-size:20px;flex-shrink:0;">👥</span>
+    <div style="flex:1;overflow:hidden;">
+      <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${t('group_notif_label')}</div>
+      <b style="font-size:13.5px;display:block;">${esc(n.groupName||'')}</b>
+      <p style="font-size:11.5px;color:var(--sub);margin:3px 0;">${line}</p>
+      ${action?`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">${action}</div>`:''}
     </div>
     ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
@@ -3340,6 +3399,10 @@ function setupNotifL(){
     const notifs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     const unread=notifs.filter(n=>!n.read).length;
     const nb=el('notifB');nb.textContent=unread>9?'9+':unread;nb.style.display=unread>0?'inline-flex':'none';
+    const newPending=new Set(notifs.filter(n=>n.kind==='groupJoinStatus'&&n.state==='pending').map(n=>n.groupId));
+    const changed=newPending.size!==myPendingJoinGroupIds.size||[...newPending].some(id=>!myPendingJoinGroupIds.has(id));
+    myPendingJoinGroupIds=newPending;
+    if(changed&&el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
     const f=el('notifL');
     if(!notifs.length){f.innerHTML="<p style='text-align:center;color:#888;'>No notifications</p>";return;}
     f.innerHTML='';
@@ -3347,7 +3410,7 @@ function setupNotifL(){
   },e=>console.log('notif:',e));
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
-function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>{const n=d.data();const isInvite=n.kind==='studyInvite'||n.kind==='groupInvite';if(isInvite&&n.state==='pending')return;b.delete(d.ref);});return b.commit();});}
+function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>{const n=d.data();const isInvite=n.kind==='studyInvite'||n.kind==='groupInvite'||n.kind==='groupJoinRequest';if(isInvite&&n.state==='pending')return;b.delete(d.ref);});return b.commit();});}
 
 // ── I18N (merged from user branch) ──
 const I18N={
@@ -3390,6 +3453,10 @@ const I18N={
     group_delete:'Supprimer le groupe',group_confirm_delete:'Supprimer définitivement ce groupe ? Cette action est irréversible.',
     group_deleted:'Groupe supprimé',
     group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée',
+    group_request_sent_btn:'Demande envoyée',group_request_already_handled:'Cette demande a déjà été traitée',
+    group_wants_to_join:'Veut rejoindre',group_request_waiting:'Ta demande d’adhésion est en attente d’approbation.',
+    group_request_was_accepted:'Ta demande d’adhésion a été acceptée.',group_request_was_declined:'Ta demande d’adhésion a été refusée.',
+    group_request_again:'Redemander',group_notif_label:'Groupe d’étude',
     group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
     group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
     group_refused_major:'❌ Ce groupe est réservé aux étudiants de la même matière',
@@ -3505,6 +3572,10 @@ const I18N={
     group_delete:'Delete Group',group_confirm_delete:'Permanently delete this group? This cannot be undone.',
     group_deleted:'Group deleted',
     group_still_pending:'Your request is still pending',group_request_sent:'Request sent',
+    group_request_sent_btn:'Request Sent',group_request_already_handled:'This request has already been handled',
+    group_wants_to_join:'Wants to join',group_request_waiting:'Your request to join is waiting for approval.',
+    group_request_was_accepted:'Your request to join was accepted.',group_request_was_declined:'Your request to join was declined.',
+    group_request_again:'Request Again',group_notif_label:'Study group',
     group_refused_country:'❌ This group is only for students from the same country',
     group_refused_university:'❌ This group is only for students from the same university',
     group_refused_major:'❌ This group is only for students in the same course',
@@ -3886,21 +3957,30 @@ async function exitGroup(){
   }catch(e){showToast('❌ '+e.message);}
 }
 function closeGroupManage(){el('groupManageView').style.display='none';curManageGroupId=null;consumeModalState();}
-async function respondGroupRequest(uid,accept){
-  if(!curManageGroupId)return;
-  const gref=db.collection('groups').doc(curManageGroupId);
+async function respondGroupRequest(uid,accept,groupId){
+  const gid=groupId||curManageGroupId;
+  if(!gid)return;
+  const gref=db.collection('groups').doc(gid);
   try{
     const gchk=await gref.get();
-    if(!isGroupAdmin(gchk.data()||{},CU.uid)){showToast(t('group_not_authorized'));return;}
+    const g=gchk.data()||{};
+    if(!isGroupAdmin(g,CU.uid)){showToast(t('group_not_authorized'));return;}
+    if(!(g.pendingRequests||[]).includes(uid)){showToast(t('group_request_already_handled'));return;}
     if(accept){
       await gref.update({members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
-      db.collection('notifications').add({toUid:uid,icon:'✅',title:t('notif_request_accepted_title'),body:t('notif_request_accepted_body'),read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
     }else{
       await gref.update({pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
-      db.collection('notifications').add({toUid:uid,icon:'❌',title:t('notif_request_declined_title'),body:t('notif_request_declined_body'),read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
     }
+    // Remove the actionable request card from every admin/owner who received one, then tell the requester the result.
+    const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(Boolean);
+    const b=db.batch();
+    recipients.forEach(r=>b.delete(db.collection('notifications').doc(`joinreq_${gid}_${uid}_${r}`)));
+    b.set(db.collection('notifications').doc(`joinstatus_${gid}_${uid}`),{
+      toUid:uid,kind:'groupJoinStatus',groupId:gid,groupName:g.name||'',state:accept?'accepted':'declined',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await b.commit();
     showToast(accept?t('group_member_added'):t('group_request_declined'));
-    openManageGroup(curManageGroupId);
+    if(curManageGroupId===gid)openManageGroup(gid);
   }catch(e){showToast('❌ '+e.message);}
 }
 // ── GROUP SETTINGS (owner edits, admins view) ──
