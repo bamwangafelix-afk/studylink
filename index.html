@@ -168,7 +168,19 @@
         <div id="gPhotoPreview" style="width:52px;height:52px;border-radius:12px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px;">🏷️</div>
         <input type="file" id="gPhotoFile" accept="image/*" onchange="previewGroupPhoto(this)" style="font-size:12px;">
       </div>
-      <p style="font-size:11px;color:var(--sub);margin:6px 0 0;" data-i18n="post_group_settings_hint">You can set who can join and how after creating the group, in Group Settings.</p>
+      <label style="font-size:13px;font-weight:bold;margin-top:8px;display:block;" data-i18n="group_who_can_join">Who can join?</label>
+      <select id="gWhoCanJoin">
+        <option value="anyone" data-i18n="postAnyone">Anyone</option>
+        <option value="country" data-i18n="postCountry">Only my Country</option>
+        <option value="university" data-i18n="postUniversity">Only my University</option>
+        <option value="major" data-i18n="postMajorCourse">Only my Major/Course</option>
+      </select>
+      <label style="font-size:13px;font-weight:bold;margin-top:8px;display:block;" data-i18n="group_how_can_join">How can they join?</label>
+      <select id="gHowCanJoin">
+        <option value="direct" data-i18n="group_direct_join">Direct Join</option>
+        <option value="request" data-i18n="postRequestToJoin">Request to Join</option>
+      </select>
+      <p style="font-size:11px;color:var(--sub);margin:6px 0 0;" data-i18n="post_group_settings_hint">You can change these anytime after creating the group, in Group Settings.</p>
     </div>
     <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
     <div class="subjectPicker" id="postSubjectPicker">
