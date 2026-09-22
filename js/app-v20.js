@@ -924,7 +924,8 @@ async function addPost(){
   const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
   const visibility=type==='Group'?'anyone':(el('pVisibility')?.value||'anyone');
-  const whoCanJoin='anyone',howCanJoin='direct'; // group access rules are configured afterwards in Group Settings, not at creation
+  const whoCanJoin=type==='Group'?(el('gWhoCanJoin')?.value||'anyone'):'anyone';
+  const howCanJoin=type==='Group'?(el('gHowCanJoin')?.value||'direct'):'direct';
   const gname=type==='Group'?v('gName'):'';
   const gdesc=type==='Group'?v('gDesc'):'';
   if(type==='Group'&&!gname)return alert('Enter group name');
@@ -939,7 +940,7 @@ async function addPost(){
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];renderSubjectPicker('post');
-    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gDesc').value='';gPhotoDataUrl=null;el('gPhotoPreview').innerHTML='🏷️';if(el('gPhotoFile'))el('gPhotoFile').value='';
+    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gDesc').value='';gPhotoDataUrl=null;el('gPhotoPreview').innerHTML='🏷️';if(el('gPhotoFile'))el('gPhotoFile').value='';if(el('gWhoCanJoin'))el('gWhoCanJoin').value='anyone';if(el('gHowCanJoin'))el('gHowCanJoin').value='direct';
     showToast('📢 Posted!');tab('home');
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
@@ -3439,7 +3440,7 @@ const I18N={
     group_block_member:'Bloquer',group_confirm_block:'Bloquer cette personne ? Elle sera retirée du groupe et ne pourra plus le rejoindre.',group_member_blocked:'Membre bloqué',group_blocked_generic:'❌ Vous ne pouvez pas rejoindre ce groupe',
     group_exit:'Quitter le groupe',group_confirm_exit:'Quitter ce groupe ?',group_exited:'Vous avez quitté le groupe',
     group_who_can_invite:'Qui peut inviter ?',group_invite_admins_only:'Admins et propriétaire uniquement',group_member_check:'Membre',
-    post_group_settings_hint:'Tu pourras définir qui peut rejoindre et comment, après la création, dans Paramètres du groupe.',
+    post_group_settings_hint:'Tu pourras modifier ces règles à tout moment après la création, dans Paramètres du groupe.',
     group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',group_created_by:'Créé par',group_created_on:'Créé le',group_edit_info:'Modifier les infos du groupe',
     group_resources:'Ressources',group_resources_error:'Impossible de charger les ressources.',group_resource_title_ph:'Titre (ex. Notes chapitre 1)',group_resource_link_ph:'Lien (facultatif, ex. Google Drive)',group_resource_add:'Ajouter une ressource',group_resources_empty:'Aucune ressource pour l’instant.',group_resource_added:'✅ Ressource ajoutée',
     group_search:'Rechercher',group_search_ph:'Rechercher dans les messages...',
@@ -3558,7 +3559,7 @@ const I18N={
     group_block_member:'Block',group_confirm_block:'Block this person? They will be removed from the group and won\u2019t be able to rejoin.',group_member_blocked:'Member blocked',group_blocked_generic:'❌ You can\u2019t join this group',
     group_exit:'Exit Group',group_confirm_exit:'Leave this group?',group_exited:'You left the group',
     group_who_can_invite:'Who can invite?',group_invite_admins_only:'Admins & Owner only',group_member_check:'Member',
-    post_group_settings_hint:'You can set who can join and how after creating the group, in Group Settings.',
+    post_group_settings_hint:'You can change these anytime after creating the group, in Group Settings.',
     group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',group_created_by:'Created by',group_created_on:'Created on',group_edit_info:'Edit Group Information',
     group_resources:'Resources',group_resources_error:'Could not load resources.',group_resource_title_ph:'Title (e.g. Chapter 1 notes)',group_resource_link_ph:'Link (optional, e.g. Google Drive URL)',group_resource_add:'Add Resource',group_resources_empty:'No resources yet.',group_resource_added:'✅ Resource added',
     group_search:'Search',group_search_ph:'Search messages...',
