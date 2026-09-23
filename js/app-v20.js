@@ -3448,7 +3448,7 @@ const I18N={
     group_share_invite:'Partager / Inviter',group_link_copied:'🔗 Lien copié',
     group_report:'Signaler le groupe',group_report_prompt:'Pourquoi signales-tu ce groupe ?',group_report_sent:'✅ Signalement envoyé',
     group_leave:'Quitter le groupe',
-    group_invite_not_eligible:'❌ Cette personne n’est pas éligible à ce groupe',group_view_only:'Lecture seule',
+    group_invite_not_eligible_title:'⚠️ Invitation non envoyée',group_invite_reason_country_short:'Autre pays',group_invite_reason_university_short:'Autre université',group_invite_reason_major_short:'Cours différent',group_invite_reason_country_msg:'Tu ne peux inviter que des étudiants de ton pays.',group_invite_reason_university_msg:'Tu ne peux inviter que des étudiants de ton université.',group_invite_reason_major_msg:'Tu ne peux inviter que des étudiants de ton cours/filière.',group_view_only:'Lecture seule',
     group_settings:'Paramètres du groupe',group_info:'Infos du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
     group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer',group_settings_saved:'✅ Paramètres enregistrés',
     group_delete:'Supprimer le groupe',group_confirm_delete:'Supprimer définitivement ce groupe ? Cette action est irréversible.',
@@ -3567,7 +3567,7 @@ const I18N={
     group_share_invite:'Share / Invite',group_link_copied:'🔗 Link copied',
     group_report:'Report Group',group_report_prompt:'Why are you reporting this group?',group_report_sent:'✅ Report sent',
     group_leave:'Leave Group',
-    group_invite_not_eligible:'❌ This person isn’t eligible for this group',group_view_only:'View only',
+    group_invite_not_eligible_title:'⚠️ Invitation not sent',group_invite_reason_country_short:'Other country',group_invite_reason_university_short:'Other university',group_invite_reason_major_short:'Different course',group_invite_reason_country_msg:'You can only invite students from your country.',group_invite_reason_university_msg:'You can only invite students from your university.',group_invite_reason_major_msg:'You can only invite students from your course/major.',group_view_only:'View only',
     group_settings:'Group Settings',group_info:'Group Info',group_settings_readonly:'Only the group owner can change these settings.',
     group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_settings_saved:'✅ Settings saved',
     group_delete:'Delete Group',group_confirm_delete:'Permanently delete this group? This cannot be undone.',
@@ -3692,6 +3692,13 @@ function canInviteToGroup(g,uid){
   if(mode==='owner')return owner;
   if(mode==='admins')return admin;
   return owner||admin; // owner_admins
+}
+function groupInviteEligibility(g,invitee){
+  const rule=g.whoCanBeInvited||'anyone';
+  if(rule==='country'&&(invitee.country||'')!==g.creatorCountry)return{eligible:false,reason:'country'};
+  if(rule==='university'&&(invitee.uni||'')!==g.creatorUni)return{eligible:false,reason:'university'};
+  if(rule==='major'&&(invitee.course||'')!==g.creatorCourse)return{eligible:false,reason:'major'};
+  return{eligible:true,reason:null};
 }
 async function openManageGroup(postId){
   curManageGroupId=postId;
@@ -4054,20 +4061,33 @@ function openInviteMembers(){
   loadInviteState();
 }
 function closeInviteMembers(){el('inviteMembersView').style.display='none';consumeModalState();}
-let curInviteMembers=[],curInviteStateMap={};
+let curInviteMembers=[],curInviteStateMap={},curInviteGroup=null;
 async function loadInviteState(){
   el('inviteSearchL').innerHTML=`<p style="text-align:center;color:#888;">${t('group_loading')}</p>`;
-  curInviteMembers=[];curInviteStateMap={};
+  curInviteMembers=[];curInviteStateMap={};curInviteGroup=null;
   if(!curManageGroupId)return renderInviteSearch('');
   try{
     const gs=await db.collection('groups').doc(curManageGroupId).get();
-    curInviteMembers=(gs.data()||{}).members||[];
+    curInviteGroup=gs.data()||{};
+    curInviteMembers=curInviteGroup.members||[];
   }catch(e){}
   try{
     const ns=await db.collection('notifications').where('kind','==','groupInvite').where('groupId','==',curManageGroupId).where('role','==','recipient').get();
     ns.docs.forEach(d=>{const n=d.data();curInviteStateMap[n.toUid]=n.state||'pending';});
   }catch(e){}
   renderInviteSearch(el('inviteSearchQ')?.value||'');
+}
+function inviteEligibilityReasonLabel(reason){
+  if(reason==='country')return t('group_invite_reason_country_short');
+  if(reason==='university')return t('group_invite_reason_university_short');
+  if(reason==='major')return t('group_invite_reason_major_short');
+  return '';
+}
+function inviteEligibilityReasonMsg(reason){
+  if(reason==='country')return t('group_invite_reason_country_msg');
+  if(reason==='university')return t('group_invite_reason_university_msg');
+  if(reason==='major')return t('group_invite_reason_major_msg');
+  return '';
 }
 function renderInviteSearch(q){
   const l=el('inviteSearchL');
@@ -4078,13 +4098,18 @@ function renderInviteSearch(q){
   l.innerHTML=list.map(u=>{
     const av=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
     const isMember=curInviteMembers.includes(u.uid);
-    const state=isMember?'member':(curInviteStateMap[u.uid]==='pending'?'pending':'invite');
+    const elig=curInviteGroup?groupInviteEligibility(curInviteGroup,u):{eligible:true,reason:null};
+    const state=isMember?'member':(curInviteStateMap[u.uid]==='pending'?'pending':(!elig.eligible?'ineligible':'invite'));
     const btn=state==='member'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" disabled>✅ ${t('group_member_check')}</button>`
       :state==='pending'?`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" disabled>${t('pending')}</button>`
+      :state==='ineligible'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;opacity:.5;cursor:not-allowed;" disabled>${t('group_invite_to_join')}</button>`
       :`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button>`;
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
       <div onclick="openProfile('${u.uid}')" style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
-      <span onclick="openProfile('${u.uid}')" style="flex:1;font-size:13px;cursor:pointer;">${esc(u.name||'?')}</span>
+      <div style="flex:1;overflow:hidden;">
+        <div onclick="openProfile('${u.uid}')" style="font-size:13px;cursor:pointer;">${esc(u.name||'?')}</div>
+        ${state==='ineligible'?`<div style="font-size:11px;color:#e74c3c;">${inviteEligibilityReasonLabel(elig.reason)}</div>`:''}
+      </div>
       ${btn}
     </div>`;
   }).join('');
@@ -4097,12 +4122,12 @@ async function sendGroupInvite(uid,name){
     if(!canInviteToGroup(g,CU.uid))return showToast(t('group_not_authorized'));
     if((g.members||[]).includes(uid))return showToast(t('group_already_member'));
     const invitee=allUsers.find(x=>x.uid===uid)||{};
-    const whoCanBeInvited=g.whoCanBeInvited||'anyone';
-    let eligible=true;
-    if(whoCanBeInvited==='country')eligible=(invitee.country||'')===g.creatorCountry;
-    else if(whoCanBeInvited==='university')eligible=(invitee.uni||'')===g.creatorUni;
-    else if(whoCanBeInvited==='major')eligible=(invitee.course||'')===g.creatorCourse;
-    if(!eligible)return showToast(t('group_invite_not_eligible'));
+    const elig=groupInviteEligibility(g,invitee);
+    if(!elig.eligible){
+      showToast(t('group_invite_not_eligible_title')+' — '+inviteEligibilityReasonMsg(elig.reason));
+      renderInviteSearch(el('inviteSearchQ')?.value||'');
+      return;
+    }
     const notifRef=db.collection('notifications').doc('grpinv_'+curManageGroupId+'_'+uid);
     const existing=await notifRef.get();
     if(existing.exists&&existing.data().state==='pending')return showToast(t('invite_already_pending'));
