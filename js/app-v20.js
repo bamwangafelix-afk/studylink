@@ -4364,6 +4364,11 @@ function setupNavigation(){
     const home=el('Phome');
     if(id==='home'&&home&&home.style.display!=='none')tab('home','refresh');
     else tab(id);
+    // Selecting a menu item must not collapse the desktop navigation bubble.
+    if(window.innerWidth>=1024){
+      document.body.classList.add('nav-open');
+      try{localStorage.setItem('slNavOpen','1');}catch(e){}
+    }
   };
   document.querySelectorAll('.ni[data-tab]').forEach(item=>{
     item.addEventListener('click',()=>activate(item));
