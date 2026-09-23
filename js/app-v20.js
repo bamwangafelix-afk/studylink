@@ -62,6 +62,12 @@ window.addEventListener('error',e=>{
 
 firebase.initializeApp({apiKey:"AIzaSyBQXvheNG_6r5NYjwru_0l_EUsKYrT4w1g",authDomain:"studylink-e1803.firebaseapp.com",projectId:"studylink-e1803",storageBucket:"studylink-e1803.firebasestorage.app",messagingSenderId:"51988890739",appId:"1:51988890739:web:fa5b3486e7a32c3fe95606"});
 const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAuthProvider();
+// Some mobile carriers (common on flaky 3G/4G networks) block or throttle the WebChannel/QUIC
+// connection Firestore prefers by default, which surfaces as "client is offline" errors even
+// though the device has internet. Long-polling auto-detection falls back to plain HTTP requests
+// when that happens, and local persistence lets reads succeed from cache during brief drops.
+db.settings({experimentalAutoDetectLongPolling:true,merge:true});
+db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
@@ -1629,10 +1635,20 @@ function groupCardHtml(g,isMine){
     <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
   </div>`;
 }
+// One quiet retry before surfacing a "temporarily unavailable" toast — smooths over
+// the brief reconnect gap right after a network blip instead of failing immediately.
+async function fetchDocWithRetry(ref,attempts=2,delayMs=900){
+  let lastErr;
+  for(let i=0;i<attempts;i++){
+    try{return await ref.get();}
+    catch(e){lastErr=e;if(i<attempts-1)await new Promise(r=>setTimeout(r,delayMs));}
+  }
+  throw lastErr;
+}
 async function handleGroupAccess(postId,name){
   showOv(true);
   let gs;
-  try{gs=await db.collection('groups').doc(postId).get();}catch(e){showOv(false);showToast(t('group_unavailable'));return;}
+  try{gs=await fetchDocWithRetry(db.collection('groups').doc(postId));}catch(e){showOv(false);showToast(t('group_unavailable'));return;}
   if(!gs.exists){showOv(false);showToast(t('group_not_found'));return;}
   const g=gs.data();
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
@@ -3190,7 +3206,12 @@ function setupInbox(){
     // discovery must remain active even when chatIds is stale or absent.
     if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     if(!inboxChatsUnsub)startChatListener();
-  },e=>{showToast('❌ Inbox error: '+e.message);});
+  },e=>{
+    // onSnapshot retries automatically once the connection returns — a transient
+    // "unavailable"/offline blip shouldn't alarm the user with a raw error toast.
+    if(e.code==='permission-denied')showToast('❌ Inbox error: '+e.message);
+    else console.warn('Inbox listener (will retry automatically):',e.code||e.message);
+  });
 }
 
 function renderInbox(q="",sn=null){
@@ -3707,7 +3728,7 @@ async function openManageGroup(postId){
   el('gmTitle').textContent=t('group_loading');
   el('gmInfoBox').innerHTML='';el('gmPending').innerHTML='';el('gmMembers').innerHTML='';
   let gs;
-  try{gs=await db.collection('groups').doc(postId).get();}catch(e){showToast(t('group_unavailable'));closeGroupManage();return;}
+  try{gs=await fetchDocWithRetry(db.collection('groups').doc(postId));}catch(e){showToast(t('group_unavailable'));closeGroupManage();return;}
   if(!gs.exists){showToast(t('group_not_found'));closeGroupManage();return;}
   const g=gs.data();
   const viewerIsOwner=isGroupOwner(g,CU.uid);
@@ -4004,7 +4025,7 @@ async function openGroupSettings(){
   pushModalState();
   el('groupSettingsView').style.display='flex';
   let gs;
-  try{gs=await db.collection('groups').doc(curManageGroupId).get();}catch(e){showToast(t('group_unavailable'));closeGroupSettings();return;}
+  try{gs=await fetchDocWithRetry(db.collection('groups').doc(curManageGroupId));}catch(e){showToast(t('group_unavailable'));closeGroupSettings();return;}
   if(!gs.exists){showToast(t('group_not_found'));closeGroupSettings();return;}
   const g=gs.data();
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
@@ -4250,11 +4271,20 @@ function inviteAgainFromCard(uid,name){
 // ── HELPERS ──
 function el(id){return document.getElementById(id);}
 function toggleSidebarNav(){
-  document.body.classList.toggle('nav-collapsed');
-  try{localStorage.setItem('slNavCollapsed',document.body.classList.contains('nav-collapsed')?'1':'0');}catch(e){}
+  document.body.classList.toggle('nav-open');
+  try{localStorage.setItem('slNavOpen',document.body.classList.contains('nav-open')?'1':'0');}catch(e){}
 }
 (function initSidebarNavState(){
-  try{if(localStorage.getItem('slNavCollapsed')==='1')document.body.classList.add('nav-collapsed');}catch(e){}
+  try{if(localStorage.getItem('slNavOpen')==='1')document.body.classList.add('nav-open');}catch(e){}
+})();
+(function syncHeaderHeightVar(){
+  function sync(){
+    const h=document.querySelector('.hdr');
+    if(h)document.documentElement.style.setProperty('--hdr-h',h.offsetHeight+'px');
+  }
+  sync();
+  window.addEventListener('resize',sync);
+  window.addEventListener('load',sync);
 })();
 function v(id){return(el(id)?.value||'').trim();}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -4334,6 +4364,8 @@ function setupNavigation(){
     const home=el('Phome');
     if(id==='home'&&home&&home.style.display!=='none')tab('home','refresh');
     else tab(id);
+    // On desktop the sidebar is a small popover bubble — close it after picking a destination.
+    if(window.innerWidth>=1024&&document.body.classList.contains('nav-open'))toggleSidebarNav();
   };
   document.querySelectorAll('.ni[data-tab]').forEach(item=>{
     item.addEventListener('click',()=>activate(item));
@@ -4346,7 +4378,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-75',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-76',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
