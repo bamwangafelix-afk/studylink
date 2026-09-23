@@ -488,7 +488,7 @@ body.dark .cwin .profile-back-btn{color:#fff!important;}
     transform:none;
     z-index:220;
     width:190px;height:auto;max-height:calc(100vh - var(--hdr-h,68px) - 70px);
-     background:var(--card);
+     background:var(--nav);
     flex-direction:column;justify-content:flex-start;align-items:stretch;
     border:1px solid var(--brd);border-radius:16px;
     padding:8px 0;box-shadow:0 8px 28px rgba(0,0,0,.2);max-width:none;
