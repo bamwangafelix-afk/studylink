@@ -4249,6 +4249,13 @@ function inviteAgainFromCard(uid,name){
 
 // ── HELPERS ──
 function el(id){return document.getElementById(id);}
+function toggleSidebarNav(){
+  document.body.classList.toggle('nav-collapsed');
+  try{localStorage.setItem('slNavCollapsed',document.body.classList.contains('nav-collapsed')?'1':'0');}catch(e){}
+}
+(function initSidebarNavState(){
+  try{if(localStorage.getItem('slNavCollapsed')==='1')document.body.classList.add('nav-collapsed');}catch(e){}
+})();
 function v(id){return(el(id)?.value||'').trim();}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function e2(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
