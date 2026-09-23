@@ -936,7 +936,7 @@ async function addPost(){
     const postData={type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
     if(type==='Group'){postData.whoCanJoin=whoCanJoin;postData.howCanJoin=howCanJoin;postData.groupPhoto=groupPhoto;}
     const ref=await db.collection('posts').add(postData);
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,description:gdesc,photo:groupPhoto,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,description:gdesc,photo:groupPhoto,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'owner_admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];renderSubjectPicker('post');
@@ -3439,7 +3439,7 @@ const I18N={
     group_remove_member:'Retirer du groupe',group_confirm_remove:'Retirer ce membre du groupe ?',group_member_removed:'Membre retiré',
     group_block_member:'Bloquer',group_confirm_block:'Bloquer cette personne ? Elle sera retirée du groupe et ne pourra plus le rejoindre.',group_member_blocked:'Membre bloqué',group_blocked_generic:'❌ Vous ne pouvez pas rejoindre ce groupe',
     group_exit:'Quitter le groupe',group_confirm_exit:'Quitter ce groupe ?',group_exited:'Vous avez quitté le groupe',
-    group_who_can_invite:'Qui peut inviter ?',group_invite_admins_only:'Admins et propriétaire uniquement',group_member_check:'Membre',
+    group_who_can_invite:'Qui peut inviter ?',group_invite_owner_only:'Propriétaire uniquement',group_invite_admins_only:'Admins uniquement',group_invite_owner_admins:'Propriétaire/Admins',group_member_check:'Membre',
     post_group_settings_hint:'Tu pourras modifier ces règles à tout moment après la création, dans Paramètres du groupe.',
     group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',group_created_by:'Créé par',group_created_on:'Créé le',group_edit_info:'Modifier les infos du groupe',
     group_resources:'Ressources',group_resources_error:'Impossible de charger les ressources.',group_resource_title_ph:'Titre (ex. Notes chapitre 1)',group_resource_link_ph:'Lien (facultatif, ex. Google Drive)',group_resource_add:'Ajouter une ressource',group_resources_empty:'Aucune ressource pour l’instant.',group_resource_added:'✅ Ressource ajoutée',
@@ -3558,7 +3558,7 @@ const I18N={
     group_remove_member:'Remove from Group',group_confirm_remove:'Remove this member from the group?',group_member_removed:'Member removed',
     group_block_member:'Block',group_confirm_block:'Block this person? They will be removed from the group and won\u2019t be able to rejoin.',group_member_blocked:'Member blocked',group_blocked_generic:'❌ You can\u2019t join this group',
     group_exit:'Exit Group',group_confirm_exit:'Leave this group?',group_exited:'You left the group',
-    group_who_can_invite:'Who can invite?',group_invite_admins_only:'Admins & Owner only',group_member_check:'Member',
+    group_who_can_invite:'Who can invite?',group_invite_owner_only:'Owner only',group_invite_admins_only:'Admins only',group_invite_owner_admins:'Owner/Admins',group_member_check:'Member',
     post_group_settings_hint:'You can change these anytime after creating the group, in Group Settings.',
     group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',group_created_by:'Created by',group_created_on:'Created on',group_edit_info:'Edit Group Information',
     group_resources:'Resources',group_resources_error:'Could not load resources.',group_resource_title_ph:'Title (e.g. Chapter 1 notes)',group_resource_link_ph:'Link (optional, e.g. Google Drive URL)',group_resource_add:'Add Resource',group_resources_empty:'No resources yet.',group_resource_added:'✅ Resource added',
@@ -3686,6 +3686,13 @@ function toggleLang(){
 let curManageGroupId=null;
 function isGroupOwner(g,uid){return g.ownerUid===uid||g.creatorUid===uid;}
 function isGroupAdmin(g,uid){return isGroupOwner(g,uid)||(g.admins||[]).includes(uid);}
+function canInviteToGroup(g,uid){
+  const owner=isGroupOwner(g,uid),admin=(g.admins||[]).includes(uid);
+  const mode=g.whoCanInvite||'owner_admins';
+  if(mode==='owner')return owner;
+  if(mode==='admins')return admin;
+  return owner||admin; // owner_admins
+}
 async function openManageGroup(postId){
   curManageGroupId=postId;
   pushModalState();
@@ -3759,7 +3766,7 @@ async function openManageGroup(postId){
     adminIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🛡️ ${t('role_admin')} (${adminIds.length})</p>${adminIds.map(rowHtml).join('')}`:'',
     regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🙂 ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
   ].join('');
-  el('gmInviteBtn').style.display=viewerIsAdmin?'block':'none';
+  el('gmInviteBtn').style.display=canInviteToGroup(g,CU.uid)?'block':'none';
   el('gmEditBtn').style.display=viewerIsOwner?'block':'none';
   el('gmSettingsBtn').style.display=viewerIsOwner?'block':'none';
   el('gmExitBtn').style.display=(!viewerIsOwner&&memberIds.includes(CU.uid))?'block':'none';
@@ -3996,9 +4003,10 @@ async function openGroupSettings(){
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
   el('gsWhoCanJoin').value=whoCanJoin;
   el('gsHowCanJoin').value=howCanJoin;
+  el('gsWhoCanInvite').value=g.whoCanInvite||'owner_admins';
   el('gsWhoCanBeInvited').value=g.whoCanBeInvited||'anyone';
   const viewerIsOwner=isGroupOwner(g,CU.uid);
-  ['gsWhoCanJoin','gsHowCanJoin','gsWhoCanBeInvited'].forEach(id=>el(id).disabled=!viewerIsOwner);
+  ['gsWhoCanJoin','gsHowCanJoin','gsWhoCanInvite','gsWhoCanBeInvited'].forEach(id=>el(id).disabled=!viewerIsOwner);
   el('gsReadOnlyNote').style.display=viewerIsOwner?'none':'block';
   el('gsSaveBtn').style.display=viewerIsOwner?'block':'none';
   el('gsDeleteBtn').style.display=viewerIsOwner?'block':'none';
@@ -4009,8 +4017,8 @@ async function saveGroupSettings(){
   try{
     const gs=await db.collection('groups').doc(curManageGroupId).get();
     if(!isGroupOwner(gs.data()||{},CU.uid))return showToast(t('group_not_authorized'));
-    const whoCanJoin=el('gsWhoCanJoin').value,howCanJoin=el('gsHowCanJoin').value,whoCanBeInvited=el('gsWhoCanBeInvited').value;
-    await db.collection('groups').doc(curManageGroupId).update({whoCanJoin,howCanJoin,whoCanBeInvited});
+    const whoCanJoin=el('gsWhoCanJoin').value,howCanJoin=el('gsHowCanJoin').value,whoCanInvite=el('gsWhoCanInvite').value,whoCanBeInvited=el('gsWhoCanBeInvited').value;
+    await db.collection('groups').doc(curManageGroupId).update({whoCanJoin,howCanJoin,whoCanInvite,whoCanBeInvited});
     // Mirror the join rules onto the linked post so feed/group cards show the real, current rule.
     await db.collection('posts').doc(curManageGroupId).update({whoCanJoin,howCanJoin}).catch(()=>{});
     const cachedPost=cachedPosts.find(p=>p.id===curManageGroupId);
@@ -4086,7 +4094,7 @@ async function sendGroupInvite(uid,name){
   try{
     const gs=await db.collection('groups').doc(curManageGroupId).get();
     const g=gs.data()||{};
-    if(!isGroupAdmin(g,CU.uid))return showToast(t('group_not_authorized'));
+    if(!canInviteToGroup(g,CU.uid))return showToast(t('group_not_authorized'));
     if((g.members||[]).includes(uid))return showToast(t('group_already_member'));
     const invitee=allUsers.find(x=>x.uid===uid)||{};
     const whoCanBeInvited=g.whoCanBeInvited||'anyone';
