@@ -82,7 +82,12 @@
 
 <!-- HEADER -->
 <div class="hdr">
-  <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-85" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button type="button" id="navToggleBtn" class="dark-btn nav-toggle-btn" title="Menu" onclick="toggleSidebarNav()">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+    </button>
+    <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-85" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+  </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     <div style="display:flex;gap:6px;align-items:center;">
