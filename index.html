@@ -459,7 +459,11 @@
       <option value="request" data-i18n="postRequestToJoin">Request to Join</option>
     </select>
     <label style="font-size:13px;font-weight:bold;display:block;margin-top:10px;" data-i18n="group_who_can_invite">Who can invite?</label>
-    <p style="font-size:13px;margin:4px 0 0;color:var(--sub);">👑🛡️ <span data-i18n="group_invite_admins_only">Admins &amp; Owner only</span></p>
+    <select id="gsWhoCanInvite">
+      <option value="owner" data-i18n="group_invite_owner_only">Owner only</option>
+      <option value="admins" data-i18n="group_invite_admins_only">Admins only</option>
+      <option value="owner_admins" data-i18n="group_invite_owner_admins">Owner/Admins</option>
+    </select>
     <label style="font-size:13px;font-weight:bold;display:block;margin-top:14px;" data-i18n="group_who_can_be_invited">Who can be invited?</label>
     <select id="gsWhoCanBeInvited">
       <option value="anyone" data-i18n="postAnyone">Anyone</option>
