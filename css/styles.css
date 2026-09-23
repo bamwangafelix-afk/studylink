@@ -464,43 +464,51 @@ body.dark .cwin .profile-back-btn{color:#fff!important;}
   body{padding-bottom:78px;}
   .page{max-width:660px;padding:18px;}
   .hdr{padding:14px 24px;}
-  .nav{max-width:660px;left:50%;transform:translateX(-50%);border-radius:16px 16px 0 0;box-shadow:0 -2px 14px rgba(0,0,0,.08);}
+  .nav{max-width:660px;left:50%;transform:translateX(-50%);border-radius:16px 16px 0 0;box-shadow:0 -2px 14px rgba(0,0,0,.08);background:var(--bg);}
   .cwin{left:50%;transform:translateX(-50%);width:100%;max-width:760px;box-shadow:0 0 40px rgba(0,0,0,.15);}
   #profileView{left:50%!important;transform:translateX(-50%)!important;width:100%!important;max-width:760px!important;box-shadow:0 0 40px rgba(0,0,0,.15);}
-  .stView,.stCreate{left:50%;transform:translateX(-50%);width:100%;max-width:520px;box-shadow:0 0 50px rgba(0,0,0,.4);}
+  .stView,.stCreate{left:50%;transform:translateX(-50%);width:100%;max-width:760px;box-shadow:0 0 50px rgba(0,0,0,.4);}
 }
+.nav-toggle-btn{display:none;}
 
 /* ---------- DESKTOP (1024px and up) ---------- */
 @media (min-width:1024px){
-  body{padding-bottom:0;padding-left:230px;}
+  body{padding-bottom:0;padding-left:230px;transition:padding-left .25s ease;}
   .hdr{position:sticky;top:0;z-index:150;}
+  .nav-toggle-btn{display:flex;align-items:center;justify-content:center;}
   /* Sidebar navigation replaces the bottom tab bar */
   .nav{
-    position:fixed;left:0;top:0;bottom:0;width:230px;height:100vh;
+    position:fixed;left:0;top:68px;bottom:0;width:230px;height:calc(100vh - 68px);
+    background:var(--bg);
     flex-direction:column;justify-content:flex-start;align-items:stretch;
     border-top:none;border-right:1px solid var(--brd);
     padding-top:14px;transform:none;border-radius:0;box-shadow:none;max-width:none;
-    overflow-y:auto;
+    overflow-y:auto;overflow-x:hidden;
+    transition:transform .25s ease;
   }
   .ni{
     flex:none;flex-direction:row;justify-content:flex-start;align-items:center;
     gap:14px;padding:13px 24px;font-size:14px;text-align:left;border-radius:0 24px 24px 0;
+    white-space:nowrap;
   }
-  .ni svg{width:22px;height:22px;}
+  .ni svg{width:22px;height:22px;flex-shrink:0;}
   .ni.on{background:rgba(10,60,109,.08);}
   body.dark .ni.on{background:rgba(255,255,255,.08);}
   .nbadge{position:static;margin-left:auto;}
+  /* Collapsed state: slide the sidebar fully off-screen and reclaim its space */
+  body.nav-collapsed{padding-left:0;}
+  body.nav-collapsed .nav{transform:translateX(-100%);}
   /* Main content column */
   .page{max-width:760px;margin:26px auto;padding:22px;}
   /* Overlays become centered panels instead of edge-to-edge screens */
   .cwin{left:50%;transform:translateX(-50%);top:0;width:100%;max-width:860px;box-shadow:0 0 50px rgba(0,0,0,.18);}
   #profileView{left:50%!important;transform:translateX(-50%)!important;width:100%!important;max-width:860px!important;box-shadow:0 0 50px rgba(0,0,0,.18);}
-  .stView,.stCreate{left:50%;transform:translateX(-50%);width:100%;max-width:520px;box-shadow:0 0 60px rgba(0,0,0,.45);}
+  .stView,.stCreate{left:50%;transform:translateX(-50%);width:100%;max-width:860px;box-shadow:0 0 60px rgba(0,0,0,.45);}
   #installBanner{left:auto;right:24px;bottom:24px;max-width:340px;}
 }
 
 /* ---------- LARGE DESKTOP (1440px and up) ---------- */
 @media (min-width:1440px){
   .page{max-width:860px;}
-  .cwin,#profileView{max-width:960px;}
+  .cwin,#profileView,.stView,.stCreate{max-width:960px;}
 }
