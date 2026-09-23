@@ -4364,8 +4364,6 @@ function setupNavigation(){
     const home=el('Phome');
     if(id==='home'&&home&&home.style.display!=='none')tab('home','refresh');
     else tab(id);
-    // On desktop the sidebar is a small popover bubble — close it after picking a destination.
-    if(window.innerWidth>=1024&&document.body.classList.contains('nav-open'))toggleSidebarNav();
   };
   document.querySelectorAll('.ni[data-tab]').forEach(item=>{
     item.addEventListener('click',()=>activate(item));
