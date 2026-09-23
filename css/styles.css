@@ -473,31 +473,35 @@ body.dark .cwin .profile-back-btn{color:#fff!important;}
 
 /* ---------- DESKTOP (1024px and up) ---------- */
 @media (min-width:1024px){
-  body{padding-bottom:0;padding-left:230px;transition:padding-left .25s ease;}
   .hdr{position:sticky;top:0;z-index:150;}
-  .nav-toggle-btn{display:flex;align-items:center;justify-content:center;}
-  /* Sidebar navigation replaces the bottom tab bar */
+  .nav-toggle-btn{
+    display:flex;align-items:center;justify-content:center;
+    position:fixed;top:calc(var(--hdr-h,68px) + 10px);left:14px;z-index:160;
+    width:38px;height:38px;border-radius:50%;
+    background:var(--card);color:var(--btnB);border:1px solid var(--brd);
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
+  }
+  /* Compact floating menu bubble — collapsed by default, opens right under the toggle button */
   .nav{
-    position:fixed;left:0;top:68px;bottom:0;width:230px;height:calc(100vh - 68px);
+    display:none;
+    position:fixed;left:14px;top:calc(var(--hdr-h,68px) + 54px);z-index:159;
+    width:190px;height:auto;max-height:calc(100vh - var(--hdr-h,68px) - 70px);
     background:var(--bg);
     flex-direction:column;justify-content:flex-start;align-items:stretch;
-    border-top:none;border-right:1px solid var(--brd);
-    padding-top:14px;transform:none;border-radius:0;box-shadow:none;max-width:none;
+    border:1px solid var(--brd);border-radius:16px;
+    padding:8px 0;box-shadow:0 8px 28px rgba(0,0,0,.2);max-width:none;
     overflow-y:auto;overflow-x:hidden;
-    transition:transform .25s ease;
   }
+  body.nav-open .nav{display:flex;}
   .ni{
     flex:none;flex-direction:row;justify-content:flex-start;align-items:center;
-    gap:14px;padding:13px 24px;font-size:14px;text-align:left;border-radius:0 24px 24px 0;
+    gap:12px;padding:11px 18px;font-size:13px;text-align:left;border-radius:0;
     white-space:nowrap;
   }
-  .ni svg{width:22px;height:22px;flex-shrink:0;}
+  .ni svg{width:19px;height:19px;flex-shrink:0;}
   .ni.on{background:rgba(10,60,109,.08);}
   body.dark .ni.on{background:rgba(255,255,255,.08);}
   .nbadge{position:static;margin-left:auto;}
-  /* Collapsed state: slide the sidebar fully off-screen and reclaim its space */
-  body.nav-collapsed{padding-left:0;}
-  body.nav-collapsed .nav{transform:translateX(-100%);}
   /* Main content column */
   .page{max-width:760px;margin:26px auto;padding:22px;}
   /* Overlays become centered panels instead of edge-to-edge screens */
