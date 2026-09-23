@@ -484,7 +484,9 @@ body.dark .cwin .profile-back-btn{color:#fff!important;}
   /* Compact floating menu bubble — collapsed by default, opens right under the toggle button */
   .nav{
     display:none;
-     position:fixed;left:14px;top:calc(var(--hdr-h,68px) + 54px);z-index:220;
+     position:fixed;left:14px;top:calc(var(--hdr-h,68px) + 54px);
+    transform:none;
+    z-index:220;
     width:190px;height:auto;max-height:calc(100vh - var(--hdr-h,68px) - 70px);
      background:var(--card);
     flex-direction:column;justify-content:flex-start;align-items:stretch;
