@@ -73,6 +73,38 @@ const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
+let myStudyInviteMap={}; // otherUid -> {state:'accepted'|'pending', course, inviteId}
+function listenStudyInvites(){
+  if(!CU?.uid)return;
+  const rebuild=()=>{
+    if(el('Pfind')&&el('Pfind').style.display!=='none')renderFind(el('findQ')?.value||'');
+    if(el('profileView')&&el('profileView').style.display==='flex'&&typeof refreshProfileInviteBtn==='function')refreshProfileInviteBtn();
+    if(findTop==='students')renderFindInviteUpdates();
+  };
+  db.collection('studyInvites').where('fromUid','==',CU.uid).onSnapshot(sn=>{
+    sn.docs.forEach(d=>{
+      const inv=d.data();
+      const cur=myStudyInviteMap[inv.toUid];
+      if(inv.status==='accepted')myStudyInviteMap[inv.toUid]={state:'accepted',course:inv.course,inviteId:d.id};
+      else if(inv.status==='pending'&&(!cur||cur.state!=='accepted'))myStudyInviteMap[inv.toUid]={state:'pending',course:inv.course,inviteId:d.id};
+    });
+    rebuild();
+  },e=>console.log(e));
+  db.collection('studyInvites').where('toUid','==',CU.uid).where('status','==','accepted').onSnapshot(sn=>{
+    sn.docs.forEach(d=>{
+      const inv=d.data();
+      myStudyInviteMap[inv.fromUid]={state:'accepted',course:inv.course,inviteId:d.id};
+    });
+    rebuild();
+  },e=>console.log(e));
+}
+function studyStateFor(uid){return myStudyInviteMap[uid]?.state||'none';}
+function studyInviteBtnHtml(uid,name){
+  const state=studyStateFor(uid);
+  if(state==='accepted')return `<button class="btn" onclick="openChat('${e2(name||'')}','${uid}')">💬 ${t('home_message')}</button>`;
+  if(state==='pending')return `<button class="btn inv" style="opacity:.6;" disabled>⏳ ${t('invite_sent_btn')}</button>`;
+  return `<button class="btn inv" onclick="openStudyInvite('${uid}','${e2(name||'')}')">🟣 ${t('invite_to_study')}</button>`;
+}
 let myPendingJoinGroupIds=new Set();
 
 // ── STATUSES ──
@@ -495,6 +527,7 @@ auth.onAuthStateChanged(async u=>{
     try{setupPresence();}catch(e){}
     try{listenPosts();}catch(e){}
     try{listenUsers();}catch(e){}
+    try{listenStudyInvites();}catch(e){}
     try{setupNotifL();}catch(e){}
     try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
     try{handleJoinGroupDeepLink();}catch(e){}
@@ -724,9 +757,9 @@ function openProfile(uid,profileData=null){
   const invBtn=el('pvInviteBtn');
   if(invBtn){
     invBtn.style.display=isSelf?'none':'block';
-    invBtn.textContent=t('invite_to_study');
-    invBtn.disabled=false;
-    invBtn.onclick=()=>openStudyInvite(uid,u.name||'');
+    invBtn.dataset.uid=uid;
+    invBtn.dataset.name=u.name||'';
+    refreshProfileInviteBtn();
   }
   const stEl=el('pvStudyTogether');
   if(stEl){
@@ -747,6 +780,26 @@ function openProfile(uid,profileData=null){
   el('profileView').scrollTop=0;
 }
 function closeProfileView(preserveHistory=false){el('profileView').style.display='none';if(!preserveHistory)consumeModalState();}
+function refreshProfileInviteBtn(){
+  const invBtn=el('pvInviteBtn');
+  if(!invBtn||invBtn.style.display==='none')return;
+  const uid=invBtn.dataset.uid,name=invBtn.dataset.name||'';
+  const state=studyStateFor(uid);
+  if(state==='accepted'){
+    invBtn.style.display='none';
+    return;
+  }
+  invBtn.style.display='block';
+  if(state==='pending'){
+    invBtn.textContent=t('invite_sent_btn');
+    invBtn.disabled=true;
+    invBtn.onclick=null;
+  }else{
+    invBtn.textContent=t('invite_to_study');
+    invBtn.disabled=false;
+    invBtn.onclick=()=>openStudyInvite(uid,name);
+  }
+}
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
   return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
@@ -1577,6 +1630,7 @@ function switchFindTop(tab,el2){
   el('findPanelLibrary').style.display=tab==='library'?'block':'none';
   if(tab==='groups')renderFindGroups();
   if(tab==='library')renderFindLibrary();
+  if(tab==='students')renderFindInviteUpdates();
 }
 async function renderFindGroups(q=""){
   const f=el('findGroupsL');
@@ -1785,7 +1839,7 @@ function renderFind(q=""){
       ${langs?`<div style="margin:3px 0;">${langs}</div>`:''}
       ${skills?`<div style="margin:3px 0;">${skills}</div>`:''}
       ${ftab==='match'&&!isSelf?`<div style="background:linear-gradient(135deg,var(--btnB),#1565c0);color:#fff;border-radius:10px;padding:9px;margin:6px 0;"><b style="font-size:24px;">${sc}%</b> ${t('find_match_label')}<div style="height:5px;background:rgba(255,255,255,.3);border-radius:3px;margin:4px 0;"><div style="height:100%;width:${sc}%;background:#fff;border-radius:3px;"></div></div></div>`:''}
-      ${!isSelf?`<button class="btn" onclick="openChat('${e2(u.name||'')}','${u.uid||''}')">💬 ${t('home_message')}</button>`:`<p style="font-size:11px;color:var(--sub);text-align:center;margin-top:6px;">${t('find_own_profile')}</p>`}
+      ${!isSelf?studyInviteBtnHtml(u.uid,u.name||''):`<p style="font-size:11px;color:var(--sub);text-align:center;margin-top:6px;">${t('find_own_profile')}</p>`}
     </div>`;
   });
 }
@@ -3419,6 +3473,7 @@ function setupNotifL(){
   if(notifUnsub)notifUnsub();
   notifUnsub=db.collection('notifications').where('toUid','==',CU.uid).onSnapshot(sn=>{
     const notifs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    cachedNotifs=notifs;
     const unread=notifs.filter(n=>!n.read).length;
     const nb=el('notifB');nb.textContent=unread>9?'9+':unread;nb.style.display=unread>0?'inline-flex':'none';
     const newPending=new Set(notifs.filter(n=>n.kind==='groupJoinStatus'&&n.state==='pending').map(n=>n.groupId));
@@ -3429,7 +3484,47 @@ function setupNotifL(){
     if(!notifs.length){f.innerHTML="<p style='text-align:center;color:#888;'>No notifications</p>";return;}
     f.innerHTML='';
     notifs.forEach(n=>{f.innerHTML+=notifCardHtml(n);});
+    if(findTop==='students')renderFindInviteUpdates();
   },e=>console.log('notif:',e));
+}
+let cachedNotifs=[];
+function renderFindInviteUpdates(){
+  const box=el('findInviteUpdates');
+  if(!box)return;
+  const incoming=cachedNotifs.filter(n=>n.kind==='studyInvite'&&n.role==='recipient'&&n.state==='pending');
+  const updates=cachedNotifs.filter(n=>n.kind==='studyInvite'&&n.role==='sender'&&!n.read&&(n.state==='accepted'||n.state==='declined'));
+  if(!incoming.length&&!updates.length){box.innerHTML='';return;}
+  box.innerHTML=`<div style="margin-bottom:10px;">
+    <p class="stSection" style="margin-bottom:6px;" data-i18n="find_invitations_updates">Invitations & Updates</p>
+    ${incoming.map(n=>`<div class="card" style="border-left:3px solid #7b2ff7;">
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${n.personPhoto?`<img src="${n.personPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((n.personName||'?')[0]||'?').toUpperCase()}</div>
+        <div style="flex:1;">
+          <b style="font-size:13px;">${esc(n.personName||'')}</b>
+          <p style="font-size:12px;color:var(--sub);margin:2px 0;">📚 ${esc(n.course||'')}${n.customMessage?' — "'+esc(n.customMessage)+'"':''}</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn inv" style="margin-top:0;" onclick="respondStudyInvite('${n.inviteId}',true)">${t('accept')}</button>
+        <button class="btn r" style="margin-top:0;" onclick="respondStudyInvite('${n.inviteId}',false)">${t('decline')}</button>
+      </div>
+    </div>`).join('')}
+    ${updates.map(n=>{
+      const isAccepted=n.state==='accepted';
+      return `<div class="card" style="border-left:3px solid ${isAccepted?'#1a9e5c':'#e74c3c'};" onclick="markN('${n.id}')">
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${n.personPhoto?`<img src="${n.personPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((n.personName||'?')[0]||'?').toUpperCase()}</div>
+          <div style="flex:1;">
+            <b style="font-size:13px;">${esc(n.personName||'')}</b>
+            <p style="font-size:12px;color:${isAccepted?'#1a9e5c':'#e74c3c'};margin:2px 0;">${isAccepted?t('invite_state_accepted'):t('invite_state_declined')} · 📚 ${esc(n.course||'')}</p>
+          </div>
+        </div>
+        ${isAccepted
+          ?`<button class="btn" style="margin-top:8px;" onclick="event.stopPropagation();markN('${n.id}');openChat('${e2(n.personName||'')}','${n.fromRecipientUid||''}')">💬 ${t('home_message')}</button>`
+          :`<button class="btn inv" style="margin-top:8px;" onclick="event.stopPropagation();markN('${n.id}');openStudyInvite('${n.fromRecipientUid||''}','${e2(n.personName||'')}')">🟣 ${t('invite_to_study')}</button>`}
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>{const n=d.data();const isInvite=n.kind==='studyInvite'||n.kind==='groupInvite'||n.kind==='groupJoinRequest';if(isInvite&&n.state==='pending')return;b.delete(d.ref);});return b.commit();});}
@@ -3492,7 +3587,7 @@ const I18N={
     notif_group_invite_title:'Invitation à un groupe',notif_group_invite_body:'t’a invité à rejoindre',
     notif_request_accepted_title:'Demande acceptée',notif_request_accepted_body:'Ta demande pour rejoindre le groupe a été acceptée !',
     notif_request_declined_title:'Demande refusée',notif_request_declined_body:'Ta demande pour rejoindre le groupe a été refusée.',
-    invite_to_study:'Inviter à étudier',invite_pending:'Invitation en attente',
+    invite_to_study:'Inviter à étudier',invite_pending:'Invitation en attente',invite_sent_btn:'Invitation envoyée',find_invitations_updates:'Invitations et mises à jour',
     invite_header_hint:'Choisis un cours pour cette invitation',invite_pick_course:'❌ Choisis un cours',
     invite_already_accepted:'Vous étudiez déjà ce cours ensemble',
     invite_card_study:'Invitation à étudier',invite_card_group:'Invitation de groupe',
@@ -3611,7 +3706,7 @@ const I18N={
     notif_group_invite_title:'Group Invite',notif_group_invite_body:'invited you to join',
     notif_request_accepted_title:'Request Accepted',notif_request_accepted_body:'Your request to join the group was accepted!',
     notif_request_declined_title:'Request Declined',notif_request_declined_body:'Your request to join the group was declined.',
-    invite_to_study:'Invite to Study',invite_pending:'Invitation pending',
+    invite_to_study:'Invite to Study',invite_pending:'Invitation pending',invite_sent_btn:'Invite Sent',find_invitations_updates:'Invitations &amp; Updates',
     invite_header_hint:'Pick one course for this invitation',invite_pick_course:'❌ Pick a course',
     invite_already_accepted:'You already study this course together',
     invite_card_study:'Study Invitation',invite_card_group:'Group Invitation',
