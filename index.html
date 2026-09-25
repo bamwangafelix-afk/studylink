@@ -188,7 +188,7 @@
       </select>
       <p style="font-size:11px;color:var(--sub);margin:6px 0 0;" data-i18n="post_group_settings_hint">You can change these anytime after creating the group, in Group Settings.</p>
     </div>
-    <label style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
+    <label id="postTagsLabel" style="font-size:13px;font-weight:bold;margin-top:6px;display:block;" data-i18n="post_tags_label">Subject Tags:</label>
     <div class="subjectPicker" id="postSubjectPicker">
       <input id="postSubjectSearch" class="subjectSearch" type="search" placeholder="Search subjects..." data-i18n-ph="subject_search_ph" autocomplete="off">
       <div class="subjectCategoryTabs" id="postSubjectCats" role="tablist"></div>
@@ -199,8 +199,10 @@
       <label style="font-size:13px;font-weight:bold;" data-i18n="post_group_desc_label">Group Description:</label>
       <textarea id="gDesc" rows="2" placeholder="What is this group about?" data-i18n-ph="post_group_desc_ph"></textarea>
     </div>
-    <label style="font-size:13px;font-weight:bold;" data-i18n="post_message_label">Your Message:</label>
-    <textarea id="pText" rows="4" placeholder="Write your study request..." data-i18n-ph="post_message_ph"></textarea>
+    <div id="postMessageWrap">
+      <label style="font-size:13px;font-weight:bold;" data-i18n="post_message_label">Your Message:</label>
+      <textarea id="pText" rows="4" placeholder="Write your study request..." data-i18n-ph="post_message_ph"></textarea>
+    </div>
     <button class="btn" onclick="addPost()">📢 <span data-i18n="post_submit">Post to Feed</span></button>
   </div>
 </div>
@@ -438,6 +440,8 @@
   <div style="overflow-y:auto;flex:1;padding:18px 16px 40px;">
     <input id="resTitle" placeholder="Title (e.g. Chapter 1 notes)" data-i18n-ph="group_resource_title_ph" style="margin-bottom:6px;">
     <input id="resLink" placeholder="Link (optional, e.g. Google Drive URL)" data-i18n-ph="group_resource_link_ph" style="margin-bottom:6px;">
+    <label for="resFile" style="display:block;font-size:13px;font-weight:700;margin:4px 0;" data-i18n="group_resource_file_label">Document (optional)</label>
+    <input id="resFile" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.zip" style="font-size:12px;margin-bottom:8px;">
     <button class="btn" onclick="addGroupResource()" data-i18n="group_resource_add">Add Resource</button>
     <div id="resList" style="margin-top:16px;"></div>
   </div>
@@ -532,6 +536,7 @@
     <div id="pvStudyTogether" style="margin-bottom:12px;"></div>
     <button id="pvMsgBtn" class="btn" style="width:100%;padding:13px;" data-i18n="home_message">Message</button>
     <button id="pvInviteBtn" class="btn inv" style="width:100%;padding:13px;margin-top:8px;" data-i18n="invite_to_study">Invite to Study</button>
+    <button id="pvInviteMoreBtn" class="btn inv" style="width:100%;padding:13px;margin-top:8px;display:none;" data-i18n="invite_another_course">Invite another course</button>
   </div>
 </div>
 
@@ -811,6 +816,5 @@
   </div>
 </div>
 
-<script defer src="js/app-v20.js?v=studylink-pwa-88"></script>
-</body>
+<script defer src="js/app-v20.js?v=studylink-pwa-88"></script></body>
 </html>

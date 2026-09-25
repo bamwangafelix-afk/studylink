@@ -74,34 +74,53 @@ let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
 let myPendingJoinGroupIds=new Set();
-let myPendingSentInviteUids=new Set(),myAcceptedStudyUids=new Set(),curProfileUid=null;
-let _siSentAccepted=new Set(),_siRecvAccepted=new Set();
+let curProfileUid=null;
+let myStudyInviteMap={};
+let studyInviteSources={sent:[],receivedAccepted:[]},studyInviteUnsubs=[],studyInviteListenerUid=null;
+function rebuildStudyInviteMap(){
+  const map={},seen=new Set();
+  [...studyInviteSources.sent,...studyInviteSources.receivedAccepted].forEach(inv=>{
+    if(!inv?.id||seen.has(inv.id))return;
+    seen.add(inv.id);
+    const otherUid=inv.fromUid===CU?.uid?inv.toUid:inv.fromUid;
+    if(!otherUid)return;
+    (map[otherUid]||(map[otherUid]=[])).push({
+      state:inv.status||'pending',course:inv.course||'',inviteId:inv.id,createdAt:inv.createdAt||null
+    });
+  });
+  myStudyInviteMap=map;
+  refreshInviteButtons();
+}
 function setupStudyInviteState(){
-  if(!CU)return;
-  db.collection('studyInvites').where('fromUid','==',CU.uid).where('status','==','pending').onSnapshot(sn=>{
-    myPendingSentInviteUids=new Set(sn.docs.map(d=>d.data().toUid));
-    refreshInviteButtons();
-  },e=>console.warn('studyInvite sent-pending listener:',e?.code||e));
-  db.collection('studyInvites').where('fromUid','==',CU.uid).where('status','==','accepted').onSnapshot(sn=>{
-    _siSentAccepted=new Set(sn.docs.map(d=>d.data().toUid));
-    myAcceptedStudyUids=new Set([..._siSentAccepted,..._siRecvAccepted]);
-    refreshInviteButtons();
-  },e=>console.warn('studyInvite sent-accepted listener:',e?.code||e));
-  db.collection('studyInvites').where('toUid','==',CU.uid).where('status','==','accepted').onSnapshot(sn=>{
-    _siRecvAccepted=new Set(sn.docs.map(d=>d.data().fromUid));
-    myAcceptedStudyUids=new Set([..._siSentAccepted,..._siRecvAccepted]);
-    refreshInviteButtons();
-  },e=>console.warn('studyInvite recv-accepted listener:',e?.code||e));
+  if(!CU?.uid)return;
+  if(studyInviteListenerUid===CU.uid&&studyInviteUnsubs.length)return;
+  studyInviteUnsubs.forEach(unsub=>{try{unsub();}catch(e){}});
+  studyInviteUnsubs=[];
+  studyInviteListenerUid=CU.uid;
+  studyInviteSources={sent:[],receivedAccepted:[]};
+  myStudyInviteMap={};
+  studyInviteUnsubs.push(db.collection('studyInvites').where('fromUid','==',CU.uid).onSnapshot(sn=>{
+    studyInviteSources.sent=sn.docs.map(d=>({id:d.id,...d.data()}));
+    rebuildStudyInviteMap();
+  },e=>console.warn('studyInvite sent listener:',e?.code||e)));
+  studyInviteUnsubs.push(db.collection('studyInvites').where('toUid','==',CU.uid).where('status','==','accepted').onSnapshot(sn=>{
+    studyInviteSources.receivedAccepted=sn.docs.map(d=>({id:d.id,...d.data()}));
+    rebuildStudyInviteMap();
+  },e=>console.warn('studyInvite received listener:',e?.code||e)));
 }
 function inviteBtnState(uid){
-  if(myAcceptedStudyUids.has(uid))return'message';
-  if(myPendingSentInviteUids.has(uid))return'sent';
+  const records=myStudyInviteMap[uid]||[];
+  if(records.some(inv=>inv.state==='accepted'))return'message';
+  if(records.some(inv=>inv.state==='pending'))return'sent';
   return'invite';
 }
 function inviteBtnHtml(uid,name){
   const st=inviteBtnState(uid);
-  if(st==='message')return`<button class="btn" onclick="openChat('${e2(name||'')}','${uid}')">💬 ${t('home_message')}</button>`;
-  if(st==='sent')return`<button class="btn inv" disabled>${t('invite_sent_btn')}</button>`;
+  const records=myStudyInviteMap[uid]||[];
+  const pending=[...new Set(records.filter(inv=>inv.state==='pending').map(inv=>inv.course).filter(Boolean))];
+  const more=`<button class="btn inv" style="flex:1;min-width:0;width:auto;margin-top:0;" onclick="openStudyInvite('${uid}','${e2(name||'')}')">${t('invite_another_course')}</button>`;
+  if(st==='message')return`<div style="display:flex;gap:6px;margin-top:6px;"><button class="btn" style="flex:1;min-width:0;width:auto;margin-top:0;" onclick="openChat('${e2(name||'')}','${uid}')">💬 ${t('home_message')}</button>${more}</div>`;
+  if(st==='sent')return`<div style="display:flex;gap:6px;margin-top:6px;"><button class="btn inv" style="flex:1;min-width:0;width:auto;margin-top:0;opacity:.6;" disabled>⏳ ${t('invite_sent_btn')}${pending.length?` — ${pending.map(esc).join(', ')}`:''}</button>${more}</div>`;
   return`<button class="btn inv" onclick="openStudyInvite('${uid}','${e2(name||'')}')">🤝 ${t('invite_to_study')}</button>`;
 }
 function refreshInviteButtons(){
@@ -111,11 +130,23 @@ function refreshInviteButtons(){
 function updateProfileInviteBtn(uid){
   const invBtn=el('pvInviteBtn');
   if(!invBtn)return;
+  const moreBtn=el('pvInviteMoreBtn');
   const st=inviteBtnState(uid);
-  if(st==='message'){invBtn.style.display='none';return;}
+  if(st==='message'){
+    invBtn.style.display='none';
+    if(moreBtn){moreBtn.style.display='block';moreBtn.textContent=t('invite_another_course');moreBtn.onclick=()=>openStudyInvite(uid,allUsers.find(u=>u.uid===uid)?.name||'');}
+    return;
+  }
   invBtn.style.display='block';invBtn.className='btn inv';
-  if(st==='sent'){invBtn.textContent=t('invite_sent_btn');invBtn.disabled=true;invBtn.onclick=null;}
-  else{invBtn.textContent=t('invite_to_study');invBtn.disabled=false;invBtn.onclick=()=>openStudyInvite(uid,allUsers.find(u=>u.uid===uid)?.name||'');}
+  if(st==='sent'){
+    const pending=[...new Set((myStudyInviteMap[uid]||[]).filter(inv=>inv.state==='pending').map(inv=>inv.course).filter(Boolean))];
+    invBtn.textContent=`${t('invite_sent_btn')}${pending.length?` — ${pending.map(esc).join(', ')}`:''}`;
+    invBtn.disabled=true;invBtn.onclick=null;
+    if(moreBtn){moreBtn.style.display='block';moreBtn.textContent=t('invite_another_course');moreBtn.onclick=()=>openStudyInvite(uid,allUsers.find(u=>u.uid===uid)?.name||'');}
+  }else{
+    invBtn.textContent=t('invite_to_study');invBtn.disabled=false;invBtn.onclick=()=>openStudyInvite(uid,allUsers.find(u=>u.uid===uid)?.name||'');
+    if(moreBtn)moreBtn.style.display='none';
+  }
 }
 
 // ── STATUSES ──
@@ -573,7 +604,13 @@ function renderSubjectPicker(mode){
   options.innerHTML=items.length?items.map(s=>`<button type="button" class="tag${values.includes(s)?' sel':''}" onclick="${isPost?`togglePostSubject('${e2(s)}')`:`toggleStatusSubject('${e2(s)}')`}">${esc(s)}</button>`).join(''):`<span class="subjectEmpty">${appLang==='en'?'No subject found':'Aucune matière trouvée'}</span>`;
 }
 function selectSubjectCategory(mode,key){if(mode==='post')postSubjectCategory=key;else statusSubjectCategory=key;renderSubjectPicker(mode);}
-function togglePostSubject(s){if(selTags.includes(s))selTags=selTags.filter(t=>t!==s);else if(selTags.length<5)selTags.push(s);else return showToast(appLang==='en'?'You can select up to 5 subjects':'Tu peux sélectionner au maximum 5 matières');renderSubjectPicker('post');}
+function togglePostSubject(s){
+  if(selTags.includes(s))selTags=selTags.filter(t=>t!==s);
+  else if(el('pType')?.value==='Group')selTags=[s];
+  else if(selTags.length<5)selTags.push(s);
+  else return showToast(appLang==='en'?'You can select up to 5 subjects':'Tu peux sélectionner au maximum 5 matières');
+  renderSubjectPicker('post');
+}
 function setupSubjectPicker(){
   [['post','postSubjectSearch'],['status','statusSubjectSearch']].forEach(([mode,id])=>el(id)?.addEventListener('input',()=>renderSubjectPicker(mode)));
 }
@@ -767,7 +804,10 @@ function openProfile(uid,profileData=null){
   el('pvMsgBtn').style.display=isSelf?'none':'block';
   el('pvMsgBtn').onclick=()=>{closeProfileView(true);openChat(u.name||'',uid);};
   const invBtn=el('pvInviteBtn');
-  if(invBtn){if(isSelf)invBtn.style.display='none';else updateProfileInviteBtn(uid);}
+  if(invBtn){
+    if(isSelf){invBtn.style.display='none';if(el('pvInviteMoreBtn'))el('pvInviteMoreBtn').style.display='none';}
+    else updateProfileInviteBtn(uid);
+  }
   const stEl=el('pvStudyTogether');
   if(stEl){
     stEl.innerHTML='';
@@ -955,6 +995,14 @@ function toggleGN(val){
   el('gnW').style.display=val==='Group'?'block':'none';
   el('gnDescW').style.display=val==='Group'?'block':'none';
   el('pVisWrap').style.display=val==='Group'?'none':'block';
+  if(el('postMessageWrap'))el('postMessageWrap').style.display=val==='Group'?'none':'block';
+  const tagsLabel=el('postTagsLabel');
+  if(tagsLabel){
+    const key=val==='Group'?'group_course_subject_label':'post_tags_label';
+    tagsLabel.setAttribute('data-i18n',key);
+    tagsLabel.textContent=t(key);
+  }
+  if(val==='Group'&&selTags.length>1){selTags=selTags.slice(0,1);renderSubjectPicker('post');}
 }
 let gPhotoDataUrl=null;
 function previewGroupPhoto(input){
@@ -967,22 +1015,28 @@ function previewGroupPhoto(input){
 }
 async function addPost(){
   if(!MP?.name)return alert('Complete your profile first');
-  const text=v('pText');if(!text)return alert('Write something');
   const type=el('pType').value;
+  const rawText=v('pText');
+  const gname=type==='Group'?v('gName'):'';
+  const gdesc=type==='Group'?v('gDesc'):'';
+  const text=type==='Group'?(gdesc||rawText||''):rawText;
+  if(type!=='Group'&&!text)return alert('Write something');
+  if(type==='Group'&&!gname)return alert(t('post_group_name_required'));
   const visibility=type==='Group'?'anyone':(el('pVisibility')?.value||'anyone');
   const whoCanJoin=type==='Group'?(el('gWhoCanJoin')?.value||'anyone'):'anyone';
   const howCanJoin=type==='Group'?(el('gHowCanJoin')?.value||'direct'):'direct';
-  const gname=type==='Group'?v('gName'):'';
-  const gdesc=type==='Group'?v('gDesc'):'';
-  if(type==='Group'&&!gname)return alert('Enter group name');
+  const courseSubject=type==='Group'?(selTags[0]||''):'';
   showOv(true);
   try{
     let groupPhoto='';
     if(type==='Group'&&gPhotoDataUrl){groupPhoto=await uploadCloud(gPhotoDataUrl,'image')||'';}
-    const postData={type,text,visibility,tags:[...selTags],groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+    const postData={type,text,visibility,tags:[...selTags],courseSubject,groupName:gname,user:{name:MP.name,country:MP.country||'',uni:MP.uni||'',course:MP.course||'',year:MP.year||'',status:'Online',photo:myPho,intent:MP.intent||'both'},uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
     if(type==='Group'){postData.whoCanJoin=whoCanJoin;postData.howCanJoin=howCanJoin;postData.groupPhoto=groupPhoto;}
-    const ref=await db.collection('posts').add(postData);
-    if(type==='Group')await db.collection('groups').doc(ref.id).set({name:gname,description:gdesc,photo:groupPhoto,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'owner_admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    const ref=db.collection('posts').doc();
+    const batch=db.batch();
+    batch.set(ref,postData);
+    if(type==='Group')batch.set(db.collection('groups').doc(ref.id),{name:gname,description:gdesc,photo:groupPhoto,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'owner_admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],courseSubject,pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await batch.commit();
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
     selTags=[];renderSubjectPicker('post');
@@ -1708,30 +1762,32 @@ async function handleGroupAccess(postId,name){
   if(howCanJoin==='request'){
     if((g.pendingRequests||[]).includes(CU.uid)){showOv(false);showToast(t('group_still_pending'));return;}
     try{
-      await db.collection('groups').doc(postId).update({pendingRequests:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
-      await sendJoinRequestNotifications(postId,g,name);
+      const batch=db.batch();
+      batch.update(db.collection('groups').doc(postId),{pendingRequests:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+      queueJoinRequestNotifications(batch,postId,g,name);
+      await batch.commit();
       myPendingJoinGroupIds.add(postId);
       if(el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
       showToast(t('group_request_sent'));
     }catch(e){showToast('❌ '+e.message);}
     showOv(false);return;
   }
-  try{await db.collection('groups').doc(postId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});}catch(e){}
+  try{await db.collection('groups').doc(postId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});}
+  catch(e){showOv(false);showToast('❌ '+e.message);return;}
   showOv(false);
   openGroup(postId,name);
 }
-async function sendJoinRequestNotifications(groupId,g,fallbackName){
+function queueJoinRequestNotifications(batch,groupId,g,fallbackName){
   const groupName=g.name||fallbackName||'';
   const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(Boolean);
-  const batchOps=recipients.map(toUid=>db.collection('notifications').doc(`joinreq_${groupId}_${CU.uid}_${toUid}`).set({
+  recipients.forEach(toUid=>batch.set(db.collection('notifications').doc(`joinreq_${groupId}_${CU.uid}_${toUid}`),{
     toUid,kind:'groupJoinRequest',groupId,groupName,
     requesterUid:CU.uid,requesterName:MP?.name||'',requesterPhoto:myPho||'',requesterCountry:MP?.country||'',requesterUni:MP?.uni||'',requesterCourse:MP?.course||'',
     state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
   }));
-  batchOps.push(db.collection('notifications').doc(`joinstatus_${groupId}_${CU.uid}`).set({
+  batch.set(db.collection('notifications').doc(`joinstatus_${groupId}_${CU.uid}`),{
     toUid:CU.uid,kind:'groupJoinStatus',groupId,groupName,state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  }));
-  await Promise.all(batchOps.map(p=>p.catch(()=>{})));
+  });
 }
 async function requestJoinAgain(groupId,groupName){
   await handleGroupAccess(groupId,groupName);
@@ -3513,7 +3569,7 @@ const I18N={
     group_who_can_invite:'Qui peut inviter ?',group_invite_owner_only:'Propriétaire uniquement',group_invite_admins_only:'Admins uniquement',group_invite_owner_admins:'Propriétaire/Admins',group_member_check:'Membre',
     post_group_settings_hint:'Tu pourras modifier ces règles à tout moment après la création, dans Paramètres du groupe.',
     group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',group_created_by:'Créé par',group_created_on:'Créé le',group_edit_info:'Modifier les infos du groupe',
-    group_resources:'Ressources',group_resources_error:'Impossible de charger les ressources.',group_resource_title_ph:'Titre (ex. Notes chapitre 1)',group_resource_link_ph:'Lien (facultatif, ex. Google Drive)',group_resource_add:'Ajouter une ressource',group_resources_empty:'Aucune ressource pour l’instant.',group_resource_added:'✅ Ressource ajoutée',
+    group_resources:'Ressources',group_resources_error:'Impossible de charger les ressources.',group_resource_title_ph:'Titre (ex. Notes chapitre 1)',group_resource_link_ph:'Lien (facultatif, ex. Google Drive)',group_resource_file_label:'Document ou fichier (facultatif)',group_resource_file:'Document',group_resource_title_required:'❌ Le titre est requis',group_resource_link_or_file:'Ajoute un lien ou un document.',group_resource_invalid_link:'Le lien doit commencer par http:// ou https://',group_resource_upload_failed:'Échec du téléversement du document.',group_resource_add:'Ajouter une ressource',group_resources_empty:'Aucune ressource pour l’instant.',group_resource_added:'✅ Ressource ajoutée',
     group_search:'Rechercher',group_search_ph:'Rechercher dans les messages...',
     group_notifications:'Notifications',group_mute:'Couper les notifications',group_unmute:'Réactiver les notifications',group_muted:'🔕 Groupe en sourdine',group_unmuted:'🔔 Notifications réactivées',
     group_share_invite:'Partager / Inviter',group_link_copied:'🔗 Lien copié',
@@ -3542,7 +3598,7 @@ const I18N={
     notif_group_invite_title:'Invitation à un groupe',notif_group_invite_body:'t’a invité à rejoindre',
     notif_request_accepted_title:'Demande acceptée',notif_request_accepted_body:'Ta demande pour rejoindre le groupe a été acceptée !',
     notif_request_declined_title:'Demande refusée',notif_request_declined_body:'Ta demande pour rejoindre le groupe a été refusée.',
-    invite_to_study:'Inviter à étudier',invite_pending:'Invitation en attente',invite_sent_btn:'Invitation envoyée',find_invites_updates:'Invitations & mises à jour',
+    invite_to_study:'Inviter à étudier',invite_another_course:'Inviter pour un autre cours',invite_pending:'Invitation en attente',invite_sent_btn:'Invitation envoyée',find_invites_updates:'Invitations & mises à jour',invite_not_authorized:'Tu ne peux pas répondre à cette invitation.',invite_already_handled:'Cette invitation a déjà été traitée.',
     invite_header_hint:'Choisis un cours pour cette invitation',invite_pick_course:'❌ Choisis un cours',
     invite_already_accepted:'Vous étudiez déjà ce cours ensemble',
     invite_card_study:'Invitation à étudier',invite_card_group:'Invitation de groupe',
@@ -3562,8 +3618,8 @@ const I18N={
     notif_study_declined_title:'Invitation refusée',notif_study_declined_body:'a refusé ton invitation à étudier',
     post_title:'Créer une publication',post_as_label:'Publier en tant que :',postWhoCanSee:'Qui peut voir ta publication ?',postAnyone:'Tout le monde',postCountry:'Uniquement mon pays',postUniversity:'Uniquement mon université',postMajorCourse:'Uniquement ma filière / mon cours',
     post_individual:'Individuel',post_study_group:'Groupe d’étude',
-    post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',post_group_photo_label:'Photo du groupe (facultatif) :',post_group_desc_label:'Description du groupe :',post_group_desc_ph:'De quoi parle ce groupe ?',
-    post_tags_label:'Matières :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
+    post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',post_group_name_required:'❌ Le nom du groupe est requis',post_group_photo_label:'Photo du groupe (facultatif) :',post_group_desc_label:'Description du groupe :',post_group_desc_ph:'De quoi parle ce groupe ?',
+    post_tags_label:'Matières :',group_course_subject_label:'Cours / Matière du groupe (facultatif) :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
     post_submit:'Publier sur le fil',
     msgs_title:'Messages',msgs_search_ph:'🔍 Rechercher une conversation...',msgs_no_convos:'Aucune conversation pour l’instant.',
     me_title:'Mon profil',me_account:'Compte',me_disconnect:'Se déconnecter',me_edit_profile:'Modifier le profil',
@@ -3632,7 +3688,7 @@ const I18N={
     group_who_can_invite:'Who can invite?',group_invite_owner_only:'Owner only',group_invite_admins_only:'Admins only',group_invite_owner_admins:'Owner/Admins',group_member_check:'Member',
     post_group_settings_hint:'You can change these anytime after creating the group, in Group Settings.',
     group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',group_created_by:'Created by',group_created_on:'Created on',group_edit_info:'Edit Group Information',
-    group_resources:'Resources',group_resources_error:'Could not load resources.',group_resource_title_ph:'Title (e.g. Chapter 1 notes)',group_resource_link_ph:'Link (optional, e.g. Google Drive URL)',group_resource_add:'Add Resource',group_resources_empty:'No resources yet.',group_resource_added:'✅ Resource added',
+    group_resources:'Resources',group_resources_error:'Could not load resources.',group_resource_title_ph:'Title (e.g. Chapter 1 notes)',group_resource_link_ph:'Link (optional, e.g. Google Drive URL)',group_resource_file_label:'Document or file (optional)',group_resource_file:'Document',group_resource_title_required:'❌ A title is required',group_resource_link_or_file:'Add a link or upload a document.',group_resource_invalid_link:'The link must begin with http:// or https://',group_resource_upload_failed:'Document upload failed.',group_resource_add:'Add Resource',group_resources_empty:'No resources yet.',group_resource_added:'✅ Resource added',
     group_search:'Search',group_search_ph:'Search messages...',
     group_notifications:'Notifications',group_mute:'Mute notifications',group_unmute:'Unmute notifications',group_muted:'🔕 Group muted',group_unmuted:'🔔 Notifications unmuted',
     group_share_invite:'Share / Invite',group_link_copied:'🔗 Link copied',
@@ -3661,7 +3717,7 @@ const I18N={
     notif_group_invite_title:'Group Invite',notif_group_invite_body:'invited you to join',
     notif_request_accepted_title:'Request Accepted',notif_request_accepted_body:'Your request to join the group was accepted!',
     notif_request_declined_title:'Request Declined',notif_request_declined_body:'Your request to join the group was declined.',
-    invite_to_study:'Invite to Study',invite_pending:'Invitation pending',invite_sent_btn:'Invite Sent',find_invites_updates:'Invitations & Updates',
+    invite_to_study:'Invite to Study',invite_another_course:'Invite for another course',invite_pending:'Invitation pending',invite_sent_btn:'Invite Sent',find_invites_updates:'Invitations & Updates',invite_not_authorized:'You cannot respond to this invitation.',invite_already_handled:'This invitation has already been handled.',
     invite_header_hint:'Pick one course for this invitation',invite_pick_course:'❌ Pick a course',
     invite_already_accepted:'You already study this course together',
     invite_card_study:'Study Invitation',invite_card_group:'Group Invitation',
@@ -3681,8 +3737,8 @@ const I18N={
     notif_study_declined_title:'Invitation Declined',notif_study_declined_body:'declined your study invitation',
     post_title:'Create Post',post_as_label:'Post As:',postWhoCanSee:'Who can see your post?',postAnyone:'Anyone',postCountry:'Only my country',postUniversity:'Only my university',postMajorCourse:'Only my major/Course',
     post_individual:'Individual',post_study_group:'Study Group',
-    post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',post_group_photo_label:'Group Photo (optional):',post_group_desc_label:'Group Description:',post_group_desc_ph:'What is this group about?',
-    post_tags_label:'Subject Tags:',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
+    post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',post_group_name_required:'❌ Enter a group name',post_group_photo_label:'Group Photo (optional):',post_group_desc_label:'Group Description:',post_group_desc_ph:'What is this group about?',
+    post_tags_label:'Subject Tags:',group_course_subject_label:'Group Course / Subject (optional):',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
     post_submit:'Post to Feed',
     msgs_title:'Messages',msgs_search_ph:'🔍 Search conversations...',msgs_no_convos:'No conversations yet.',
     me_title:'My Profile',me_account:'Account',me_disconnect:'Log out',me_edit_profile:'Edit Profile',
@@ -3941,6 +3997,10 @@ function toggleGroupChatMenu(){
   m.style.display=willOpen?'block':'none';
 }
 function closeGroupChatMenu(){const m=el('groupChatMenu');if(m)m.style.display='none';}
+function safeGroupResourceUrl(value){
+  if(!value)return'';
+  try{const url=new URL(value);return['http:','https:'].includes(url.protocol)?url.href:'';}catch(e){return'';}
+}
 async function openGroupResources(groupId){
   el('groupResourcesView').style.display='flex';
   pushModalState();
@@ -3951,9 +4011,12 @@ async function openGroupResources(groupId){
     el('resList').innerHTML=snap.docs.map(d=>{
       const r=d.data();
       const author=allUsers.find(u=>u.uid===r.uid);
+      const link=safeGroupResourceUrl(r.link);
+      const fileUrl=safeGroupResourceUrl(r.fileUrl);
       return `<div class="card" style="padding:12px;">
         <b style="font-size:14px;">📎 ${esc(r.title||'')}</b>
-        ${r.link?`<p style="font-size:12px;margin:4px 0;word-break:break-all;"><a href="${esc(r.link)}" target="_blank" style="color:var(--btnB);">${esc(r.link)}</a></p>`:''}
+        ${link?`<p style="font-size:12px;margin:4px 0;word-break:break-all;"><a href="${esc(link)}" target="_blank" rel="noopener noreferrer" style="color:var(--btnB);">${esc(link)}</a></p>`:''}
+        ${fileUrl?`<p style="font-size:12px;margin:4px 0;word-break:break-all;"><a href="${esc(fileUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--btnB);">📄 ${esc(r.fileName||t('group_resource_file'))}</a></p>`:''}
         <p style="font-size:11px;color:var(--sub);margin-top:4px;">${t('group_created_by')}: ${esc(author?.name||'?')}</p>
       </div>`;
     }).join('');
@@ -3961,16 +4024,30 @@ async function openGroupResources(groupId){
 }
 function closeGroupResources(){el('groupResourcesView').style.display='none';consumeModalState();}
 async function addGroupResource(){
-  if(!curGrp)return;
+  if(!curGrp||!CU)return;
   const title=v('resTitle');
-  if(!title)return alert('Enter a title');
-  const link=v('resLink');
+  if(!title)return showToast(t('group_resource_title_required'));
+  const rawLink=v('resLink');
+  const link=safeGroupResourceUrl(rawLink);
+  const file=el('resFile')?.files?.[0]||null;
+  if(rawLink&&!link)return showToast(t('group_resource_invalid_link'));
+  if(!link&&!file)return showToast(t('group_resource_link_or_file'));
+  showOv(true);
   try{
-    await db.collection('groups').doc(curGrp.id).collection('resources').add({title,link,uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    el('resTitle').value='';el('resLink').value='';
+    let uploaded=null;
+    if(file){
+      uploaded=await uploadDocument(file);
+      if(!uploaded?.url)throw new Error(uploadToFirebaseStorage.lastError||t('group_resource_upload_failed'));
+    }
+    await db.collection('groups').doc(curGrp.id).collection('resources').add({
+      title,link:link||'',fileUrl:uploaded?.url||'',fileName:file?.name||'',fileType:file?.type||'',
+      uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    el('resTitle').value='';el('resLink').value='';if(el('resFile'))el('resFile').value='';
     showToast(t('group_resource_added'));
     openGroupResources(curGrp.id);
   }catch(e){showToast('❌ '+e.message);}
+  finally{showOv(false);}
 }
 function openGroupSearch(){
   const bar=el('groupSearchBar');
@@ -4052,14 +4129,12 @@ async function respondGroupRequest(uid,accept,groupId){
     const g=gchk.data()||{};
     if(!isGroupAdmin(g,CU.uid)){showToast(t('group_not_authorized'));return;}
     if(!(g.pendingRequests||[]).includes(uid)){showToast(t('group_request_already_handled'));return;}
-    if(accept){
-      await gref.update({members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
-    }else{
-      await gref.update({pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
-    }
     // Remove the actionable request card from every admin/owner who received one, then tell the requester the result.
     const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(Boolean);
     const b=db.batch();
+    b.update(gref,accept
+      ?{members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)}
+      :{pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
     recipients.forEach(r=>b.delete(db.collection('notifications').doc(`joinreq_${gid}_${uid}_${r}`)));
     b.set(db.collection('notifications').doc(`joinstatus_${gid}_${uid}`),{
       toUid:uid,kind:'groupJoinStatus',groupId:gid,groupName:g.name||'',state:accept?'accepted':'declined',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -4215,15 +4290,30 @@ async function sendGroupInvite(uid,name){
 async function respondGroupInvite(notifId,groupId,accept){
   try{
     const newState=accept?'accepted':'declined';
-    if(accept)await db.collection('groups').doc(groupId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
-    await db.collection('notifications').doc(notifId).update({state:newState,read:true});
-    const ns=await db.collection('notifications').doc(notifId).get();
+    const nref=db.collection('notifications').doc(notifId);
+    const ns=await nref.get();
+    if(!ns.exists){showToast(t('invite_not_found'));return;}
     const n=ns.data()||{};
-    await db.collection('notifications').add({
+    if(n.toUid!==CU.uid){showToast(t('invite_not_authorized'));return;}
+    if(n.state!=='pending'){showToast(t('invite_already_handled'));return;}
+    const gref=db.collection('groups').doc(groupId);
+    const gs=await gref.get();
+    if(!gs.exists){showToast(t('group_not_found'));return;}
+    const g=gs.data()||{};
+    if(accept){
+      if((g.blockedUsers||[]).includes(CU.uid)){showToast(t('group_blocked_generic'));return;}
+      const eligibility=groupInviteEligibility(g,MP||{});
+      if(!eligibility.eligible){showToast(t('group_refused_generic'));return;}
+    }
+    const b=db.batch();
+    if(accept)b.update(gref,{members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
+    b.update(nref,{state:newState,read:true,respondedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    b.set(db.collection('notifications').doc(),{
       toUid:n.fromUid,kind:'groupInvite',role:'sender',groupId:groupId,groupName:n.groupName||'',
       personName:MP?.name||'',personPhoto:myPho||'',
       state:newState,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
+    await b.commit();
     showToast(accept?t('group_member_added'):t('invite_declined'));
   }catch(e){showToast('❌ '+e.message);}
 }
@@ -4276,19 +4366,26 @@ async function sendStudyInvite(){
     const all=[...sent.docs,...received.docs].map(d=>d.data());
     const accepted=all.find(x=>x.status==='accepted');
     if(accepted){showOv(false);showToast(t('invite_already_accepted'));return;}
-    const pendingMine=sent.docs.map(d=>d.data()).find(x=>x.status==='pending');
-    if(pendingMine){showOv(false);showToast(t('invite_already_pending'));return;}
-    const ref=await db.collection('studyInvites').add({
+    const pending=all.find(x=>x.status==='pending');
+    if(pending){showOv(false);showToast(t('invite_already_pending'));return;}
+    const ref=db.collection('studyInvites').doc();
+    const notifRef=db.collection('notifications').doc();
+    const inviteData={
       fromUid:CU.uid,fromName:MP.name,fromPhoto:myPho||'',
       toUid:siTargetUid,toName:siTargetName,toPhoto:siTargetPhoto||'',
       course:siSelSubject,message:msg||null,
       status:'pending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    await db.collection('notifications').add({
+    };
+    const batch=db.batch();
+    batch.set(ref,inviteData);
+    batch.set(notifRef,{
       toUid:siTargetUid,kind:'studyInvite',role:'recipient',inviteId:ref.id,
       personName:MP.name,personPhoto:myPho||'',course:siSelSubject,customMessage:msg||null,
       state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
+    await batch.commit();
+    studyInviteSources.sent.push({id:ref.id,...inviteData});
+    rebuildStudyInviteMap();
     showOv(false);showToast(t('invite_sent'));closeStudyInvite();
   }catch(e){showOv(false);showToast('❌ '+e.message);}
 }
@@ -4298,17 +4395,24 @@ async function respondStudyInvite(inviteId,accept){
     const isnap=await iref.get();
     if(!isnap.exists){showToast(t('invite_not_found'));return;}
     const inv=isnap.data();
+    if(inv.toUid!==CU.uid){showToast(t('invite_not_authorized'));return;}
+    if(inv.status!=='pending'){showToast(t('invite_already_handled'));return;}
     const newState=accept?'accepted':'declined';
-    await iref.update({status:newState,respondedAt:firebase.firestore.FieldValue.serverTimestamp()});
     const mine=await db.collection('notifications').where('inviteId','==',inviteId).where('toUid','==',CU.uid).get();
     const b=db.batch();
+    b.update(iref,{status:newState,respondedAt:firebase.firestore.FieldValue.serverTimestamp()});
     mine.docs.forEach(d=>b.update(d.ref,{state:newState,read:true}));
-    await b.commit();
-    await db.collection('notifications').add({
+    b.set(db.collection('notifications').doc(),{
       toUid:inv.fromUid,kind:'studyInvite',role:'sender',inviteId:inviteId,
       personName:MP?.name||'',personPhoto:myPho||'',course:inv.course,fromRecipientUid:CU.uid,
       state:newState,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
+    await b.commit();
+    if(accept){
+      studyInviteSources.receivedAccepted=studyInviteSources.receivedAccepted.filter(x=>x.id!==inviteId);
+      studyInviteSources.receivedAccepted.push({id:inviteId,...inv,status:'accepted'});
+      rebuildStudyInviteMap();
+    }
     showToast(accept?t('invite_accepted'):t('invite_declined'));
     if(accept)openChat(inv.fromName||'',inv.fromUid);
   }catch(e){showToast('❌ '+e.message);}
