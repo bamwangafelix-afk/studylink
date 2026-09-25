@@ -1096,7 +1096,7 @@ function renderHome(posts,limit){
       <div style="display:flex;gap:6px;">
         ${isG?(myPendingJoinGroupIds.has(p.id)
               ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>⏳ ${t('group_request_sent_btn')}</button>`
-              :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${t('home_join_group')}</button>`):
+              :`<button class="btn ${(p.howCanJoin==='request'||p.accessRule==='request')?'inv':'o'}" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
       </div>
@@ -1721,7 +1721,7 @@ function groupCardHtml(g,isMine){
   let actionLabel=t('home_join_group'),actionCls='o';
   if(isMine)actionLabel=t('find_manage_group');
   else if(isMember)actionLabel=t('group_open');
-  else if(isPending)actionLabel=t('pending');
+  else if(isPending)actionLabel=howCanJoin==='request'?t('group_request_sent_btn'):t('pending');
   else if(howCanJoin==='request')actionLabel=t('group_request_to_join');
   return `<div class="card">
     <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.name||'Group')}</b>
@@ -3446,7 +3446,7 @@ function joinStatusCardHtml(n){
   const state=n.state||'pending';
   const line=state==='pending'?t('group_request_waiting'):state==='accepted'?t('group_request_was_accepted'):t('group_request_was_declined');
   const action=state==='accepted'
-    ?`<button class="btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
+    ?`<button class="btn grp-open" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
     :state==='declined'
     ?`<button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();requestJoinAgain('${n.groupId}','${e2(n.groupName||'')}')">${t('group_request_again')}</button>`
     :'';
@@ -3483,7 +3483,7 @@ function inviteCardHtml(n){
     actions=`<span style="font-size:11px;color:#7b2ff7;font-weight:700;">${t('pending')}</span>`;
   }else if(state==='accepted'){
     actions=isGroup
-      ?`<button class="btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
+      ?`<button class="btn grp-open" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
       :`<button class="btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openChatFromInvite('${n.inviteId}')">${t('home_message')}</button>`;
   }else if(state==='declined'&&isSender){
     actions=isGroup
@@ -3533,9 +3533,9 @@ function setupNotifL(){
 function renderFindInvites(){
   const f=el('findInvitesL');
   if(!f)return;
-  const items=cachedNotifs.filter(n=>n.kind==='studyInvite');
+  const items=cachedNotifs.filter(n=>n.kind==='studyInvite'||n.kind==='groupInvite'||n.kind==='groupJoinStatus');
   if(!items.length){f.innerHTML='';return;}
-  f.innerHTML=`<p style="font-weight:bold;font-size:13px;margin-bottom:8px;">${t('find_invites_updates')}</p>`+items.map(n=>inviteCardHtml(n)).join('')+`<div style="height:10px;"></div>`;
+  f.innerHTML=`<p style="font-weight:bold;font-size:13px;margin-bottom:8px;">${t('find_invites_updates')}</p>`+items.map(n=>notifCardHtml(n)).join('')+`<div style="height:10px;"></div>`;
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>{const n=d.data();const isInvite=n.kind==='studyInvite'||n.kind==='groupInvite'||n.kind==='groupJoinRequest';if(isInvite&&n.state==='pending')return;b.delete(d.ref);});return b.commit();});}
@@ -3584,7 +3584,7 @@ const I18N={
     group_request_sent_btn:'Demande envoyée',group_request_already_handled:'Cette demande a déjà été traitée',
     group_wants_to_join:'Veut rejoindre',group_request_waiting:'Ta demande d’adhésion est en attente d’approbation.',
     group_request_was_accepted:'Ta demande d’adhésion a été acceptée.',group_request_was_declined:'Ta demande d’adhésion a été refusée.',
-    group_request_again:'Demander à rejoindre',group_notif_label:'Groupe d’étude',
+    group_request_again:'Demander à rejoindre',group_notif_label:'Invitation de groupe',
     group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
     group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
     group_refused_major:'❌ Ce groupe est réservé aux étudiants de la même matière',
@@ -3703,7 +3703,7 @@ const I18N={
     group_request_sent_btn:'Request Sent',group_request_already_handled:'This request has already been handled',
     group_wants_to_join:'Wants to join',group_request_waiting:'Your request to join is waiting for approval.',
     group_request_was_accepted:'Your request to join was accepted.',group_request_was_declined:'Your request to join was declined.',
-    group_request_again:'Request to Join',group_notif_label:'Study group',
+    group_request_again:'Request to Join',group_notif_label:'Group invitation',
     group_refused_country:'❌ This group is only for students from the same country',
     group_refused_university:'❌ This group is only for students from the same university',
     group_refused_major:'❌ This group is only for students in the same course',
@@ -4536,7 +4536,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-77',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-92',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});

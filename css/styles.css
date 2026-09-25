@@ -518,3 +518,9 @@ body.dark .cwin .profile-back-btn{color:#fff!important;}
   .page{max-width:860px;}
   .cwin,#profileView,.stView,.stCreate{max-width:960px;}
 }
+
+/* Group member profiles: slightly larger for easier recognition. */
+#gmMembers .card > div:first-child{width:40px!important;height:40px!important;}
+/* Keep the private-chat status control attached to the profile/name block. */
+#chatHdrInfo{gap:4px!important;min-width:0;}
+#chatAv{width:34px!important;height:34px!important;}
