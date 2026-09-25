@@ -1911,7 +1911,8 @@ function openChat(name,uid){
   el('chatT').textContent=name;
   const other=allUsers.find(u=>u.uid===uid);
   const st=getStatusInfo(other?.status,other?.lastSeen);
-  el('chatSt').textContent=st.label;
+  const chatStEl=el('chatSt');
+  if(chatStEl){chatStEl.className=`chat-status-dot ${st.cls}`;chatStEl.title=st.label;chatStEl.textContent='';}
   const chatAvEl=el('chatAv');
   if(chatAvEl)chatAvEl.innerHTML=other?.photo?`<img src="${other.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((name||'?')[0]||'?').toUpperCase();
   const chatHdrInfoEl=el('chatHdrInfo');
@@ -1937,7 +1938,8 @@ function openChat(name,uid){
   window._statusUnsub=db.collection('users').doc(uid).onSnapshot(snap=>{
     if(!snap.exists)return;
     const s=getStatusInfo(snap.data()?.status,snap.data()?.lastSeen);
-    if(el('chatSt'))el('chatSt').textContent=s.label;
+    const chatStEl=el('chatSt');
+    if(chatStEl){chatStEl.className=`chat-status-dot ${s.cls}`;chatStEl.title=s.label;chatStEl.textContent='';}
   });
 
   // Init chat doc + clear unread in Firestore
@@ -4536,7 +4538,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-92',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-94',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
