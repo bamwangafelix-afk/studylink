@@ -1096,7 +1096,7 @@ function renderHome(posts,limit){
       <div style="display:flex;gap:6px;">
         ${isG?(myPendingJoinGroupIds.has(p.id)
               ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>⏳ ${t('group_request_sent_btn')}</button>`
-              :`<button class="btn ${(p.howCanJoin==='request'||p.accessRule==='request')?'inv':'o'}" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
+              :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
       </div>
