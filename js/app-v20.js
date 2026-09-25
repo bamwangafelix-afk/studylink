@@ -3448,7 +3448,7 @@ function joinStatusCardHtml(n){
   const state=n.state||'pending';
   const line=state==='pending'?t('group_request_waiting'):state==='accepted'?t('group_request_was_accepted'):t('group_request_was_declined');
   const action=state==='accepted'
-    ?`<button class="btn grp-open" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
+    ?`<button class="btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
     :state==='declined'
     ?`<button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();requestJoinAgain('${n.groupId}','${e2(n.groupName||'')}')">${t('group_request_again')}</button>`
     :'';
@@ -4538,7 +4538,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-94',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-95',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
