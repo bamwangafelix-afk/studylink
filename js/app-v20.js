@@ -3537,7 +3537,14 @@ function setupNotifL(){
 function renderFindInvites(){
   const f=el('findInvitesL');
   if(!f)return;
-  const items=cachedNotifs.filter(n=>n.kind==='studyInvite'||n.kind==='groupInvite'||n.kind==='groupJoinStatus');
+  const now=Date.now(),RETENTION_MS=24*60*60*1000;
+  const inviteKinds=new Set(['studyInvite','groupInvite','groupJoinStatus','groupJoinRequest']);
+  const items=cachedNotifs.filter(n=>{
+    if(!inviteKinds.has(n.kind))return false;
+    if(n.state==='pending')return true;
+    const stamp=n.respondedAt?.toMillis?.()||(n.respondedAt?.seconds? n.respondedAt.seconds*1000:0)||n.createdAt?.toMillis?.()||(n.createdAt?.seconds? n.createdAt.seconds*1000:0);
+    return !stamp||now-stamp<=RETENTION_MS;
+  });
   if(!items.length){f.innerHTML='';return;}
   f.innerHTML=`<p style="font-weight:bold;font-size:13px;margin-bottom:8px;">${t('find_invites_updates')}</p>`+items.map(n=>notifCardHtml(n)).join('')+`<div style="height:10px;"></div>`;
 }
@@ -4540,7 +4547,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-97',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-98',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
