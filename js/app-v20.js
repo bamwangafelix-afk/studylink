@@ -1667,9 +1667,11 @@ function switchFindTop(tab,el2){
   document.querySelectorAll('#findTopTabs .stab').forEach(b=>{b.classList.remove('on');b.classList.remove('on-grp');});
   el2.classList.add(tab==='groups'?'on-grp':'on');
   el('findPanelStudents').style.display=tab==='students'?'block':'none';
+  el('findPanelInvites').style.display=tab==='invites'?'block':'none';
   el('findPanelGroups').style.display=tab==='groups'?'block':'none';
   el('findPanelLibrary').style.display=tab==='library'?'block':'none';
   if(tab==='students')renderFindInvites();
+  if(tab==='invites')renderFindInvites();
   if(tab==='groups')renderFindGroups();
   if(tab==='library')renderFindLibrary();
 }
@@ -4538,7 +4540,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-96',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-97',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});

@@ -168,6 +168,16 @@ body.dark .bbl.o{background:#243448;}
 .notif{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--brd);cursor:pointer;}
 .notif.unread{background:rgba(10,60,109,.06);border-radius:10px;padding:10px;}
 body.dark .notif.unread{background:rgba(124,184,255,.06);}
+.find-top-tabs{gap:4px;overflow-x:auto;scrollbar-width:none;}
+.find-top-tabs::-webkit-scrollbar{display:none;}
+.find-top-tabs .stab{min-width:max-content;padding:8px 9px;font-size:11px;white-space:nowrap;}
+#findPanelInvites{padding-bottom:8px;}
+#findInvitesL .inviteCard{margin-bottom:6px;border-radius:10px;}
+#findInvitesL .inviteCard:not(.unread){padding-top:8px!important;padding-bottom:8px!important;}
+#findInvitesL .inviteCard.unread{padding-top:8px!important;padding-bottom:8px!important;}
+#findInvitesL .inviteCard p{margin-top:2px!important;margin-bottom:2px!important;}
+#findInvitesL .inviteCard [style*="margin-top:7px"]{margin-top:5px!important;}
+#findInvitesL .inviteCard .btn{padding:6px 11px!important;font-size:11px!important;margin-top:2px!important;}
 /* PROFILE */
 .ppwrap{position:relative;width:88px;height:88px;margin:0 auto 6px;}
 .ppwrap .avatar{width:88px;height:88px;font-size:30px;}

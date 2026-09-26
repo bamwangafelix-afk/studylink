@@ -9,21 +9,21 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyLink">
 <meta name="description" content="StudyLink — Connect, Learn, Grow.">
-<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-96">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-96">
-<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-96">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-97">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-97">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-97">
 <title>StudyLink Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-96">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-97">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
 <div id="toast" style="display:none;"></div>
 <div id="installBanner" role="status" aria-live="polite">
-  <img src="icons/studylink-192.png?v=studylink-pwa-96" alt="StudyLink" width="42" height="42">
+  <img src="icons/studylink-192.png?v=studylink-pwa-97" alt="StudyLink" width="42" height="42">
   <div class="install-copy"><strong data-i18n="install_title">Installer l’application StudyLink</strong><span data-i18n="install_hint">Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
   <button type="button" id="installBtn" data-i18n="install_button">Installer l’app</button>
   <button type="button" id="installDismiss" data-i18n-aria="install_close" aria-label="Fermer">×</button>
@@ -83,7 +83,7 @@
 <!-- HEADER -->
 <div class="hdr">
   <div style="display:flex;align-items:center;gap:10px;">
-    <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-96" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
+    <div class="hdr-brand"><span class="hdr-logo-badge"><img class="hdr-logo" src="icons/studylink-header-logo.png?v=studylink-pwa-97" alt="StudyLink"></span><span class="hdr-wordmark" style="font-size:26px;font-weight:bold;color:#fff;letter-spacing:.1px;line-height:1;">StudyLink</span></div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
     <span id="topN" style="font-size:11px;color:rgba(255,255,255,.75);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -116,15 +116,15 @@
 <div id="Pfind" class="page">
   <h3 style="margin-bottom:10px;"><span data-i18n="find_title">Find &amp; Match</span> <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-left:4px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></h3>
 
-  <div class="stabs" id="findTopTabs">
+  <div class="stabs find-top-tabs" id="findTopTabs">
     <button class="stab on" onclick="switchFindTop('students',this)" data-i18n="find_top_students">Students</button>
+    <button class="stab" onclick="switchFindTop('invites',this)" data-i18n="find_invites_updates">Invitations &amp; Updates</button>
     <button class="stab" onclick="switchFindTop('groups',this)" data-i18n="find_top_groups">Groups</button>
     <button class="stab" onclick="switchFindTop('library',this)" data-i18n="find_top_library">Library</button>
   </div>
 
   <!-- STUDENTS PANEL -->
   <div id="findPanelStudents">
-    <div id="findInvitesL"></div>
     <input placeholder="Search name, major, course, university or country" data-i18n-ph="find_search_ph" oninput="renderFind(this.value)" id="findQ" style="margin-bottom:8px;">
     <div class="stabs">
       <button class="stab on" onclick="switchFT('all',this)" data-i18n="find_tab_all">All</button>
@@ -132,6 +132,11 @@
       <button class="stab" onclick="switchFT('fav',this)">⭐ <span data-i18n="find_tab_favs">Favs</span></button>
     </div>
     <div id="findL"></div>
+  </div>
+
+  <!-- INVITATIONS & UPDATES PANEL -->
+  <div id="findPanelInvites" style="display:none;">
+    <div id="findInvitesL"></div>
   </div>
 
   <!-- GROUPS PANEL -->
@@ -818,5 +823,5 @@
   </div>
 </div>
 
-<script defer src="js/app-v20.js?v=studylink-pwa-96"></script></body>
+<script defer src="js/app-v20.js?v=studylink-pwa-97"></script></body>
 </html>
