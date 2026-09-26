@@ -3549,7 +3549,14 @@ function renderFindInvites(){
   f.innerHTML=`<p style="font-weight:bold;font-size:13px;margin-bottom:8px;">${t('find_invites_updates')}</p>`+items.map(n=>notifCardHtml(n)).join('')+`<div style="height:10px;"></div>`;
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
-function clearNotifs(){db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{const b=db.batch();sn.docs.forEach(d=>{const n=d.data();const isInvite=n.kind==='studyInvite'||n.kind==='groupInvite'||n.kind==='groupJoinRequest';if(isInvite&&n.state==='pending')return;b.delete(d.ref);});return b.commit();});}
+function clearNotifs(){
+  const updateKinds=new Set(['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus']);
+  db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{
+    const b=db.batch();
+    sn.docs.forEach(d=>{if(!updateKinds.has(d.data().kind))b.delete(d.ref);});
+    return b.commit();
+  }).then(()=>showToast(typeof appLang!=='undefined'&&appLang==='fr'?'Notifications effacées.':'Notifications cleared.')).catch(()=>showToast('❌ Could not clear notifications'));
+}
 
 // ── I18N (merged from user branch) ──
 const I18N={
@@ -4547,7 +4554,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-98',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-99',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
