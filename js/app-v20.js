@@ -1781,7 +1781,7 @@ async function handleGroupAccess(postId,name){
 }
 function queueJoinRequestNotifications(batch,groupId,g,fallbackName){
   const groupName=g.name||fallbackName||'';
-  const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(Boolean);
+  const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(uid=>canInviteToGroup(g,uid));
   recipients.forEach(toUid=>batch.set(db.collection('notifications').doc(`joinreq_${groupId}_${CU.uid}_${toUid}`),{
     toUid,kind:'groupJoinRequest',groupId,groupName,
     requesterUid:CU.uid,requesterName:MP?.name||'',requesterPhoto:myPho||'',requesterCountry:MP?.country||'',requesterUni:MP?.uni||'',requesterCourse:MP?.course||'',
@@ -3472,16 +3472,20 @@ function notifCardHtml(n){
 function joinRequestCardHtml(n){
   const av=n.requesterPhoto?`<img src="${n.requesterPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((n.requesterName||'?')[0]||'?').toUpperCase();
   const loc=[n.requesterCountry,n.requesterUni,n.requesterCourse].filter(Boolean).join(' • ');
+  const handled=n.state==='accepted'||n.state==='declined';
+  const handledLine=handled
+    ?`${n.state==='accepted'?t('group_request_accepted_by'):t('group_request_declined_by')} <b>${esc(n.handledByName||'Admin')}</b>`
+    :'';
   return `<div class="notif inviteCard ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:12px 10px;border-bottom:1px solid var(--brd);border-left:3px solid #7b2ff7;">
     <div style="width:40px;height:40px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${av}</div>
     <div style="flex:1;overflow:hidden;">
       <b style="font-size:13.5px;display:block;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(n.requesterName||'')}</b>
       <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>
-      <p style="font-size:11.5px;margin:4px 0;">${t('group_wants_to_join')} <b>${esc(n.groupName||'')}</b></p>
-      <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">
+      <p style="font-size:11.5px;margin:4px 0;">${handled?handledLine:`${t('group_wants_to_join')} <b>${esc(n.groupName||'')}</b>`}</p>
+      ${handled?'':`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">
         <button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',true,'${n.groupId}')">${t('accept')}</button>
         <button class="btn r" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',false,'${n.groupId}')">${t('decline')}</button>
-      </div>
+      </div>`}
     </div>
     ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
@@ -3646,7 +3650,7 @@ const I18N={
     group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée. En attente d’approbation.',
     group_request_sent_btn:'Demande envoyée',group_request_already_handled:'Cette demande a déjà été traitée',
     group_wants_to_join:'Veut rejoindre',group_request_waiting:'Ta demande d’adhésion est en attente d’approbation.',
-    group_request_was_accepted:'Ta demande d’adhésion a été acceptée.',group_request_was_declined:'Ta demande d’adhésion a été refusée.',
+    group_request_was_accepted:'Ta demande d’adhésion a été acceptée.',group_request_was_declined:'Ta demande d’adhésion a été refusée.',group_request_accepted_by:'Acceptée par',group_request_declined_by:'Refusée par',
     group_request_again:'Demander à rejoindre',group_notif_label:'Invitation de groupe',
     group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
     group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
@@ -3765,7 +3769,7 @@ const I18N={
     group_still_pending:'Your request is still pending',group_request_sent:'Join request sent. Waiting for approval.',
     group_request_sent_btn:'Request Sent',group_request_already_handled:'This request has already been handled',
     group_wants_to_join:'Wants to join',group_request_waiting:'Your request to join is waiting for approval.',
-    group_request_was_accepted:'Your request to join was accepted.',group_request_was_declined:'Your request to join was declined.',
+    group_request_was_accepted:'Your request to join was accepted.',group_request_was_declined:'Your request to join was declined.',group_request_accepted_by:'Accepted by',group_request_declined_by:'Declined by',
     group_request_again:'Request to Join',group_notif_label:'Group invitation',
     group_refused_country:'❌ This group is only for students from the same country',
     group_refused_university:'❌ This group is only for students from the same university',
@@ -3902,6 +3906,7 @@ async function openManageGroup(postId){
   const g=gs.data();
   const viewerIsOwner=isGroupOwner(g,CU.uid);
   const viewerIsAdmin=isGroupAdmin(g,CU.uid);
+  const viewerCanDecide=canInviteToGroup(g,CU.uid);
   el('gmTitle').textContent='🏫 '+(g.name||'');
   const pendingIds=g.pendingRequests||[];
   const memberIds=g.members||[];
@@ -3922,7 +3927,7 @@ async function openManageGroup(postId){
     ${g.description?`<p style="font-size:13px;margin-top:10px;">${esc(g.description)}</p>`:''}
   `;
   const pendingSection=el('gmPending').closest?el('gmPending').parentElement:null;
-  if(!viewerIsAdmin){
+  if(!viewerCanDecide){
     el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_view_only')}</p>`;
   }else if(!pendingIds.length){
     el('gmPending').innerHTML=`<p style="font-size:12px;color:var(--sub);">${t('group_no_pending')}</p>`;
@@ -4188,21 +4193,35 @@ async function respondGroupRequest(uid,accept,groupId){
   if(!gid)return;
   const gref=db.collection('groups').doc(gid);
   try{
-    const gchk=await gref.get();
-    const g=gchk.data()||{};
-    if(!isGroupAdmin(g,CU.uid)){showToast(t('group_not_authorized'));return;}
-    if(!(g.pendingRequests||[]).includes(uid)){showToast(t('group_request_already_handled'));return;}
-    // Remove the actionable request card from every admin/owner who received one, then tell the requester the result.
-    const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(Boolean);
-    const b=db.batch();
-    b.update(gref,accept
-      ?{members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)}
-      :{pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
-    recipients.forEach(r=>b.delete(db.collection('notifications').doc(`joinreq_${gid}_${uid}_${r}`)));
-    b.set(db.collection('notifications').doc(`joinstatus_${gid}_${uid}`),{
-      toUid:uid,kind:'groupJoinStatus',groupId:gid,groupName:g.name||'',state:accept?'accepted':'declined',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    let result=null;
+    await db.runTransaction(async tx=>{
+      const gchk=await tx.get(gref);
+      if(!gchk.exists)throw new Error(t('group_not_found'));
+      const g=gchk.data()||{};
+      const mode=g.whoCanInvite||'owner_admins';
+      const owner=isGroupOwner(g,CU.uid),admin=(g.admins||[]).includes(CU.uid);
+      const allowed=mode==='owner'?owner:mode==='admins'?admin:(owner||admin);
+      if(!allowed)throw new Error(t('group_not_authorized'));
+      if(!(g.pendingRequests||[]).includes(uid))throw new Error(t('group_request_already_handled'));
+      const deciderName=MP?.name||CU.displayName||t('role_admin');
+      const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(r=>{
+        const rOwner=isGroupOwner(g,r),rAdmin=(g.admins||[]).includes(r);
+        return mode==='owner'?rOwner:mode==='admins'?rAdmin:(rOwner||rAdmin);
+      });
+      tx.update(gref,accept
+        ?{members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)}
+        :{pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
+      recipients.forEach(r=>tx.set(db.collection('notifications').doc(`joinreq_${gid}_${uid}_${r}`),{
+        toUid:r,kind:'groupJoinRequest',groupId:gid,groupName:g.name||'',requesterUid:uid,
+        state:accept?'accepted':'declined',handledByUid:CU.uid,handledByName:deciderName,read:false,
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),respondedAt:firebase.firestore.FieldValue.serverTimestamp()
+      }));
+      tx.set(db.collection('notifications').doc(`joinstatus_${gid}_${uid}`),{
+        toUid:uid,kind:'groupJoinStatus',groupId:gid,groupName:g.name||'',state:accept?'accepted':'declined',read:false,
+        handledByUid:CU.uid,handledByName:deciderName,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      result={groupName:g.name||'',deciderName};
     });
-    await b.commit();
     showToast(accept?t('group_member_added'):t('group_request_declined'));
     if(curManageGroupId===gid)openManageGroup(gid);
   }catch(e){showToast('❌ '+e.message);}
@@ -4599,7 +4618,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-102',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-103',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
