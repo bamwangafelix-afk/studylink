@@ -3951,7 +3951,10 @@ async function openManageGroup(postId){
       const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
       return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
         <div onclick="openProfile('${uid}')" style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
-        <b onclick="openProfile('${uid}')" style="flex:1;font-size:14px;cursor:pointer;">${esc(u?.name||'Utilisateur')}</b>
+        <div style="flex:1;min-width:0;">
+          <b onclick="openProfile('${uid}')" style="display:block;font-size:14px;cursor:pointer;">${esc(u?.name||'Utilisateur')}</b>
+          <span style="display:block;font-size:12px;color:var(--sub);margin-top:3px;">${esc(u?.name||'Utilisateur')} ${t('group_wants_to_join')} <b>${esc(g.name||'the group')}</b>.</span>
+        </div>
         <button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',true)">${t('accept')}</button>
         <button class="btn r" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',false)">${t('decline')}</button>
       </div>`;
@@ -4632,7 +4635,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-105',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-106',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
