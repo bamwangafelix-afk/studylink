@@ -3415,18 +3415,58 @@ function reportUser(uid,name){
     .catch(()=>showToast('❌ Could not submit report'));
 }
 
-// ── NOTIFICATIONS (alerts only - no messages) ──
+// ── NOTIFICATIONS (information + shortcut only; actions live in Find) ──
+function notifTimeHtml(n){
+  const raw=n.createdAt?.toMillis?.()||(n.createdAt?.seconds?n.createdAt.seconds*1000:0);
+  if(!raw)return '';
+  const d=new Date(raw),nowD=new Date(),diff=Math.max(0,nowD-d),mins=Math.floor(diff/60000),hours=Math.floor(diff/3600000);
+  const time=d.toLocaleTimeString(appLang==='fr'?'fr-FR':'en-US',{hour:'numeric',minute:'2-digit'});
+  if(mins<1)return appLang==='fr'?'À l’instant':'Just now';
+  if(hours<1)return appLang==='fr'?`Il y a ${mins} min`:`${mins} min ago`;
+  if(d.toDateString()===nowD.toDateString())return appLang==='fr'?`Aujourd’hui à ${time}`:`Today at ${time}`;
+  const y=new Date(nowD);y.setDate(y.getDate()-1);
+  if(d.toDateString()===y.toDateString())return appLang==='fr'?`Hier à ${time}`:`Yesterday at ${time}`;
+  const dayDiff=Math.floor((new Date(nowD.toDateString())-new Date(d.toDateString()))/86400000);
+  if(dayDiff<7)return d.toLocaleDateString(appLang==='fr'?'fr-FR':'en-US',{weekday:'short'})+' '+time;
+  return d.toLocaleDateString(appLang==='fr'?'fr-FR':'en-US',{month:'short',day:'numeric',year:d.getFullYear()!==nowD.getFullYear()?'numeric':undefined})+(appLang==='fr'?' à ':' at ')+time;
+}
+function notifAlertText(n){
+  const name=esc(n.personName||n.requesterName||'Someone'),group=esc(n.groupName||'the group');
+  if(n.kind==='studyInvite'){
+    if(n.state==='pending')return n.role==='sender'?`You sent a study invitation to ${name}.`:`${name} sent you a study invitation.`;
+    if(n.state==='accepted')return n.role==='sender'?`${name} accepted your study invitation.`:`You accepted ${name}'s study invitation.`;
+    return n.role==='sender'?`${name} declined your study invitation.`:`You declined ${name}'s study invitation.`;
+  }
+  if(n.kind==='groupInvite'){
+    if(n.state==='pending')return n.role==='sender'?`You invited ${name} to join ${group}.`:`${name} invited you to join ${group}.`;
+    if(n.state==='accepted')return n.role==='sender'?`${name} accepted your group invitation.`:`You accepted ${group}.`;
+    return n.role==='sender'?`${name} declined your group invitation.`:`You declined the invitation to ${group}.`;
+  }
+  if(n.kind==='groupJoinRequest')return `${name} requested to join ${group}.`;
+  if(n.kind==='groupJoinStatus'){
+    if(n.state==='pending')return `Your request to join ${group} is pending.`;
+    return n.state==='accepted'?`Your request to join ${group} was accepted.`:`Your request to join ${group} was declined.`;
+  }
+  return esc(n.body||n.title||'You have a new notification.');
+}
+function openInvitationUpdates(id){
+  markN(id);
+  tab('find');
+  setTimeout(()=>{
+    const b=document.querySelector('#findTopTabs [data-find-tab="invites"]');
+    if(b)switchFindTop('invites',b);
+    setTimeout(()=>{const card=document.querySelector(`[data-notif-id="${CSS.escape(id)}"]`);if(card){card.classList.add('notif-focus');card.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>card.classList.remove('notif-focus'),1800);}},80);
+  },80);
+}
 function notifCardHtml(n){
-  if(n.kind==='studyInvite'||n.kind==='groupInvite')return inviteCardHtml(n);
-  if(n.kind==='groupJoinRequest')return joinRequestCardHtml(n);
-  if(n.kind==='groupJoinStatus')return joinStatusCardHtml(n);
-  return `<div class="notif ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--brd);">
-    <span style="font-size:20px;flex-shrink:0;">${n.icon||'🔔'}</span>
-    <div style="flex:1;overflow:hidden;">
-      <b style="font-size:13px;display:block;">${esc(n.title||'')}</b>
-      <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(n.body||'')}</p>
-    </div>
-    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+  const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
+  const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
+  const action=isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const hint=isInvite?(appLang==='fr'?'Appuyer pour voir dans Invitations & Updates':'Tap to view in Invitations & Updates'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
+  return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
+    <span class="alertIcon">${icon}</span>
+    <div class="alertBody"><b>${notifAlertText(n)}</b><div class="alertHint">${hint}</div><time>${notifTimeHtml(n)}</time></div>
+    ${!n.read?`<div class="alertDot"></div>`:''}
   </div>`;
 }
 function joinRequestCardHtml(n){
@@ -3546,7 +3586,12 @@ function renderFindInvites(){
     return !stamp||now-stamp<=RETENTION_MS;
   });
   if(!items.length){f.innerHTML='';return;}
-  f.innerHTML=`<p style="font-weight:bold;font-size:13px;margin-bottom:8px;">${t('find_invites_updates')}</p>`+items.map(n=>notifCardHtml(n)).join('')+`<div style="height:10px;"></div>`;
+  f.innerHTML=`<p style="font-weight:bold;font-size:13px;margin-bottom:8px;">${t('find_invites_updates')}</p>`+items.map(n=>inviteActionCardHtml(n)).join('')+`<div style="height:10px;"></div>`;
+}
+function inviteActionCardHtml(n){
+  if(n.kind==='groupJoinRequest')return joinRequestCardHtml(n);
+  if(n.kind==='groupJoinStatus')return joinStatusCardHtml(n);
+  return inviteCardHtml(n);
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){
@@ -3616,7 +3661,7 @@ const I18N={
     notif_group_invite_title:'Invitation à un groupe',notif_group_invite_body:'t’a invité à rejoindre',
     notif_request_accepted_title:'Demande acceptée',notif_request_accepted_body:'Ta demande pour rejoindre le groupe a été acceptée !',
     notif_request_declined_title:'Demande refusée',notif_request_declined_body:'Ta demande pour rejoindre le groupe a été refusée.',
-    invite_to_study:'Inviter à étudier',invite_another_course:'Inviter pour un autre cours',invite_pending:'Invitation en attente',invite_sent_btn:'Invitation envoyée',find_invites_updates:'Invitations & mises à jour',invite_not_authorized:'Tu ne peux pas répondre à cette invitation.',invite_already_handled:'Cette invitation a déjà été traitée.',
+    alerts_hint:'Information et raccourcis — les actions sont dans Invitations & mises à jour.',invite_to_study:'Inviter à étudier',invite_another_course:'Inviter pour un autre cours',invite_pending:'Invitation en attente',invite_sent_btn:'Invitation envoyée',find_invites_updates:'Invitations & mises à jour',invite_not_authorized:'Tu ne peux pas répondre à cette invitation.',invite_already_handled:'Cette invitation a déjà été traitée.',
     invite_header_hint:'Choisis un cours pour cette invitation',invite_pick_course:'❌ Choisis un cours',
     invite_already_accepted:'Vous étudiez déjà ce cours ensemble',
     invite_card_study:'Invitation à étudier',invite_card_group:'Invitation de groupe',
@@ -3735,7 +3780,7 @@ const I18N={
     notif_group_invite_title:'Group Invite',notif_group_invite_body:'invited you to join',
     notif_request_accepted_title:'Request Accepted',notif_request_accepted_body:'Your request to join the group was accepted!',
     notif_request_declined_title:'Request Declined',notif_request_declined_body:'Your request to join the group was declined.',
-    invite_to_study:'Invite to Study',invite_another_course:'Invite for another course',invite_pending:'Invitation pending',invite_sent_btn:'Invite Sent',find_invites_updates:'Invitations & Updates',invite_not_authorized:'You cannot respond to this invitation.',invite_already_handled:'This invitation has already been handled.',
+    alerts_hint:'Information and shortcuts — actions are in Invitations & Updates.',invite_to_study:'Invite to Study',invite_another_course:'Invite for another course',invite_pending:'Invitation pending',invite_sent_btn:'Invite Sent',find_invites_updates:'Invitations & Updates',invite_not_authorized:'You cannot respond to this invitation.',invite_already_handled:'This invitation has already been handled.',
     invite_header_hint:'Pick one course for this invitation',invite_pick_course:'❌ Pick a course',
     invite_already_accepted:'You already study this course together',
     invite_card_study:'Study Invitation',invite_card_group:'Group Invitation',
@@ -4554,7 +4599,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-99',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-100',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
