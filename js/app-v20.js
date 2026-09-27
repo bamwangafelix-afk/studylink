@@ -3432,6 +3432,12 @@ function notifTimeHtml(n){
 }
 function notifAlertText(n){
   const name=esc(n.personName||n.requesterName||'Someone'),group=esc(n.groupName||'the group');
+  if(n.kind==='groupJoinRequest'&&(n.state==='accepted'||n.state==='declined')){
+    return t(n.state==='accepted'?'group_request_accepted_sentence':'group_request_declined_sentence')
+      .replace('{requester}',esc(n.requesterName||'Student'))
+      .replace('{group}',group)
+      .replace('{decider}',esc(n.handledByName||'Admin'));
+  }
   if(n.kind==='studyInvite'){
     if(n.state==='pending')return n.role==='sender'?`You sent a study invitation to ${name}.`:`${name} sent you a study invitation.`;
     if(n.state==='accepted')return n.role==='sender'?`${name} accepted your study invitation.`:`You accepted ${name}'s study invitation.`;
@@ -3461,13 +3467,17 @@ function openInvitationUpdates(id){
 function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
-  const action=isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const action=n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
   const hint=isInvite?(appLang==='fr'?'Appuyer pour voir':'Tap to view'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
   return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
     <span class="alertIcon">${icon}</span>
     <div class="alertBody"><b>${notifAlertText(n)}</b><div class="alertHint">${hint}</div><time>${notifTimeHtml(n)}</time></div>
     ${!n.read?`<div class="alertDot"></div>`:''}
   </div>`;
+}
+function openGroupRequestTarget(id,groupId){
+  markN(id);
+  if(groupId)openManageGroup(groupId);
 }
 function joinRequestCardHtml(n){
   const av=n.requesterPhoto?`<img src="${n.requesterPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((n.requesterName||'?')[0]||'?').toUpperCase();
@@ -3588,6 +3598,7 @@ function renderFindInvites(){
   const inviteKinds=new Set(['studyInvite','groupInvite','groupJoinStatus','groupJoinRequest']);
   const items=cachedNotifs.filter(n=>{
     if(!inviteKinds.has(n.kind))return false;
+    if(n.kind==='groupJoinRequest'&&n.state!=='pending')return false;
     if(n.state==='pending')return true;
     const stamp=n.respondedAt?.toMillis?.()||(n.respondedAt?.seconds? n.respondedAt.seconds*1000:0)||n.createdAt?.toMillis?.()||(n.createdAt?.seconds? n.createdAt.seconds*1000:0);
     return !stamp||now-stamp<=RETENTION_MS;
@@ -4621,7 +4632,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-104',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-105',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
