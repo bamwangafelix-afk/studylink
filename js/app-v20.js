@@ -3492,9 +3492,9 @@ function joinRequestCardHtml(n){
   return `<div class="notif inviteCard ${n.read?'':'unread'}" onclick="markN('${n.id}')" style="display:flex;gap:10px;align-items:flex-start;padding:12px 10px;border-bottom:1px solid var(--brd);border-left:3px solid #7b2ff7;">
     <div style="width:40px;height:40px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${av}</div>
     <div style="flex:1;overflow:hidden;">
-      <b style="font-size:13.5px;display:block;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(n.requesterName||'')}</b>
-      <p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>
-      <p style="font-size:11.5px;margin:4px 0;">${handled?handledLine:`${t('group_wants_to_join')} <b>${esc(n.groupName||'')}</b>`}</p>
+      <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${t('group_notif_label')}</div>
+      <p style="font-size:11.5px;margin:3px 0;"><b style="color:var(--txt);cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(n.requesterName||'Student')}</b> ${handled?handledLine:`${t('group_wants_to_join')} <b>${esc(n.groupName||'')}</b>`}</p>
+      ${loc?`<p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>`:''}
       ${handled?'':`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">
         <button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',true,'${n.groupId}')">${t('accept')}</button>
         <button class="btn r" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',false,'${n.groupId}')">${t('decline')}</button>
