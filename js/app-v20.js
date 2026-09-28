@@ -3478,7 +3478,7 @@ function openInvitationUpdates(id){
 function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
-  const action=n.kind==='groupJoinRequest'&&n.state==='pending'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const action=n.kind==='groupJoinRequest'&&n.state==='pending'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?`markN('${e2(n.id)}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
   const hint=isInvite?(appLang==='fr'?'Appuyer pour voir':'Tap to view'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
   return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
     <span class="alertIcon">${icon}</span>
@@ -3634,11 +3634,9 @@ function renderFindInvites(){
   const f=el('findInvitesL');
   if(!f)return;
   const now=Date.now(),RETENTION_MS=24*60*60*1000;
-  const inviteKinds=new Set(['studyInvite','groupInvite','groupJoinStatus','groupJoinRequest']);
+  const inviteKinds=new Set(['studyInvite','groupInvite']);
   const items=cachedNotifs.filter(n=>{
     if(!inviteKinds.has(n.kind))return false;
-    if(n.kind==='groupJoinRequest'&&n.state==='pending')return false;
-    if(n.kind==='groupJoinStatus'&&n.state==='pending')return false;
     if(n.state==='pending')return true;
     const stamp=n.respondedAt?.toMillis?.()||(n.respondedAt?.seconds? n.respondedAt.seconds*1000:0)||n.createdAt?.toMillis?.()||(n.createdAt?.seconds? n.createdAt.seconds*1000:0);
     return !stamp||now-stamp<=RETENTION_MS;
@@ -4682,7 +4680,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-123',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-124',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
