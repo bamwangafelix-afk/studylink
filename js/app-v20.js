@@ -3534,7 +3534,7 @@ function inviteCardHtml(n){
   const target=isGroup?`${esc(subject)}'s group`:esc(subject);
   let line='';
   if(state==='pending')line=isGroup?t('invite_line_group_pending').replace('{group}',`<b>${esc(subject)}</b>`):`${t('invite_line_study_pending')} ${esc(subject)}.`;
-  else if(isSender)line=state==='accepted'?t('invite_line_sender_accepted'):t('invite_line_sender_declined');
+  else if(isSender)line=(state==='accepted'?t('invite_line_sender_accepted'):t('invite_line_sender_declined')).replace('{target}',target);
   else line=t(state==='accepted'?'invite_line_received_accepted':'invite_line_received_declined').replace('{person}',esc(personName)).replace('{target}',target);
   const namePrefix=(!isSender&&state!=='pending')?'':`<b style="color:var(--txt);">${esc(personName)}</b> `;
   let actions='';
@@ -3687,7 +3687,7 @@ const I18N={
     invite_card_study:'Invitation à étudier',invite_card_group:'Invitation de groupe',
     invite_state_accepted:'Acceptée',invite_state_declined:'Refusée',
     invite_line_study_pending:'t’a invité à étudier',invite_line_group_pending:'t’a invité à rejoindre le groupe {group}.',
-    invite_line_sender_accepted:'a accepté ton invitation.',invite_line_sender_declined:'a refusé ton invitation.',invite_line_received_accepted:'Tu as accepté l’invitation de {person} pour {target}.',invite_line_received_declined:'Tu as refusé l’invitation de {person} pour {target}.',
+    invite_line_sender_accepted:'a accepté ton invitation pour {target}.',invite_line_sender_declined:'a refusé ton invitation pour {target}.',invite_line_received_accepted:'Tu as accepté l’invitation de {person} pour {target}.',invite_line_received_declined:'Tu as refusé l’invitation de {person} pour {target}.',
     invite_line_you_accepted:'Tu as accepté l’invitation.',invite_line_you_declined:'Tu as refusé l’invitation.',
     invite_line_you_joined:'Tu as rejoint le groupe.',
     invite_again:'Inviter à nouveau',study_together_label:'Vous étudiez ensemble',group_invite_to_join:'Inviter à rejoindre',
@@ -3806,7 +3806,7 @@ const I18N={
     invite_card_study:'Study Invitation',invite_card_group:'Group Invitation',
     invite_state_accepted:'Accepted',invite_state_declined:'Declined',
     invite_line_study_pending:'invited you to study',invite_line_group_pending:'invited you to join {group}\'s group.',
-    invite_line_sender_accepted:'accepted your invitation.',invite_line_sender_declined:'declined your invitation.',invite_line_received_accepted:'You accepted {person}’s invitation for {target}.',invite_line_received_declined:'You declined {person}’s invitation for {target}.',
+    invite_line_sender_accepted:'accepted your invitation for {target}.',invite_line_sender_declined:'declined your invitation for {target}.',invite_line_received_accepted:'You accepted {person}’s invitation for {target}.',invite_line_received_declined:'You declined {person}’s invitation for {target}.',
     invite_line_you_accepted:'You accepted the invitation.',invite_line_you_declined:'You declined the invitation.',
     invite_line_you_joined:'You joined the group.',
     invite_again:'Invite Again',study_together_label:'Study Together',group_invite_to_join:'Invite to Join',
@@ -4637,7 +4637,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-112',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-113',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
