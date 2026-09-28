@@ -3558,7 +3558,7 @@ function inviteCardHtml(n){
     <div style="width:40px;height:40px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;">${av}</div>
     <div style="flex:1;overflow:hidden;">
       <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${typeLabel}</div>
-      <p style="font-size:11.5px;color:var(--sub);margin:3px 0;">${namePrefix}${line}${stateLabel?` <span style="font-weight:700;">— ${stateLabel}</span>`:''}</p>
+      <p style="font-size:11.5px;color:var(--sub);margin:3px 0;">${namePrefix}${line}</p>
       ${state==='pending'&&n.customMessage?`<p style="font-size:11.5px;font-style:italic;color:var(--sub);margin:3px 0;">“${esc(n.customMessage)}”</p>`:''}
       ${actions?`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">${actions}</div>`:''}
     </div>
@@ -4637,7 +4637,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-114',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-115',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
