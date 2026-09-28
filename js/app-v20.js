@@ -3478,7 +3478,7 @@ function openInvitationUpdates(id){
 function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
-  const action=n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:n.kind==='groupJoinStatus'?`openGroupStatusTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.groupName||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const action=n.kind==='groupJoinRequest'&&n.state==='pending'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
   const hint=isInvite?(appLang==='fr'?'Appuyer pour voir':'Tap to view'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
   return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
     <span class="alertIcon">${icon}</span>
@@ -3512,7 +3512,7 @@ function joinRequestCardHtml(n){
     <div style="width:40px;height:40px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${av}</div>
     <div style="flex:1;overflow:hidden;">
       <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${t('group_notif_label')}</div>
-      <p style="font-size:11.5px;margin:3px 0;"><b style="color:var(--txt);cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(requesterName)}</b> ${handled?handledLine:`${t('group_wants_to_join')} <b>${esc(n.groupName||'')}${appLang==='fr'?'':'\'s group'}</b>`}</p>
+      <p style="font-size:11.5px;margin:3px 0;">${handled?handledLine:`<b style="color:var(--txt);cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(requesterName)}</b> ${t('group_wants_to_join')} <b>${esc(n.groupName||'')}${appLang==='fr'?'':'\'s group'}</b>`}</p>
       ${loc?`<p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>`:''}
       ${handled?'':`<div style="font-size:11px;color:#7b2ff7;font-weight:700;margin-top:7px;">${t('pending')}</div>`}
     </div>
@@ -3634,9 +3634,11 @@ function renderFindInvites(){
   const f=el('findInvitesL');
   if(!f)return;
   const now=Date.now(),RETENTION_MS=24*60*60*1000;
-  const inviteKinds=new Set(['studyInvite','groupInvite']);
+  const inviteKinds=new Set(['studyInvite','groupInvite','groupJoinStatus','groupJoinRequest']);
   const items=cachedNotifs.filter(n=>{
     if(!inviteKinds.has(n.kind))return false;
+    if(n.kind==='groupJoinRequest'&&n.state==='pending')return false;
+    if(n.kind==='groupJoinStatus'&&n.state==='pending')return false;
     if(n.state==='pending')return true;
     const stamp=n.respondedAt?.toMillis?.()||(n.respondedAt?.seconds? n.respondedAt.seconds*1000:0)||n.createdAt?.toMillis?.()||(n.createdAt?.seconds? n.createdAt.seconds*1000:0);
     return !stamp||now-stamp<=RETENTION_MS;
@@ -4680,7 +4682,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-122',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-123',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
