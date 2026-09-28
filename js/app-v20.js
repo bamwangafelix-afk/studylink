@@ -3431,7 +3431,8 @@ function notifTimeHtml(n){
   return d.toLocaleDateString(appLang==='fr'?'fr-FR':'en-US',{month:'short',day:'numeric',year:d.getFullYear()!==nowD.getFullYear()?'numeric':undefined})+(appLang==='fr'?' à ':' at ')+time;
 }
 function notifAlertText(n){
-  const name=esc(n.personName||n.requesterName||'Someone'),group=esc(n.groupName||'the group');
+  const profile=(allUsers||[]).find(u=>u.uid===(n.requesterUid||n.fromUid||n.toUid))||{};
+  const name=esc(n.personName||n.requesterName||profile.name||'Someone'),group=esc(n.groupName||'the group');
   const groupTarget=appLang==='fr'?`le groupe ${group}`:`${group}'s group`;
   if(n.kind==='groupJoinRequest'&&(n.state==='accepted'||n.state==='declined')){
     return t(n.state==='accepted'?'group_request_accepted_sentence':'group_request_declined_sentence')
@@ -3481,12 +3482,15 @@ function openGroupRequestTarget(id,groupId){
   if(groupId)openManageGroup(groupId);
 }
 function joinRequestCardHtml(n){
-  const av=n.requesterPhoto?`<img src="${n.requesterPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((n.requesterName||'?')[0]||'?').toUpperCase();
+  const profile=(allUsers||[]).find(u=>u.uid===n.requesterUid)||{};
+  const requesterName=n.requesterName||profile.name||'Student';
+  const requesterPhoto=n.requesterPhoto||profile.photo||'';
+  const av=requesterPhoto?`<img src="${requesterPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((requesterName||'?')[0]||'?').toUpperCase();
   const loc=[n.requesterCountry,n.requesterUni,n.requesterCourse].filter(Boolean).join(' • ');
   const handled=n.state==='accepted'||n.state==='declined';
   const handledLine=handled
     ?t(n.state==='accepted'?'group_request_accepted_sentence':'group_request_declined_sentence')
-      .replace('{requester}',esc(n.requesterName||'Student'))
+      .replace('{requester}',esc(requesterName))
       .replace('{group}',appLang==='fr'?`le groupe ${esc(n.groupName||'le groupe')}`:`${esc(n.groupName||'the group')}'s group`)
       .replace('{decider}',`<b>${esc(n.handledByName||'Admin')}</b>`)
     :'';
@@ -3494,7 +3498,7 @@ function joinRequestCardHtml(n){
     <div style="width:40px;height:40px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${av}</div>
     <div style="flex:1;overflow:hidden;">
       <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${t('group_notif_label')}</div>
-      <p style="font-size:11.5px;margin:3px 0;"><b style="color:var(--txt);cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(n.requesterName||'Student')}</b> ${handled?handledLine:`${t('group_wants_to_join')} <b>${esc(n.groupName||'')}${appLang==='fr'?'':'\'s group'}</b>`}</p>
+      <p style="font-size:11.5px;margin:3px 0;"><b style="color:var(--txt);cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(requesterName)}</b> ${handled?handledLine:`${t('group_wants_to_join')} <b>${esc(n.groupName||'')}${appLang==='fr'?'':'\'s group'}</b>`}</p>
       ${loc?`<p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>`:''}
       ${handled?'':`<div style="font-size:11px;color:#7b2ff7;font-weight:700;margin-top:7px;">${t('pending')}</div>`}
     </div>
@@ -4635,7 +4639,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-118',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-119',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
