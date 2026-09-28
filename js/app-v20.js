@@ -3496,10 +3496,7 @@ function joinRequestCardHtml(n){
       <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${t('group_notif_label')}</div>
       <p style="font-size:11.5px;margin:3px 0;"><b style="color:var(--txt);cursor:pointer;" onclick="event.stopPropagation();openProfile('${n.requesterUid}')">${esc(n.requesterName||'Student')}</b> ${handled?handledLine:`${t('group_wants_to_join')} <b>${esc(n.groupName||'')}${appLang==='fr'?'':'\'s group'}</b>`}</p>
       ${loc?`<p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>`:''}
-      ${handled?'':`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">
-        <button class="btn inv" style="width:auto;padding:7px 14px;font-size:12px;background:#7b2ff7;color:#fff;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',true,'${n.groupId}')">${t('accept')}</button>
-        <button class="btn r" style="width:auto;padding:7px 14px;font-size:12px;background:#e74c3c;color:#fff;" onclick="event.stopPropagation();respondGroupRequest('${n.requesterUid}',false,'${n.groupId}')">${t('decline')}</button>
-      </div>`}
+      ${handled?'':`<div style="font-size:11px;color:#7b2ff7;font-weight:700;margin-top:7px;">${t('pending')}</div>`}
     </div>
     ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
@@ -4638,7 +4635,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-116',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-117',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
