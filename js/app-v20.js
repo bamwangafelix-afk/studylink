@@ -3503,7 +3503,8 @@ function joinRequestCardHtml(n){
 }
 function joinStatusCardHtml(n){
   const state=n.state||'pending';
-  const line=state==='pending'?t('group_request_waiting'):state==='accepted'?t('group_request_was_accepted'):t('group_request_was_declined');
+  const groupTarget=appLang==='fr'?`le groupe ${esc(n.groupName||'le groupe')}`:`${esc(n.groupName||'the group')}'s group`;
+  const line=(state==='pending'?t('group_request_waiting'):state==='accepted'?t('group_request_was_accepted'):t('group_request_was_declined')).replace('{group}',groupTarget);
   const action=state==='accepted'
     ?`<button class="btn grp-open" style="width:auto;padding:7px 14px;font-size:12px;" onclick="event.stopPropagation();openGroup('${n.groupId}','${e2(n.groupName||'')}')">${t('group_open')}</button>`
     :state==='declined'
@@ -3598,7 +3599,6 @@ function renderFindInvites(){
   const inviteKinds=new Set(['studyInvite','groupInvite','groupJoinStatus','groupJoinRequest']);
   const items=cachedNotifs.filter(n=>{
     if(!inviteKinds.has(n.kind))return false;
-    if(n.kind==='groupJoinRequest'&&n.state!=='pending')return false;
     if(n.state==='pending')return true;
     const stamp=n.respondedAt?.toMillis?.()||(n.respondedAt?.seconds? n.respondedAt.seconds*1000:0)||n.createdAt?.toMillis?.()||(n.createdAt?.seconds? n.createdAt.seconds*1000:0);
     return !stamp||now-stamp<=RETENTION_MS;
@@ -3664,7 +3664,7 @@ const I18N={
     group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée. En attente d’approbation.',
     group_request_sent_btn:'Demande envoyée',group_request_already_handled:'Cette demande a déjà été traitée',
     group_wants_to_join:'Veut rejoindre',group_request_waiting:'Ta demande d’adhésion est en attente d’approbation.',
-    group_request_was_accepted:'Ta demande d’adhésion a été acceptée.',group_request_was_declined:'Ta demande d’adhésion a été refusée.',group_request_accepted_sentence:'La demande de {requester} pour rejoindre {group} a été acceptée par {decider}.',group_request_declined_sentence:'La demande de {requester} pour rejoindre {group} a été refusée par {decider}.',
+    group_request_was_accepted:'Ta demande pour rejoindre {group} a été acceptée.',group_request_was_declined:'Ta demande pour rejoindre {group} a été refusée.',group_request_accepted_sentence:'La demande de {requester} pour rejoindre {group} a été acceptée par {decider}.',group_request_declined_sentence:'La demande de {requester} pour rejoindre {group} a été refusée par {decider}.',
     group_request_again:'Demander à rejoindre',group_notif_label:'Invitation de groupe',
     group_refused_country:'❌ Ce groupe est réservé aux étudiants du même pays',
     group_refused_university:'❌ Ce groupe est réservé aux étudiants de la même université',
@@ -3783,7 +3783,7 @@ const I18N={
     group_still_pending:'Your request is still pending',group_request_sent:'Join request sent. Waiting for approval.',
     group_request_sent_btn:'Request Sent',group_request_already_handled:'This request has already been handled',
     group_wants_to_join:'Wants to join',group_request_waiting:'Your request to join is waiting for approval.',
-    group_request_was_accepted:'Your request to join was accepted.',group_request_was_declined:'Your request to join was declined.',group_request_accepted_sentence:"{requester}'s request to join {group} was accepted by {decider}.",group_request_declined_sentence:"{requester}'s request to join {group} was declined by {decider}.",
+    group_request_was_accepted:'Your request to join {group} was accepted.',group_request_was_declined:'Your request to join {group} was declined.',group_request_accepted_sentence:"{requester}'s request to join {group} was accepted by {decider}.",group_request_declined_sentence:"{requester}'s request to join {group} was declined by {decider}.",
     group_request_again:'Request to Join',group_notif_label:'Group invitation',
     group_refused_country:'❌ This group is only for students from the same country',
     group_refused_university:'❌ This group is only for students from the same university',
@@ -4635,7 +4635,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-117',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-118',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
