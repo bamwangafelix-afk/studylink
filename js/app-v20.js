@@ -3948,14 +3948,14 @@ async function openManageGroup(postId){
     el('gmPending').innerHTML=pendingIds.map(uid=>{
       const u=allUsers.find(x=>x.uid===uid);
       const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
-      return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;">
+      return `<div class="card inviteCard" style="display:flex;align-items:flex-start;gap:10px;padding:12px 10px;border-left:3px solid #7b2ff7;">
         <div onclick="openProfile('${uid}')" style="width:38px;height:38px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
         <div style="flex:1;min-width:0;">
-          <b onclick="openProfile('${uid}')" style="display:block;font-size:14px;cursor:pointer;">${esc(u?.name||'Utilisateur')}</b>
-          <span style="display:block;font-size:12px;color:var(--sub);margin-top:3px;">${esc(u?.name||'Utilisateur')} ${t('group_wants_to_join')} <b>${esc(g.name||'the group')}</b>.</span>
+          <div style="font-size:10.5px;font-weight:800;color:#7b2ff7;text-transform:uppercase;letter-spacing:.03em;">${t('group_notif_label')}</div>
+          <span style="display:block;font-size:11.5px;margin-top:3px;"><b onclick="openProfile('${uid}')" style="color:var(--txt);cursor:pointer;">${esc(u?.name||'Utilisateur')}</b> ${t('group_wants_to_join')} <b>${esc(g.name||'the group')}</b>.</span>
         </div>
-        <button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',true)">${t('accept')}</button>
-        <button class="btn r" style="width:auto;padding:8px 12px;font-size:12px;" onclick="respondGroupRequest('${uid}',false)">${t('decline')}</button>
+        <button class="btn inv" style="width:auto;padding:8px 12px;font-size:12px;background:#7b2ff7;color:#fff;" onclick="respondGroupRequest('${uid}',true)">${t('accept')}</button>
+        <button class="btn r" style="width:auto;padding:8px 12px;font-size:12px;background:#e74c3c;color:#fff;" onclick="respondGroupRequest('${uid}',false)">${t('decline')}</button>
       </div>`;
     }).join('');
   }
@@ -4634,7 +4634,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-108',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-109',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
