@@ -3430,13 +3430,22 @@ function notifTimeHtml(n){
   if(dayDiff<7)return d.toLocaleDateString(appLang==='fr'?'fr-FR':'en-US',{weekday:'short'})+' '+time;
   return d.toLocaleDateString(appLang==='fr'?'fr-FR':'en-US',{month:'short',day:'numeric',year:d.getFullYear()!==nowD.getFullYear()?'numeric':undefined})+(appLang==='fr'?' à ':' at ')+time;
 }
+function cleanDisplayName(value,fallback='Student'){
+  const name=String(value||fallback).trim().replace(/\s+/g,' ');
+  const words=name.split(' ');
+  if(words.length>1&&words.length%2===0){
+    const half=words.length/2;
+    if(words.slice(0,half).join(' ').toLowerCase()===words.slice(half).join(' ').toLowerCase())return words.slice(0,half).join(' ');
+  }
+  return name;
+}
 function notifAlertText(n){
   const profile=(allUsers||[]).find(u=>u.uid===(n.requesterUid||n.fromUid||n.toUid))||{};
-  const name=esc(n.personName||n.requesterName||profile.name||'Someone'),group=esc(n.groupName||'the group');
+  const name=esc(cleanDisplayName(n.personName||n.requesterName||profile.name,'Someone')),group=esc(n.groupName||'the group');
   const groupTarget=appLang==='fr'?`le groupe ${group}`:`${group}'s group`;
   if(n.kind==='groupJoinRequest'&&(n.state==='accepted'||n.state==='declined')){
     return t(n.state==='accepted'?'group_request_accepted_sentence':'group_request_declined_sentence')
-      .replace('{requester}',esc(n.requesterName||'Student'))
+      .replace('{requester}',esc(cleanDisplayName(n.requesterName||profile.name,'Student')))
       .replace('{group}',group)
       .replace('{decider}',esc(n.handledByName||'Admin'));
   }
@@ -3469,7 +3478,7 @@ function openInvitationUpdates(id){
 function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
-  const action=n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const action=n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:n.kind==='groupJoinStatus'?`openGroupStatusTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.groupName||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
   const hint=isInvite?(appLang==='fr'?'Appuyer pour voir':'Tap to view'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
   return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
     <span class="alertIcon">${icon}</span>
@@ -3481,9 +3490,13 @@ function openGroupRequestTarget(id,groupId){
   markN(id);
   if(groupId)openManageGroup(groupId);
 }
+function openGroupStatusTarget(id,groupId,groupName){
+  markN(id);
+  if(groupId)openGroup(groupId,groupName||'');
+}
 function joinRequestCardHtml(n){
   const profile=(allUsers||[]).find(u=>u.uid===n.requesterUid)||{};
-  const requesterName=n.requesterName||profile.name||'Student';
+  const requesterName=cleanDisplayName(n.requesterName||profile.name,'Student');
   const requesterPhoto=n.requesterPhoto||profile.photo||'';
   const av=requesterPhoto?`<img src="${requesterPhoto}" style="width:100%;height:100%;object-fit:cover;">`:esc((requesterName||'?')[0]||'?').toUpperCase();
   const loc=[n.requesterCountry,n.requesterUni,n.requesterCourse].filter(Boolean).join(' • ');
@@ -3620,7 +3633,7 @@ function renderFindInvites(){
   const f=el('findInvitesL');
   if(!f)return;
   const now=Date.now(),RETENTION_MS=24*60*60*1000;
-  const inviteKinds=new Set(['studyInvite','groupInvite','groupJoinStatus','groupJoinRequest']);
+  const inviteKinds=new Set(['studyInvite','groupInvite']);
   const items=cachedNotifs.filter(n=>{
     if(!inviteKinds.has(n.kind))return false;
     if(n.state==='pending')return true;
@@ -4666,7 +4679,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-120',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-121',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
