@@ -3579,11 +3579,31 @@ async function openChatFromInvite(inviteId){
   }catch(e){showToast('❌ '+e.message);}
 }
 let cachedNotifs=[];
+async function hydrateGroupRequestProfiles(notifs){
+  const stale=notifs.filter(n=>n.kind==='groupJoinRequest'&&n.requesterUid&&(!n.requesterName||n.requesterName==='Student'));
+  if(!stale.length)return;
+  await Promise.all(stale.map(async n=>{
+    try{
+      const snap=await db.collection('users').doc(n.requesterUid).get();
+      const u=snap.data()||{};
+      if(!u.name&&!u.photo)return;
+      const patch={};
+      if(u.name)patch.requesterName=u.name;
+      if(u.photo)patch.requesterPhoto=u.photo;
+      Object.assign(n,patch);
+      await db.collection('notifications').doc(n.id).set(patch,{merge:true});
+    }catch(e){}
+  }));
+  const f=el('notifL');
+  if(f&&cachedNotifs.length){f.innerHTML=cachedNotifs.map(n=>notifCardHtml(n)).join('');}
+  renderFindInvites();
+}
 function setupNotifL(){
   if(notifUnsub)notifUnsub();
   notifUnsub=db.collection('notifications').where('toUid','==',CU.uid).onSnapshot(sn=>{
     const notifs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
     cachedNotifs=notifs;
+    hydrateGroupRequestProfiles(notifs);
     const unread=notifs.filter(n=>!n.read).length;
     const nb=el('notifB');nb.textContent=unread>9?'9+':unread;nb.style.display=unread>0?'inline-flex':'none';
     const newPending=new Set(notifs.filter(n=>n.kind==='groupJoinStatus'&&n.state==='pending').map(n=>n.groupId));
@@ -4213,6 +4233,8 @@ async function respondGroupRequest(uid,accept,groupId){
   const gid=groupId||curManageGroupId;
   if(!gid)return;
   const gref=db.collection('groups').doc(gid);
+  let requesterProfile={};
+  try{const ps=await db.collection('users').doc(uid).get();requesterProfile=ps.data()||{};}catch(e){}
   try{
     let result=null;
     await db.runTransaction(async tx=>{
@@ -4224,6 +4246,11 @@ async function respondGroupRequest(uid,accept,groupId){
       const allowed=mode==='owner'?owner:mode==='admins'?admin:(owner||admin);
       if(!allowed)throw new Error(t('group_not_authorized'));
       if(!(g.pendingRequests||[]).includes(uid))throw new Error(t('group_request_already_handled'));
+      const requestRef=db.collection('notifications').doc(`joinreq_${gid}_${uid}_${CU.uid}`);
+      const requestSnap=await tx.get(requestRef);
+      const requestData=requestSnap.data()||{};
+      const requesterName=requestData.requesterName||requesterProfile.name||'Student';
+      const requesterPhoto=requestData.requesterPhoto||requesterProfile.photo||'';
       const deciderName=MP?.name||CU.displayName||t('role_admin');
       const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(r=>{
         const rOwner=isGroupOwner(g,r),rAdmin=(g.admins||[]).includes(r);
@@ -4233,7 +4260,7 @@ async function respondGroupRequest(uid,accept,groupId){
         ?{members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)}
         :{pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
       recipients.forEach(r=>tx.set(db.collection('notifications').doc(`joinreq_${gid}_${uid}_${r}`),{
-        toUid:r,kind:'groupJoinRequest',groupId:gid,groupName:g.name||'',requesterUid:uid,
+        toUid:r,kind:'groupJoinRequest',groupId:gid,groupName:g.name||'',requesterUid:uid,requesterName,requesterPhoto,
         state:accept?'accepted':'declined',handledByUid:CU.uid,handledByName:deciderName,read:false,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),respondedAt:firebase.firestore.FieldValue.serverTimestamp()
       }));
@@ -4639,7 +4666,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-119',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-120',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
