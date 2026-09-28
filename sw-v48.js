@@ -1,5 +1,5 @@
-const CACHE='studylink-shell-v107';
-const SHELL=['./','./index.html','./css/styles.css?v=studylink-pwa-107','./js/app-v20.js?v=studylink-pwa-107','./manifest.webmanifest?v=studylink-pwa-107','./icons/studylink-192.png?v=studylink-pwa-107','./icons/studylink-512.png?v=studylink-pwa-107','./icons/studylink-login-full-logo.png?v=studylink-pwa-107','./icons/person-available.svg?v=studylink-pwa-107'];
+const CACHE='studylink-shell-v108';
+const SHELL=['./','./index.html','./css/styles.css?v=studylink-pwa-108','./js/app-v20.js?v=studylink-pwa-108','./manifest.webmanifest?v=studylink-pwa-108','./icons/studylink-192.png?v=studylink-pwa-108','./icons/studylink-512.png?v=studylink-pwa-108','./icons/studylink-login-full-logo.png?v=studylink-pwa-108','./icons/person-available.svg?v=studylink-pwa-108'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
 });
