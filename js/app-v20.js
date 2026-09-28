@@ -3461,7 +3461,7 @@ function notifAlertText(n){
   }
   if(n.kind==='groupJoinRequest')return `${name} requested to join ${groupTarget}.`;
   if(n.kind==='groupJoinStatus'){
-    if(n.state==='pending')return appLang==='fr'?`Ta demande pour rejoindre ${groupTarget} est en attente.`:`Your request to join ${groupTarget} is pending.`;
+    if(n.state==='pending')return appLang==='fr'?`Ta demande pour rejoindre ${groupTarget} est en attente d’approbation.`:`Your request to join ${groupTarget} is waiting for approval.`;
     return n.state==='accepted'?(appLang==='fr'?`Ta demande pour rejoindre ${groupTarget} a été acceptée.`:`Your request to join ${groupTarget} was accepted.`):(appLang==='fr'?`Ta demande pour rejoindre ${groupTarget} a été refusée.`:`Your request to join ${groupTarget} was declined.`);
   }
   return esc(n.body||n.title||'You have a new notification.');
@@ -3492,7 +3492,8 @@ function openGroupRequestTarget(id,groupId){
 }
 function openGroupStatusTarget(id,groupId,groupName){
   markN(id);
-  if(groupId)openGroup(groupId,groupName||'');
+  const n=cachedNotifs.find(x=>x.id===id);
+  if(n?.state==='accepted'&&groupId)openGroup(groupId,groupName||'');
 }
 function joinRequestCardHtml(n){
   const profile=(allUsers||[]).find(u=>u.uid===n.requesterUid)||{};
@@ -4679,7 +4680,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-121',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-122',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
