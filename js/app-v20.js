@@ -3531,7 +3531,7 @@ function inviteCardHtml(n){
   const typeLabel=isGroup?t('invite_card_group'):t('invite_card_study');
   const subject=isGroup?(n.groupName||''):(n.course||'');
   const stateLabel=state==='accepted'?t('invite_state_accepted'):state==='declined'?t('invite_state_declined'):'';
-  const target=isGroup?`${esc(subject)}'s group`:esc(subject);
+  const target=isGroup?(appLang==='fr'?`le groupe ${esc(subject)}`:`${esc(subject)}'s group`):esc(subject);
   let line='';
   if(state==='pending')line=isGroup?t('invite_line_group_pending').replace('{group}',`<b>${esc(subject)}</b>`):`${t('invite_line_study_pending')} ${esc(subject)}.`;
   else if(isSender)line=(state==='accepted'?t('invite_line_sender_accepted'):t('invite_line_sender_declined')).replace('{target}',target);
@@ -4637,7 +4637,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-113',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-114',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
