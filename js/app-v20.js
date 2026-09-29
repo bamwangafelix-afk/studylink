@@ -3479,9 +3479,10 @@ function openInvitationUpdates(id){
   },80);
 }
 async function openPostNotification(id,postId){
-  markN(id);
-  if(!postId){
-    try{
+  setDataRefresh(true);
+  try{
+    markN(id);
+    if(!postId){
       const ns=await db.collection('notifications').doc(id).get();
       const n=ns.data()||{};
       postId=n.postId||'';
@@ -3489,22 +3490,20 @@ async function openPostNotification(id,postId){
         const ps=await db.collection('posts').where('text','==',n.body).limit(1).get();
         if(!ps.empty)postId=ps.docs[0].id;
       }
-    }catch(e){}
-  }
-  if(!postId){tab('home');return;}
-  try{
-    if(!cachedPosts.some(p=>p.id===postId)){
-      const snap=await db.collection('posts').doc(postId).get();
-      if(snap.exists)cachedPosts=[{id:postId,...snap.data()},...cachedPosts];
     }
-  }catch(e){}
-  tab('home');
-  setTimeout(()=>{
-    if(el('Phome')?.style.display==='none')return;
+    if(!postId){tab('home');return;}
+    await refreshPostsForNotification().catch(async()=>{
+      const snap=await db.collection('posts').doc(postId).get();
+      if(snap.exists)cachedPosts=[{id:postId,...snap.data()},...cachedPosts.filter(p=>p.id!==postId)];
+    });
+    tab('home');
+    await new Promise(r=>setTimeout(r,180));
     renderHome(cachedPosts,Math.max(_feedShown,cachedPosts.length));
     const card=document.querySelector(`[data-post-id="${CSS.escape(postId)}"]`);
     if(card){card.classList.add('notif-focus');card.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>card.classList.remove('notif-focus'),1800);}
-  },120);
+  }finally{
+    setTimeout(()=>setDataRefresh(false),260);
+  }
 }
 function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
@@ -4657,6 +4656,17 @@ function viewingCategoryColor(){
 }
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 function showOv(v){el('ov').style.display=v?'flex':'none';}
+function setDataRefresh(v){
+  const b=el('dataRefreshBar');
+  if(!b)return;
+  b.classList.toggle('active',!!v);
+}
+function refreshPostsForNotification(){
+  return db.collection('posts').orderBy('createdAt','desc').limit(30).get().then(sn=>{
+    cachedPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
+    return cachedPosts;
+  });
+}
 function tab(id){
   document.querySelectorAll('.page').forEach(p=>p.style.display='none');
   el('P'+id).style.display='block';
@@ -4713,7 +4723,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-128',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-129',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
