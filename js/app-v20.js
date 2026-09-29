@@ -554,6 +554,15 @@ auth.onAuthStateChanged(async u=>{
     }
     try{await loadPro();}catch(e){console.log('loadPro error:',e);}
     try{await loadFavs();}catch(e){}
+    // Start the visible account/feed experience before the optional chat migration.
+    // Slow mobile Firestore responses must not leave Home looking empty.
+    try{setupPresence();}catch(e){}
+    try{listenPosts();}catch(e){}
+    try{listenUsers();}catch(e){}
+    try{setupNotifL();}catch(e){}
+    try{setupStudyInviteState();}catch(e){}
+    try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
+    try{handleJoinGroupDeepLink();}catch(e){}
     // Migrate existing chats to chatIds array — only runs once ever (when migrated flag not set)
     try{
       const userSnap=await db.collection('users').doc(u.uid).get();
@@ -566,13 +575,6 @@ auth.onAuthStateChanged(async u=>{
         db.collection('users').doc(u.uid).update({chatIdsMigrated:true}).catch(()=>{});
       }
     }catch(e){console.log('migrate chatIds:',e);}
-    try{setupPresence();}catch(e){}
-    try{listenPosts();}catch(e){}
-    try{listenUsers();}catch(e){}
-    try{setupNotifL();}catch(e){}
-    try{setupStudyInviteState();}catch(e){}
-    try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
-    try{handleJoinGroupDeepLink();}catch(e){}
   }else{
     // Firebase can call this branch after a successful sign-out and later after a new login.
     // Always release the click guard so Disconnect works on every session, not only the first one.
@@ -4711,7 +4713,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-127',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-128',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
