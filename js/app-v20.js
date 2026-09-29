@@ -3478,6 +3478,17 @@ function openInvitationUpdates(id){
 }
 async function openPostNotification(id,postId){
   markN(id);
+  if(!postId){
+    try{
+      const ns=await db.collection('notifications').doc(id).get();
+      const n=ns.data()||{};
+      postId=n.postId||'';
+      if(!postId&&n.body){
+        const ps=await db.collection('posts').where('text','==',n.body).limit(1).get();
+        if(!ps.empty)postId=ps.docs[0].id;
+      }
+    }catch(e){}
+  }
   if(!postId){tab('home');return;}
   try{
     if(!cachedPosts.some(p=>p.id===postId)){
@@ -4699,7 +4710,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-125',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-126',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
