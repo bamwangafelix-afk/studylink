@@ -713,13 +713,13 @@ async function doReset(){
   catch(err){el('resetErr').textContent=fErr(err.code);}
   showOv(false);
 }
-async function notifyAllExcept(senderUid,icon,title,body){
+async function notifyAllExcept(senderUid,icon,title,body,extra={}){
   try{
     const sn=await db.collection('users').get();
     const b=db.batch();
     sn.docs.forEach(d=>{
       if(d.id!==senderUid){
-        b.set(db.collection('notifications').doc(),{toUid:d.id,icon,title,body,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+        b.set(db.collection('notifications').doc(),{toUid:d.id,icon,title,body,...extra,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       }
     });
     await b.commit();
@@ -1038,7 +1038,7 @@ async function addPost(){
     if(type==='Group')batch.set(db.collection('groups').doc(ref.id),{name:gname,description:gdesc,photo:groupPhoto,postId:ref.id,creatorUid:CU.uid,ownerUid:CU.uid,admins:[],members:[CU.uid],whoCanJoin,howCanJoin,whoCanInvite:'owner_admins',whoCanBeInvited:'anyone',blockedUsers:[],creatorCountry:MP.country||'',creatorUni:MP.uni||'',creatorCourse:MP.course||'',creatorTags:[...selTags],courseSubject,pendingRequests:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     await batch.commit();
     // only send to ALERTS (not messages)
-    notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60));
+    notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60),{kind:'post',postId:ref.id,groupName:gname,courseSubject});
     selTags=[];renderSubjectPicker('post');
     el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gDesc').value='';gPhotoDataUrl=null;el('gPhotoPreview').innerHTML='🏷️';if(el('gPhotoFile'))el('gPhotoFile').value='';if(el('gWhoCanJoin'))el('gWhoCanJoin').value='anyone';if(el('gHowCanJoin'))el('gHowCanJoin').value='direct';
     showToast('📢 Posted!');tab('home');
@@ -1080,7 +1080,7 @@ function renderHome(posts,limit){
     const tags=(p.tags||[]).map(t=>`<span class="tbadge">${t}</span>`).join('');
     const av=du.photo?`<img src="${du.photo}">`:'👤';
     const intent=du.intent||'';
-    f.innerHTML+=`<div class="card ${isG?'grp':''}">
+    f.innerHTML+=`<div class="card ${isG?'grp':''}" data-post-id="${e2(p.id)}">
       <div style="display:flex;gap:10px;margin-bottom:8px;">
         <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${p.uid||''}')"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
@@ -1784,7 +1784,7 @@ function queueJoinRequestNotifications(batch,groupId,g,fallbackName){
   const recipients=[...new Set([g.ownerUid||g.creatorUid,...(g.admins||[])])].filter(uid=>canInviteToGroup(g,uid));
   recipients.forEach(toUid=>batch.set(db.collection('notifications').doc(`joinreq_${groupId}_${CU.uid}_${toUid}`),{
     toUid,kind:'groupJoinRequest',groupId,groupName,
-    requesterUid:CU.uid,requesterName:MP?.name||'',requesterPhoto:myPho||'',requesterCountry:MP?.country||'',requesterUni:MP?.uni||'',requesterCourse:MP?.course||'',
+    requesterUid:CU.uid,requesterName:MP?.name||'',requesterPhoto:myPho||'',requesterCountry:MP?.country||'',requesterUni:MP?.uni||'',requesterCourse:MP?.course||'',courseSubject:g.courseSubject||'',
     state:'pending',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
   }));
   batch.set(db.collection('notifications').doc(`joinstatus_${groupId}_${CU.uid}`),{
@@ -3443,10 +3443,11 @@ function notifAlertText(n){
   const profile=(allUsers||[]).find(u=>u.uid===(n.requesterUid||n.fromUid||n.toUid))||{};
   const name=esc(cleanDisplayName(n.personName||n.requesterName||profile.name,'Someone')),group=esc(n.groupName||'the group');
   const groupTarget=appLang==='fr'?`le groupe ${group}`:`${group}'s group`;
+  const groupWithCourse=n.courseSubject?`${groupTarget}${appLang==='fr'?' — ':' for '}${esc(n.courseSubject)}`:groupTarget;
   if(n.kind==='groupJoinRequest'&&(n.state==='accepted'||n.state==='declined')){
     return t(n.state==='accepted'?'group_request_accepted_sentence':'group_request_declined_sentence')
       .replace('{requester}',esc(cleanDisplayName(n.requesterName||profile.name,'Student')))
-      .replace('{group}',group)
+      .replace('{group}',groupWithCourse)
       .replace('{decider}',esc(n.handledByName||'Admin'));
   }
   if(n.kind==='studyInvite'){
@@ -3459,10 +3460,10 @@ function notifAlertText(n){
     if(n.state==='accepted')return n.role==='sender'?`${name} accepted your invitation for ${groupTarget}.`:`You accepted ${groupTarget}.`;
     return n.role==='sender'?`${name} declined your invitation for ${groupTarget}.`:`You declined the invitation to ${groupTarget}.`;
   }
-  if(n.kind==='groupJoinRequest')return `${name} requested to join ${groupTarget}.`;
+  if(n.kind==='groupJoinRequest')return appLang==='fr'?`${name} veut rejoindre ${groupWithCourse}.`:`${name} wants to join ${groupWithCourse}.`;
   if(n.kind==='groupJoinStatus'){
-    if(n.state==='pending')return appLang==='fr'?`Ta demande pour rejoindre ${groupTarget} est en attente d’approbation.`:`Your request to join ${groupTarget} is waiting for approval.`;
-    return n.state==='accepted'?(appLang==='fr'?`Ta demande pour rejoindre ${groupTarget} a été acceptée.`:`Your request to join ${groupTarget} was accepted.`):(appLang==='fr'?`Ta demande pour rejoindre ${groupTarget} a été refusée.`:`Your request to join ${groupTarget} was declined.`);
+    if(n.state==='pending')return appLang==='fr'?`Ta demande pour rejoindre ${groupWithCourse} est en attente d’approbation.`:`Your request to join ${groupWithCourse} is waiting for approval.`;
+    return n.state==='accepted'?(appLang==='fr'?`Ta demande pour rejoindre ${groupWithCourse} a été acceptée.`:`Your request to join ${groupWithCourse} was accepted.`):(appLang==='fr'?`Ta demande pour rejoindre ${groupWithCourse} a été refusée.`:`Your request to join ${groupWithCourse} was declined.`);
   }
   return esc(n.body||n.title||'You have a new notification.');
 }
@@ -3475,10 +3476,27 @@ function openInvitationUpdates(id){
     setTimeout(()=>{const card=document.querySelector(`[data-notif-id="${CSS.escape(id)}"]`);if(card){card.classList.add('notif-focus');card.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>card.classList.remove('notif-focus'),1800);}},80);
   },80);
 }
+async function openPostNotification(id,postId){
+  markN(id);
+  if(!postId){tab('home');return;}
+  try{
+    if(!cachedPosts.some(p=>p.id===postId)){
+      const snap=await db.collection('posts').doc(postId).get();
+      if(snap.exists)cachedPosts=[{id:postId,...snap.data()},...cachedPosts];
+    }
+  }catch(e){}
+  tab('home');
+  setTimeout(()=>{
+    if(el('Phome')?.style.display==='none')return;
+    renderHome(cachedPosts,Math.max(_feedShown,cachedPosts.length));
+    const card=document.querySelector(`[data-post-id="${CSS.escape(postId)}"]`);
+    if(card){card.classList.add('notif-focus');card.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>card.classList.remove('notif-focus'),1800);}
+  },120);
+}
 function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
-  const action=n.kind==='groupJoinRequest'&&n.state==='pending'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?`markN('${e2(n.id)}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const action=n.kind==='post'?`openPostNotification('${e2(n.id)}','${e2(n.postId||'')}')`:n.kind==='groupJoinRequest'&&n.state==='pending'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?`markN('${e2(n.id)}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
   const hint=isInvite?(appLang==='fr'?'Appuyer pour voir':'Tap to view'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
   return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
     <span class="alertIcon">${icon}</span>
@@ -3594,16 +3612,17 @@ async function openChatFromInvite(inviteId){
 }
 let cachedNotifs=[];
 async function hydrateGroupRequestProfiles(notifs){
-  const stale=notifs.filter(n=>n.kind==='groupJoinRequest'&&n.requesterUid&&(!n.requesterName||n.requesterName==='Student'));
+  const stale=notifs.filter(n=>n.kind==='groupJoinRequest'&&n.groupId&&n.requesterUid&&(!n.requesterName||n.requesterName==='Student'||!n.courseSubject));
   if(!stale.length)return;
   await Promise.all(stale.map(async n=>{
     try{
-      const snap=await db.collection('users').doc(n.requesterUid).get();
-      const u=snap.data()||{};
-      if(!u.name&&!u.photo)return;
+      const [snap,groupSnap]=await Promise.all([db.collection('users').doc(n.requesterUid).get(),db.collection('groups').doc(n.groupId).get()]);
+      const u=snap.data()||{},g=groupSnap.data()||{};
+      if(!u.name&&!u.photo&&!g.courseSubject)return;
       const patch={};
       if(u.name)patch.requesterName=u.name;
       if(u.photo)patch.requesterPhoto=u.photo;
+      if(g.courseSubject)patch.courseSubject=g.courseSubject;
       Object.assign(n,patch);
       await db.collection('notifications').doc(n.id).set(patch,{merge:true});
     }catch(e){}
@@ -4274,12 +4293,12 @@ async function respondGroupRequest(uid,accept,groupId){
         ?{members:firebase.firestore.FieldValue.arrayUnion(uid),pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)}
         :{pendingRequests:firebase.firestore.FieldValue.arrayRemove(uid)});
       recipients.forEach(r=>tx.set(db.collection('notifications').doc(`joinreq_${gid}_${uid}_${r}`),{
-        toUid:r,kind:'groupJoinRequest',groupId:gid,groupName:g.name||'',requesterUid:uid,requesterName,requesterPhoto,
+        toUid:r,kind:'groupJoinRequest',groupId:gid,groupName:g.name||'',courseSubject:g.courseSubject||requestData.courseSubject||'',requesterUid:uid,requesterName,requesterPhoto,
         state:accept?'accepted':'declined',handledByUid:CU.uid,handledByName:deciderName,read:false,
         createdAt:firebase.firestore.FieldValue.serverTimestamp(),respondedAt:firebase.firestore.FieldValue.serverTimestamp()
       }));
       tx.set(db.collection('notifications').doc(`joinstatus_${gid}_${uid}`),{
-        toUid:uid,kind:'groupJoinStatus',groupId:gid,groupName:g.name||'',state:accept?'accepted':'declined',read:false,
+        toUid:uid,kind:'groupJoinStatus',groupId:gid,groupName:g.name||'',courseSubject:g.courseSubject||requestData.courseSubject||'',state:accept?'accepted':'declined',read:false,
         handledByUid:CU.uid,handledByName:deciderName,createdAt:firebase.firestore.FieldValue.serverTimestamp()
       });
       result={groupName:g.name||'',deciderName};
@@ -4680,7 +4699,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v49.js?v=studylink-pwa-125',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-125',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
