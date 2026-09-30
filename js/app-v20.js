@@ -1270,6 +1270,7 @@ async function publishStatus(){
   rememberStatusVisibility(visibility);
   const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,visibility,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   const col=creatingCategoryColor();
+  setDataRefresh(true);
   el('ov').style.display='flex';
   try{
     await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility});
@@ -1278,6 +1279,7 @@ async function publishStatus(){
     closeStatusCreate();
   }catch(e){showToast('❌ '+(e.message||'Erreur'));}
   el('ov').style.display='none';
+  setTimeout(()=>setDataRefresh(false),260);
 }
 
 // ── STATUS VIEW ──
@@ -4638,7 +4640,8 @@ function localizeToastMessage(msg){
 }
 function showToast(msg,color){
   const t=el('toast');
-  t.textContent=localizeToastMessage(msg);
+  // Keep the toast wording, but remove the error-cross decoration everywhere.
+  t.textContent=localizeToastMessage(msg).replace(/^\s*❌\s*/,'');
   const statusOpen=el('statusView')?.style.display!=='none'&&el('statusView')?.style.display;
   const themedColor=color||(statusOpen?viewingCategoryColor():null);
   t.style.background=themedColor||'';
@@ -4723,7 +4726,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-130',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-131',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
