@@ -4181,14 +4181,18 @@ async function openGroupResources(groupId){
 }
 function closeGroupResources(){el('groupResourcesView').style.display='none';consumeModalState();}
 async function addGroupResource(){
-  if(!curGrp||!CU)return;
-  const title=v('resTitle');
+  if(!curGrp||!CU){showToast('❌ Open the group resources screen again and try once more.');return;}
+  const resourceGroupId=curGrp.id;
+  const title=v('resTitle').trim();
   if(!title)return showToast(t('group_resource_title_required'));
-  const rawLink=v('resLink');
+  const rawLink=v('resLink').trim();
   const link=safeGroupResourceUrl(rawLink);
   const file=el('resFile')?.files?.[0]||null;
   if(rawLink&&!link)return showToast(t('group_resource_invalid_link'));
   if(!link&&!file)return showToast(t('group_resource_link_or_file'));
+  const button=el('resAddBtn');
+  if(button?.disabled)return;
+  if(button){button.disabled=true;button.setAttribute('aria-busy','true');button.dataset.defaultLabel=button.textContent;button.textContent=appLang==='fr'?'Enregistrement…':'Saving…';}
   showOv(true);
   try{
     let uploaded=null;
@@ -4196,15 +4200,16 @@ async function addGroupResource(){
       uploaded=await uploadDocument(file);
       if(!uploaded?.url)throw new Error(uploadToFirebaseStorage.lastError||t('group_resource_upload_failed'));
     }
-    await db.collection('groups').doc(curGrp.id).collection('resources').add({
+    const savePromise=db.collection('groups').doc(resourceGroupId).collection('resources').add({
       title,link:link||'',fileUrl:uploaded?.url||'',fileName:file?.name||'',fileType:file?.type||'',
       uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
+    await Promise.race([savePromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(appLang==='fr'?'Le délai d’enregistrement est dépassé. Vérifie ta connexion ou les règles du groupe.':'Saving timed out. Check your connection or group permissions.')),15000))]);
     el('resTitle').value='';el('resLink').value='';if(el('resFile'))el('resFile').value='';
     showToast(t('group_resource_added'));
-    openGroupResources(curGrp.id);
+    openGroupResources(resourceGroupId).catch(()=>{});
   }catch(e){showToast('❌ '+e.message);}
-  finally{showOv(false);}
+  finally{showOv(false);if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent=button.dataset.defaultLabel||t('group_resource_add');}}
 }
 function openGroupSearch(){
   const bar=el('groupSearchBar');
@@ -4726,7 +4731,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-131',location.href).href;
+  const workerUrl=new URL('sw-v52.js?v=studylink-pwa-132',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
