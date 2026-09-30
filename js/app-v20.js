@@ -4201,9 +4201,16 @@ async function addGroupResource(){
   showOv(true);
   try{
     let uploaded=null;
+    let fileUploadWarning='';
     if(file){
-      uploaded=await uploadDocument(file);
-      if(!uploaded?.url)throw new Error(uploadToFirebaseStorage.lastError||t('group_resource_upload_failed'));
+      try{
+        uploaded=await uploadDocument(file);
+        if(!uploaded?.url)throw new Error(uploadToFirebaseStorage.lastError||t('group_resource_upload_failed'));
+      }catch(fileErr){
+        if(!link)throw fileErr;
+        fileUploadWarning=appLang==='fr'?' Le lien a été enregistré, mais le fichier n’a pas pu être téléversé.':' The link was saved, but the file could not be uploaded.';
+        console.warn('Optional resource file upload failed; saving link only:',fileErr);
+      }
     }
     const savePromise=db.collection('groups').doc(resourceGroupId).collection('resources').add({
       title,link:link||'',fileUrl:uploaded?.url||'',fileName:file?.name||'',fileType:file?.type||'',
@@ -4211,7 +4218,7 @@ async function addGroupResource(){
     });
     await Promise.race([savePromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(appLang==='fr'?'Le délai d’enregistrement est dépassé. Vérifie ta connexion ou les règles du groupe.':'Saving timed out. Check your connection or group permissions.')),15000))]);
     el('resTitle').value='';el('resLink').value='';if(el('resFile'))el('resFile').value='';
-    showToast(t('group_resource_added'));
+    showToast(t('group_resource_added')+fileUploadWarning);
     openGroupResources(resourceGroupId).catch(()=>{});
   }catch(e){showToast('❌ '+e.message);}
   finally{showOv(false);if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent=button.dataset.defaultLabel||t('group_resource_add');}}
@@ -4736,7 +4743,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v53.js?v=studylink-pwa-133',location.href).href;
+  const workerUrl=new URL('sw-v54.js?v=studylink-pwa-134',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
