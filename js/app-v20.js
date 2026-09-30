@@ -4202,7 +4202,7 @@ async function addGroupResource(){
   try{
     let uploaded=null;
     let fileUploadWarning='';
-    if(file){
+    if(file&&!link){
       try{
         uploaded=await uploadDocument(file);
         if(!uploaded?.url)throw new Error(uploadToFirebaseStorage.lastError||t('group_resource_upload_failed'));
@@ -4211,6 +4211,8 @@ async function addGroupResource(){
         fileUploadWarning=appLang==='fr'?' Le lien a été enregistré, mais le fichier n’a pas pu être téléversé.':' The link was saved, but the file could not be uploaded.';
         console.warn('Optional resource file upload failed; saving link only:',fileErr);
       }
+    }else if(file&&link){
+      fileUploadWarning=appLang==='fr'?' Le lien a été enregistré; le fichier local est ignoré car le lien Drive est disponible.':' The link was saved; the local file was skipped because a Drive link is available.';
     }
     const savePromise=db.collection('groups').doc(resourceGroupId).collection('resources').add({
       title,link:link||'',fileUrl:uploaded?.url||'',fileName:file?.name||'',fileType:file?.type||'',
@@ -4743,7 +4745,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v54.js?v=studylink-pwa-134',location.href).href;
+  const workerUrl=new URL('sw-v55.js?v=studylink-pwa-135',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
