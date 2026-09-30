@@ -471,7 +471,12 @@ async function uploadToFirebaseStorage(file,folder){
     const key=`${folder}/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const ref=voiceStorage.ref().child(key);
     const task=ref.put(file,{contentType:file.type||'application/octet-stream'});
-    await new Promise((resolve,reject)=>task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},reject,resolve));
+    await new Promise((resolve,reject)=>{
+      let settled=false;
+      const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(timer);fn(value);};
+      const timer=setTimeout(()=>{try{task.cancel();}catch(e){};finish(reject,new Error('Firebase Storage upload timed out after 30 seconds'));},30000);
+      task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},err=>finish(reject,err),()=>finish(resolve));
+    });
     return {url:await ref.getDownloadURL(),storage:'firebase-storage'};
   }catch(e){uploadToFirebaseStorage.lastError=e?.message||'Firebase Storage upload failed';return null;}
 }
@@ -4731,7 +4736,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v52.js?v=studylink-pwa-132',location.href).href;
+  const workerUrl=new URL('sw-v53.js?v=studylink-pwa-133',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
