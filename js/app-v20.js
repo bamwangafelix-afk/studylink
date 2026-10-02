@@ -4706,9 +4706,9 @@ function setDataRefresh(v){
     if(fill){fill.style.animation='none';fill.style.width='0%';void fill.offsetWidth;fill.style.animation='';}
     requestAnimationFrame(()=>b.classList.add('active'));
   }else{
-    // Keep the bar on screen long enough for the full visual fill to be seen;
-    // otherwise fast Firebase responses make it flash and disappear too soon.
-    const wait=Math.max(0,1450-(Date.now()-refreshStartedAt));
+    // Keep only a short minimum duration so the bar does not linger after a
+    // fast Firebase response has already completed the action.
+    const wait=Math.max(0,420-(Date.now()-refreshStartedAt));
     refreshHideTimer=setTimeout(()=>{
       b.classList.remove('active');
       if(fill){fill.style.animation='none';fill.style.width='0%';}
@@ -4778,7 +4778,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-140',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-141',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
