@@ -522,6 +522,7 @@ function resetLoggedOutUi(){
   CU=null;MP=null;
   el('auth').style.display='flex';
   el('ov').style.display='none';
+  setDataRefresh(false);
   showLogin();
   const button=el('disconnectBtn');
   if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent='Disconnect';}
@@ -543,6 +544,7 @@ auth.onAuthStateChanged(async u=>{
     // Reveal the shell immediately. Profile, inbox, and user-list hydration continue in the background.
     el('auth').style.display='none';
     el('ov').style.display='none';
+    setDataRefresh(false);
     tab('home');
     const sn=await db.collection('users').doc(u.uid).get().catch(()=>null);
     const data=sn?.exists?sn.data():null;
@@ -3479,12 +3481,14 @@ function notifAlertText(n){
   return esc(n.body||n.title||'You have a new notification.');
 }
 function openInvitationUpdates(id){
+  setDataRefresh(true);
   markN(id);
   tab('find');
   setTimeout(()=>{
     const b=document.querySelector('#findTopTabs [data-find-tab="invites"]');
     if(b)switchFindTop('invites',b);
     setTimeout(()=>{const card=document.querySelector(`[data-notif-id="${CSS.escape(id)}"]`);if(card){card.classList.add('notif-focus');card.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>card.classList.remove('notif-focus'),1800);}},80);
+    setTimeout(()=>setDataRefresh(false),520);
   },80);
 }
 async function openPostNotification(id,postId){
@@ -3518,7 +3522,7 @@ function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
   const isPost=n.kind==='post'||(n.icon==='📢'&&!!n.body);
-  const action=isPost?`openPostNotification('${e2(n.id)}','${e2(n.postId||'')}')`:n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.requesterUid||'')}')`:n.kind==='groupJoinStatus'?`markN('${e2(n.id)}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const action=isPost?`openPostNotification('${e2(n.id)}','${e2(n.postId||'')}')`:n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.requesterUid||'')}')`:n.kind==='groupJoinStatus'?`openGroupStatusTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.groupName||'')}','${e2(n.requesterUid||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
   const hint=isInvite||isPost?(appLang==='fr'?'Appuyer pour voir':'Tap to view'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
   return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
     <span class="alertIcon">${icon}</span>
@@ -3527,13 +3531,17 @@ function notifCardHtml(n){
   </div>`;
 }
 function openGroupRequestTarget(id,groupId,requesterUid){
+  setDataRefresh(true);
   markN(id);
   if(groupId)openManageGroup(groupId,requesterUid||'');
+  else setDataRefresh(false);
 }
-function openGroupStatusTarget(id,groupId,groupName){
+function openGroupStatusTarget(id,groupId,groupName,requesterUid){
+  setDataRefresh(true);
   markN(id);
   const n=cachedNotifs.find(x=>x.id===id);
-  if(n?.state==='accepted'&&groupId)openGroup(groupId,groupName||'');
+  if(n?.state==='accepted'&&groupId)openManageGroup(groupId,requesterUid||n.requesterUid||'');
+  else setDataRefresh(false);
 }
 function joinRequestCardHtml(n){
   const profile=(allUsers||[]).find(u=>u.uid===n.requesterUid)||{};
@@ -4680,7 +4688,10 @@ function viewingCategoryColor(){
   return sp?.category?CAT_TOAST_COLOR[sp.category]:null;
 }
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
-function showOv(v){el('ov').style.display=v?'flex':'none';}
+function showOv(v){
+  el('ov').style.display=v?'flex':'none';
+  setDataRefresh(v);
+}
 let refreshStartedAt=0,refreshHideTimer=null;
 function setDataRefresh(v){
   const b=el('dataRefreshBar');
@@ -4820,3 +4831,7 @@ const startStudyLink=()=>{
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startStudyLink,{once:true});
 else startStudyLink();
+// Firebase auth and the first feed snapshot can be slow on mobile. Keep the
+// same blue progress cue visible during that initial refresh instead of only
+// showing the dimmed overlay and spinner.
+setTimeout(()=>setDataRefresh(true),0);
