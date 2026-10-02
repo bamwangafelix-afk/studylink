@@ -4681,10 +4681,24 @@ function viewingCategoryColor(){
 }
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 function showOv(v){el('ov').style.display=v?'flex':'none';}
+let refreshStartedAt=0,refreshHideTimer=null;
 function setDataRefresh(v){
   const b=el('dataRefreshBar');
   if(!b)return;
-  b.classList.toggle('active',!!v);
+  const fill=b.querySelector('span');
+  clearTimeout(refreshHideTimer);
+  if(v){
+    refreshStartedAt=Date.now();
+    b.classList.remove('active');
+    if(fill){fill.style.animation='none';fill.style.width='0%';void fill.offsetWidth;fill.style.animation='';}
+    requestAnimationFrame(()=>b.classList.add('active'));
+  }else{
+    const wait=Math.max(0,650-(Date.now()-refreshStartedAt));
+    refreshHideTimer=setTimeout(()=>{
+      b.classList.remove('active');
+      if(fill){fill.style.animation='none';fill.style.width='0%';}
+    },wait);
+  }
 }
 function refreshPostsForNotification(){
   return db.collection('posts').orderBy('createdAt','desc').limit(30).get().then(sn=>{
@@ -4749,7 +4763,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-134',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-135',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
