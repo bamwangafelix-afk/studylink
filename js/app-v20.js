@@ -4689,7 +4689,9 @@ function viewingCategoryColor(){
 }
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
 function showOv(v){
-  el('ov').style.display=v?'flex':'none';
+  // Data actions use the lightweight blue top bar only. Keep the full-screen
+  // spinner reserved for the initial authentication shell hydration.
+  el('ov').style.display='none';
   setDataRefresh(v);
 }
 let refreshStartedAt=0,refreshHideTimer=null;
@@ -4774,7 +4776,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-137',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-138',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
