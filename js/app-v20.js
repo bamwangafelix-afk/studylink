@@ -2312,8 +2312,8 @@ function toggleSelectMsg(id,isGrp){
   }
   if(selectedMsgs.size>0){
     let bar=document.getElementById('selBar');
-    if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
-    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:var(--btnB);color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:var(--btnB);color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:var(--btnB);color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
+    if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:var(--hdr);color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
+    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
   }else{clearSelection();}
 }
 function clearSelection(){
@@ -4064,9 +4064,9 @@ async function openManageGroup(postId,highlightUid=''){
   }
   const acceptedUser=manageHighlightUid&&memberIds.includes(manageHighlightUid)?allUsers.find(u=>u.uid===manageHighlightUid):null;
   const acceptedAv=acceptedUser?.photo?`<img src="${acceptedUser.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((acceptedUser?.name||'?')[0]||'?').toUpperCase();
-  const acceptedHighlight=acceptedUser?`<div class="card manageAcceptedMember" style="display:flex;align-items:center;gap:10px;padding:11px 10px;border-left:4px solid var(--btnB);background:color-mix(in srgb,var(--card) 88%,var(--btnB) 12%);margin-bottom:14px;">
+  const acceptedHighlight=acceptedUser?`<div class="card manageAcceptedMember" style="display:flex;align-items:center;gap:10px;padding:11px 10px;border-left:4px solid var(--btnB);background:var(--btnB);color:#fff;margin-bottom:14px;">
     <div style="width:42px;height:42px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;">${acceptedAv}</div>
-    <div style="min-width:0;"><div style="font-size:10.5px;font-weight:800;color:var(--btnB);text-transform:uppercase;letter-spacing:.03em;">${appLang==='fr'?'Membre accepté':'Accepted member'}</div><b style="font-size:14px;">${esc(cleanDisplayName(acceptedUser.name||'Member'))}</b></div>
+    <div style="min-width:0;"><div style="font-size:10.5px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.03em;">${appLang==='fr'?'Membre accepté':'Accepted member'}</div><b style="font-size:14px;color:#fff;">${esc(cleanDisplayName(acceptedUser.name||'Member'))}</b></div>
   </div>`:'';
   el('gmMembers').innerHTML=acceptedHighlight+[
     ownerIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">👑 ${t('role_owner')} (${ownerIds.length})</p>${ownerIds.map(rowHtml).join('')}`:'',
@@ -4745,7 +4745,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-132',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-133',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
