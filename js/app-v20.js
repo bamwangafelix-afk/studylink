@@ -1750,14 +1750,15 @@ async function fetchDocWithRetry(ref,attempts=2,delayMs=900){
   throw lastErr;
 }
 async function handleGroupAccess(postId,name){
+  setDataRefresh(true);
   showOv(true);
   let gs;
-  try{gs=await fetchDocWithRetry(db.collection('groups').doc(postId));}catch(e){showOv(false);showToast(t('group_unavailable'));return;}
-  if(!gs.exists){showOv(false);showToast(t('group_not_found'));return;}
+  try{gs=await fetchDocWithRetry(db.collection('groups').doc(postId));}catch(e){showOv(false);showToast(t('group_unavailable'));setTimeout(()=>setDataRefresh(false),260);return;}
+  if(!gs.exists){showOv(false);showToast(t('group_not_found'));setTimeout(()=>setDataRefresh(false),260);return;}
   const g=gs.data();
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
-  if((g.members||[]).includes(CU.uid)){showOv(false);openGroup(postId,name);return;}
-  if((g.blockedUsers||[]).includes(CU.uid)){showOv(false);showToast(t('group_blocked_generic'));return;}
+  if((g.members||[]).includes(CU.uid)){showOv(false);openGroup(postId,name);setTimeout(()=>setDataRefresh(false),260);return;}
+  if((g.blockedUsers||[]).includes(CU.uid)){showOv(false);showToast(t('group_blocked_generic'));setTimeout(()=>setDataRefresh(false),260);return;}
   let eligible=true;
   if(whoCanJoin==='country')eligible=(MP?.country||'')===g.creatorCountry;
   else if(whoCanJoin==='university')eligible=(MP?.uni||'')===g.creatorUni;
@@ -1766,10 +1767,10 @@ async function handleGroupAccess(postId,name){
     showOv(false);
     const reason={country:t('group_refused_country'),university:t('group_refused_university'),major:t('group_refused_major')}[whoCanJoin]||t('group_refused_generic');
     showToast(reason);
-    return;
+    setTimeout(()=>setDataRefresh(false),260);return;
   }
   if(howCanJoin==='request'){
-    if((g.pendingRequests||[]).includes(CU.uid)){showOv(false);showToast(t('group_still_pending'));return;}
+    if((g.pendingRequests||[]).includes(CU.uid)){showOv(false);showToast(t('group_still_pending'));setTimeout(()=>setDataRefresh(false),260);return;}
     try{
       const batch=db.batch();
       batch.update(db.collection('groups').doc(postId),{pendingRequests:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
@@ -1779,12 +1780,13 @@ async function handleGroupAccess(postId,name){
       if(el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
       showToast(t('group_request_sent'));
     }catch(e){showToast('❌ '+e.message);}
-    showOv(false);return;
+    showOv(false);setTimeout(()=>setDataRefresh(false),260);return;
   }
   try{await db.collection('groups').doc(postId).update({members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});}
-  catch(e){showOv(false);showToast('❌ '+e.message);return;}
+  catch(e){showOv(false);showToast('❌ '+e.message);setTimeout(()=>setDataRefresh(false),260);return;}
   showOv(false);
   openGroup(postId,name);
+  setTimeout(()=>setDataRefresh(false),260);
 }
 function queueJoinRequestNotifications(batch,groupId,g,fallbackName){
   const groupName=g.name||fallbackName||'';
@@ -4458,6 +4460,7 @@ function renderInviteSearch(q){
 }
 async function sendGroupInvite(uid,name){
   if(!curManageGroupId)return;
+  setDataRefresh(true);
   try{
     const gs=await db.collection('groups').doc(curManageGroupId).get();
     const g=gs.data()||{};
@@ -4482,6 +4485,7 @@ async function sendGroupInvite(uid,name){
     curInviteStateMap[uid]='pending';
     renderInviteSearch(el('inviteSearchQ')?.value||'');
   }catch(e){showToast('❌ '+e.message);}
+  finally{setTimeout(()=>setDataRefresh(false),260);}
 }
 async function respondGroupInvite(notifId,groupId,accept){
   try{
@@ -4745,7 +4749,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-133',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-134',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
