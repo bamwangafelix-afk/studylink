@@ -471,12 +471,7 @@ async function uploadToFirebaseStorage(file,folder){
     const key=`${folder}/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const ref=voiceStorage.ref().child(key);
     const task=ref.put(file,{contentType:file.type||'application/octet-stream'});
-    await new Promise((resolve,reject)=>{
-      let settled=false;
-      const finish=(fn,value)=>{if(settled)return;settled=true;clearTimeout(timer);fn(value);};
-      const timer=setTimeout(()=>{try{task.cancel();}catch(e){};finish(reject,new Error('Firebase Storage upload timed out after 30 seconds'));},30000);
-      task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},err=>finish(reject,err),()=>finish(resolve));
-    });
+    await new Promise((resolve,reject)=>task.on(firebase.storage.TaskEvent.STATE_CHANGED,()=>{},reject,resolve));
     return {url:await ref.getDownloadURL(),storage:'firebase-storage'};
   }catch(e){uploadToFirebaseStorage.lastError=e?.message||'Firebase Storage upload failed';return null;}
 }
@@ -983,6 +978,7 @@ function listenPosts(){
   },e=>console.log(e));
 }
 function loadMorePosts(){
+  setDataRefresh(true);
   _feedShown+=10;
   renderHome(cachedPosts,_feedShown);
   // If we've exhausted the local 30, fetch more from Firestore
@@ -995,7 +991,9 @@ function loadMorePosts(){
         const more=sn.docs.map(d=>({id:d.id,...d.data()}));
         if(more.length){cachedPosts=[...cachedPosts,...more];renderHome(cachedPosts,_feedShown);}
         else{showToast('✅ All posts loaded');}
-      }).catch(()=>{});
+      }).catch(()=>{}).finally(()=>setTimeout(()=>setDataRefresh(false),260));
+  }else{
+    setTimeout(()=>setDataRefresh(false),260);
   }
 }
 function toggleGN(val){
@@ -2231,6 +2229,8 @@ async function openGroup(postId,name){
   if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
   try{
     curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||'',photo:groupData.photo||localPost?.groupPhoto||''};
+    const groupInviteAllowed=canInviteToGroup(groupData,CU?.uid);
+    if(el('gcmInviteBtn'))el('gcmInviteBtn').style.display=groupInviteAllowed?'block':'none';
     pushModalState();
     el('grpT').textContent=curGrp.name;el('groupW').style.display='flex';
     el('grpAv').innerHTML=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:'🏫';
@@ -2313,7 +2313,7 @@ function toggleSelectMsg(id,isGrp){
   if(selectedMsgs.size>0){
     let bar=document.getElementById('selBar');
     if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:#1a1a2e;color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
-    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
+    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:var(--btnB);color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:var(--btnB);color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:var(--btnB);color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
   }else{clearSelection();}
 }
 function clearSelection(){
@@ -2331,9 +2331,9 @@ async function deleteSelectedMsgs(isGrp,scope){
     sheet.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
     sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:18px;">
       <p style="font-weight:bold;font-size:15px;text-align:center;margin-bottom:14px;">Delete ${count} message${count>1?'s':''}?</p>
-      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for everyone</button>
-      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for me</button>
-      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:#1e88e5;color:#fff;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;">Cancel</button>
+      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for everyone</button>
+      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for me</button>
+      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;">Cancel</button>
     </div>`;
     sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
     document.body.appendChild(sheet);
@@ -2522,7 +2522,7 @@ async function toggleReact(id,emoji,dest){
   rc[CU.uid]=ur.includes(emoji)?ur.filter(e=>e!==emoji):[...ur,emoji];
   await ref.update({reactions:rc});
 }
-function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}const docUrl=encodeURIComponent(src);const body=type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>Music</h2><audio src="${src}" controls autoplay style="width:min(90vw,420px);"></audio></div>`:`<iframe src="https://docs.google.com/gview?embedded=1&url=${docUrl}" style="width:100vw;height:calc(100vh - 56px);border:none;background:#fff;"></iframe><a href="${src}" target="_blank" rel="noopener" download style="position:fixed;bottom:10px;right:10px;padding:12px 18px;background:#1e88e5;color:#fff;border-radius:22px;text-decoration:none;font-weight:bold;">Download</a>`;w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${body}</body></html>`);w.document.close();}
+function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}const docUrl=encodeURIComponent(src);const body=type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>Music</h2><audio src="${src}" controls autoplay style="width:min(90vw,420px);"></audio></div>`:`<iframe src="https://docs.google.com/gview?embedded=1&url=${docUrl}" style="width:100vw;height:calc(100vh - 56px);border:none;background:#fff;"></iframe><a href="${src}" target="_blank" rel="noopener" download style="position:fixed;bottom:10px;right:10px;padding:12px 18px;background:var(--btnB);color:#fff;border-radius:22px;text-decoration:none;font-weight:bold;">Download</a>`;w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${body}</body></html>`);w.document.close();}
 function dlM(src,fname){if(!src)return;const a=document.createElement('a');a.href=src;a.download=fname||'file';a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(()=>document.body.removeChild(a),300);}
 
 async function markVoicePlayed(msgId,senderUid){
@@ -2717,8 +2717,8 @@ function showImgPreview(file,dest){
       <img src="${url}" style="width:100%;height:100%;object-fit:contain;">
     </div>
     <div style="background:rgba(0,0,0,.85);padding:16px 20px;display:flex;gap:14px;justify-content:center;align-items:center;flex-shrink:0;">
-      <button onclick="cancelPreview()" style="background:#1e88e5;color:#fff;border:none;padding:12px 28px;border-radius:24px;font-size:16px;cursor:pointer;font-weight:bold;">Cancel</button>
-      <button onclick="sendPreviewImg()" style="background:#1e88e5;color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(30,136,229,.35);">Send</button>
+      <button onclick="cancelPreview()" style="background:var(--btnB);color:#fff;border:none;padding:12px 28px;border-radius:24px;font-size:16px;cursor:pointer;font-weight:bold;">Cancel</button>
+      <button onclick="sendPreviewImg()" style="background:var(--btnB);color:#fff;border:none;padding:12px 36px;border-radius:24px;font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 16px rgba(30,136,229,.35);">Send</button>
     </div>`;
   document.body.appendChild(modal);
 }
@@ -3516,7 +3516,7 @@ function notifCardHtml(n){
   const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
   const isPost=n.kind==='post'||(n.icon==='📢'&&!!n.body);
-  const action=isPost?`openPostNotification('${e2(n.id)}','${e2(n.postId||'')}')`:n.kind==='groupJoinRequest'&&n.state==='pending'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}')`:n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?`markN('${e2(n.id)}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
+  const action=isPost?`openPostNotification('${e2(n.id)}','${e2(n.postId||'')}')`:n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.requesterUid||'')}')`:n.kind==='groupJoinStatus'?`markN('${e2(n.id)}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
   const hint=isInvite||isPost?(appLang==='fr'?'Appuyer pour voir':'Tap to view'):(appLang==='fr'?'Appuyer pour marquer comme lu':'Tap to mark as read');
   return `<div class="notif alertCard ${n.read?'':'unread'}" data-notif-id="${e2(n.id)}" onclick="${action}">
     <span class="alertIcon">${icon}</span>
@@ -3524,9 +3524,9 @@ function notifCardHtml(n){
     ${!n.read?`<div class="alertDot"></div>`:''}
   </div>`;
 }
-function openGroupRequestTarget(id,groupId){
+function openGroupRequestTarget(id,groupId,requesterUid){
   markN(id);
-  if(groupId)openManageGroup(groupId);
+  if(groupId)openManageGroup(groupId,requesterUid||'');
 }
 function openGroupStatusTarget(id,groupId,groupName){
   markN(id);
@@ -3985,8 +3985,10 @@ function groupInviteEligibility(g,invitee){
   if(rule==='major'&&(invitee.course||'')!==g.creatorCourse)return{eligible:false,reason:'major'};
   return{eligible:true,reason:null};
 }
-async function openManageGroup(postId){
+let manageHighlightUid='';
+async function openManageGroup(postId,highlightUid=''){
   curManageGroupId=postId;
+  manageHighlightUid=highlightUid||'';
   pushModalState();
   el('groupManageView').style.display='flex';
   el('gmTitle').textContent=t('group_loading');
@@ -3995,6 +3997,9 @@ async function openManageGroup(postId){
   try{gs=await fetchDocWithRetry(db.collection('groups').doc(postId));}catch(e){showToast(t('group_unavailable'));closeGroupManage();return;}
   if(!gs.exists){showToast(t('group_not_found'));closeGroupManage();return;}
   const g=gs.data();
+  if(manageHighlightUid&&!allUsers.some(u=>u.uid===manageHighlightUid)){
+    try{const hs=await db.collection('users').doc(manageHighlightUid).get();if(hs.exists)allUsers.push({...hs.data(),uid:hs.id});}catch(e){}
+  }
   const viewerIsOwner=isGroupOwner(g,CU.uid);
   const viewerIsAdmin=isGroupAdmin(g,CU.uid);
   const viewerCanDecide=canInviteToGroup(g,CU.uid);
@@ -4057,7 +4062,13 @@ async function openManageGroup(postId){
       ${mgmt?`<div style="display:flex;gap:5px;flex-wrap:wrap;width:100%;justify-content:flex-end;margin-top:4px;">${mgmt}</div>`:''}
     </div>`;
   }
-  el('gmMembers').innerHTML=[
+  const acceptedUser=manageHighlightUid&&memberIds.includes(manageHighlightUid)?allUsers.find(u=>u.uid===manageHighlightUid):null;
+  const acceptedAv=acceptedUser?.photo?`<img src="${acceptedUser.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((acceptedUser?.name||'?')[0]||'?').toUpperCase();
+  const acceptedHighlight=acceptedUser?`<div class="card manageAcceptedMember" style="display:flex;align-items:center;gap:10px;padding:11px 10px;border-left:4px solid var(--btnB);background:color-mix(in srgb,var(--card) 88%,var(--btnB) 12%);margin-bottom:14px;">
+    <div style="width:42px;height:42px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;">${acceptedAv}</div>
+    <div style="min-width:0;"><div style="font-size:10.5px;font-weight:800;color:var(--btnB);text-transform:uppercase;letter-spacing:.03em;">${appLang==='fr'?'Membre accepté':'Accepted member'}</div><b style="font-size:14px;">${esc(cleanDisplayName(acceptedUser.name||'Member'))}</b></div>
+  </div>`:'';
+  el('gmMembers').innerHTML=acceptedHighlight+[
     ownerIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">👑 ${t('role_owner')} (${ownerIds.length})</p>${ownerIds.map(rowHtml).join('')}`:'',
     adminIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🛡️ ${t('role_admin')} (${adminIds.length})</p>${adminIds.map(rowHtml).join('')}`:'',
     regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🙂 ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
@@ -4186,44 +4197,30 @@ async function openGroupResources(groupId){
 }
 function closeGroupResources(){el('groupResourcesView').style.display='none';consumeModalState();}
 async function addGroupResource(){
-  if(!curGrp||!CU){showToast('❌ Open the group resources screen again and try once more.');return;}
-  const resourceGroupId=curGrp.id;
-  const title=v('resTitle').trim();
+  if(!curGrp||!CU)return;
+  const title=v('resTitle');
   if(!title)return showToast(t('group_resource_title_required'));
-  const rawLink=v('resLink').trim();
+  const rawLink=v('resLink');
   const link=safeGroupResourceUrl(rawLink);
   const file=el('resFile')?.files?.[0]||null;
   if(rawLink&&!link)return showToast(t('group_resource_invalid_link'));
   if(!link&&!file)return showToast(t('group_resource_link_or_file'));
-  const button=el('resAddBtn');
-  if(button?.disabled)return;
-  if(button){button.disabled=true;button.setAttribute('aria-busy','true');button.dataset.defaultLabel=button.textContent;button.textContent=appLang==='fr'?'Enregistrement…':'Saving…';}
   showOv(true);
   try{
     let uploaded=null;
-    let fileUploadWarning='';
-    if(file&&!link){
-      try{
-        uploaded=await uploadDocument(file);
-        if(!uploaded?.url)throw new Error(uploadToFirebaseStorage.lastError||t('group_resource_upload_failed'));
-      }catch(fileErr){
-        if(!link)throw fileErr;
-        fileUploadWarning=appLang==='fr'?' Le lien a été enregistré, mais le fichier n’a pas pu être téléversé.':' The link was saved, but the file could not be uploaded.';
-        console.warn('Optional resource file upload failed; saving link only:',fileErr);
-      }
-    }else if(file&&link){
-      fileUploadWarning=appLang==='fr'?' Le lien a été enregistré; le fichier local est ignoré car le lien Drive est disponible.':' The link was saved; the local file was skipped because a Drive link is available.';
+    if(file){
+      uploaded=await uploadDocument(file);
+      if(!uploaded?.url)throw new Error(uploadToFirebaseStorage.lastError||t('group_resource_upload_failed'));
     }
-    const savePromise=db.collection('groups').doc(resourceGroupId).collection('resources').add({
+    await db.collection('groups').doc(curGrp.id).collection('resources').add({
       title,link:link||'',fileUrl:uploaded?.url||'',fileName:file?.name||'',fileType:file?.type||'',
       uid:CU.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    await Promise.race([savePromise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(appLang==='fr'?'Le délai d’enregistrement est dépassé. Vérifie ta connexion ou les règles du groupe.':'Saving timed out. Check your connection or group permissions.')),15000))]);
     el('resTitle').value='';el('resLink').value='';if(el('resFile'))el('resFile').value='';
-    showToast(t('group_resource_added')+fileUploadWarning);
-    openGroupResources(resourceGroupId).catch(()=>{});
+    showToast(t('group_resource_added'));
+    openGroupResources(curGrp.id);
   }catch(e){showToast('❌ '+e.message);}
-  finally{showOv(false);if(button){button.disabled=false;button.removeAttribute('aria-busy');button.textContent=button.dataset.defaultLabel||t('group_resource_add');}}
+  finally{showOv(false);}
 }
 function openGroupSearch(){
   const bar=el('groupSearchBar');
@@ -4295,7 +4292,7 @@ async function exitGroup(){
     if(findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
   }catch(e){showToast('❌ '+e.message);}
 }
-function closeGroupManage(){el('groupManageView').style.display='none';curManageGroupId=null;consumeModalState();}
+function closeGroupManage(){el('groupManageView').style.display='none';curManageGroupId=null;manageHighlightUid='';consumeModalState();}
 async function respondGroupRequest(uid,accept,groupId){
   const gid=groupId||curManageGroupId;
   if(!gid)return;
@@ -4398,6 +4395,8 @@ async function deleteGroup(){
   }catch(e){showOv(false);showToast('❌ '+e.message);}
 }
 function openInviteMembers(){
+  if(!curManageGroupId&&curGrp?.id)curManageGroupId=curGrp.id;
+  if(!curManageGroupId)return;
   el('inviteSearchQ').value='';
   el('inviteMembersView').style.display='flex';
   pushModalState();
@@ -4702,12 +4701,13 @@ function tab(id){
   if(id==='home')renderStatusBar();
   // If already on home and tapped again - refresh feed from Firestore
   if(id==='home'&&el('Phome').style.display!=='none'&&arguments[1]==='refresh'){
+    setDataRefresh(true);
     db.collection('posts').orderBy('createdAt','desc').limit(30).get().then(sn=>{
       cachedPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
       _feedShown=10;
       renderHome(cachedPosts,_feedShown);
       showToast('✅ Feed refreshed');
-    }).catch(()=>{});
+    }).catch(()=>{}).finally(()=>setTimeout(()=>setDataRefresh(false),260));
   }
   if(id==='find'){
     if(allUsers.length>0)renderFind(el('findQ')?.value||'');
@@ -4745,7 +4745,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v55.js?v=studylink-pwa-135',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-132',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
