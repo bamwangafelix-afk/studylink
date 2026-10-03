@@ -3492,9 +3492,9 @@ function notifAlertText(n){
   if(n.kind==='groupMembership'){
     const actor=esc(cleanDisplayName(n.actorName||'Admin'));
     const target=esc(cleanDisplayName(n.targetName||'Student'));
-    if(n.action==='blocked')return appLang==='fr'?`${target}, tu as été bloqué du groupe ${group} par ${actor}. Tu ne peux plus écrire jusqu’au déblocage.`:`${target}, you were blocked in ${groupTarget} by ${actor}. You cannot write until you are unblocked.`;
-    if(n.action==='unblocked')return appLang==='fr'?`${target}, tu as été débloqué du groupe ${group} par ${actor}. Tu peux maintenant écrire dans le groupe.`:`${target}, you were unblocked in ${groupTarget} by ${actor}. You can now write in the group.`;
-    return appLang==='fr'?`${target}, tu as été retiré du groupe ${group} par ${actor}.`:`${target}, you were removed from ${groupTarget} by ${actor}.`;
+    if(n.action==='blocked')return appLang==='fr'?`Tu as été bloqué du groupe ${group} par ${actor}. Tu ne peux plus écrire jusqu’au déblocage.`:`You were blocked from writing in ${groupTarget} by ${actor}. You cannot write until you are unblocked.`;
+    if(n.action==='unblocked')return appLang==='fr'?`Tu as été débloqué du groupe ${group} par ${actor}. Tu peux maintenant écrire dans le groupe.`:`You were unblocked in ${groupTarget} by ${actor}. You can now write in the group.`;
+    return appLang==='fr'?`Tu as été retiré du groupe ${group} par ${actor}.`:`You were removed from ${groupTarget} by ${actor}.`;
   }
   return esc(n.body||n.title||'You have a new notification.');
 }
@@ -4821,7 +4821,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-143',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-144',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
