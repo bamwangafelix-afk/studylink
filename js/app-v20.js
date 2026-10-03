@@ -1342,12 +1342,13 @@ let curStatusUid=null;
 function statusSequence(){
   if(!CU)return [];
   const hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
-  return allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u))
+  return allUsers.filter(u=>!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u))
     .sort((a,b)=>(statusMillis(b.statusPost.createdAt)||statusMillis(b.statusUpdatedAt)||0)-(statusMillis(a.statusPost.createdAt)||statusMillis(a.statusUpdatedAt)||0));
 }
 function nextStatusUid(uid){
   const list=statusSequence(),index=list.findIndex(u=>u.uid===uid);
-  return index>=0&&index<list.length-1?list[index+1].uid:null;
+  if(list.length<2||index<0)return null;
+  return list[(index+1)%list.length].uid;
 }
 function viewStatus(uid,fromQueue=false){
   const u=allUsers.find(x=>x.uid===uid);
@@ -2236,8 +2237,17 @@ function setGroupWriteUi(blocked){
   const input=el('gIn'),send=el('gSendB');
   if(input){input.disabled=!!blocked;input.placeholder=blocked?t('group_blocked_write'):(t('chat_msg_ph')||'Message...');}
   if(send){send.disabled=!!blocked;send.style.opacity=blocked?'.45':'';send.setAttribute('aria-disabled',blocked?'true':'false');}
+  const composer=el('groupW')?.querySelector('.cbottom');
+  if(composer){
+    composer.style.pointerEvents=blocked?'none':'';
+    composer.setAttribute('aria-disabled',blocked?'true':'false');
+  }
   const bar=el('gTypebar');
-  if(bar&&blocked){bar.textContent=t('group_blocked_write');bar.style.display='block';bar.style.color='#c0392b';}
+  if(bar){
+    bar.textContent=blocked?t('group_blocked_write'):'';
+    bar.style.display=blocked?'block':'none';
+    bar.style.color='#c0392b';
+  }
 }
 async function sendSticker(sticker){
   if(!curChat&&!curGrp)return;
@@ -2314,7 +2324,8 @@ async function openGroup(postId,name){
   }
   if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
   try{
-    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||'',photo:groupData.photo||localPost?.groupPhoto||''};
+    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||'',photo:groupData.photo||localPost?.groupPhoto||'',blockedUsers:groupData.blockedUsers||[]};
+    setGroupWriteUi(curGrp.blockedUsers.includes(CU?.uid));
     const groupInviteAllowed=canInviteToGroup(groupData,CU?.uid);
     if(el('gcmInviteBtn'))el('gcmInviteBtn').style.display=groupInviteAllowed?'block':'none';
     pushModalState();
