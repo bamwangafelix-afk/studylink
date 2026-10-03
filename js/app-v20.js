@@ -1350,6 +1350,11 @@ function nextStatusUid(uid){
   if(list.length<2||index<0)return null;
   return list[(index+1)%list.length].uid;
 }
+function previousStatusUid(uid){
+  const list=statusSequence(),index=list.findIndex(u=>u.uid===uid);
+  if(list.length<2||index<0)return null;
+  return list[(index-1+list.length)%list.length].uid;
+}
 function viewStatus(uid,fromQueue=false){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
@@ -1693,8 +1698,10 @@ function replyToStatus(){
   openChat(u?.name||'',uid);
 }
 
+let statusPressAt=0,statusPressX=0;
 function statusPressStart(e){
   if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
+  statusPressAt=Date.now();statusPressX=e.clientX||0;
   clearTimeout(statusAutoCloseTimer);
   const fill=document.querySelector('#stVProgress .stVProgFill');
   const track=fill.parentElement;
@@ -1707,6 +1714,13 @@ function statusPressStart(e){
 }
 function statusPressEnd(e){
   if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
+  const held=Date.now()-statusPressAt;
+  const moved=Math.abs((e.clientX||statusPressX)-statusPressX)>18;
+  if(held<350&&!moved&&curStatusUid){
+    const view=el('statusView'),x=e.clientX||statusPressX,width=view?.clientWidth||1;
+    const target=x<width/2?previousStatusUid(curStatusUid):nextStatusUid(curStatusUid);
+    if(target){viewStatus(target,true);return;}
+  }
   if(statusRemainingMs<=0){closeStatusView();return;}
   const fill=document.querySelector('#stVProgress .stVProgFill');
   void fill.offsetWidth;
@@ -2235,7 +2249,12 @@ async function groupWriteAllowed(){
 }
 function setGroupWriteUi(blocked){
   const input=el('gIn'),send=el('gSendB');
-  if(input){input.disabled=!!blocked;input.placeholder=blocked?t('group_blocked_write'):(t('chat_msg_ph')||'Message...');}
+  if(input){
+    input.disabled=!!blocked;
+    input.readOnly=!!blocked;
+    input.placeholder=blocked?t('group_blocked_write'):(t('chat_msg_ph')||'Message...');
+    if(blocked&&document.activeElement===input)input.blur();
+  }
   if(send){send.disabled=!!blocked;send.style.opacity=blocked?'.45':'';send.setAttribute('aria-disabled',blocked?'true':'false');}
   const composer=el('groupW')?.querySelector('.cbottom');
   if(composer){
@@ -4241,12 +4260,12 @@ async function toggleGroupAdmin(uid,makeAdmin){
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
 }
-async function notifyGroupMembership(uid,group,action){
+async function notifyGroupMembership(uid,group,action,groupId=curManageGroupId){
   let target=allUsers.find(u=>u.uid===uid)||{};
   if(!target.name){try{const snap=await db.collection('users').doc(uid).get();if(snap.exists){target={...snap.data(),uid};allUsers.push(target);}}catch(e){}}
-  const notificationId=`groupMembership_${curManageGroupId}_${uid}_${action}`;
+  const notificationId=`groupMembership_${groupId}_${uid}_${action}_${Date.now()}`;
   await db.collection('notifications').doc(notificationId).set({
-    toUid:uid,kind:'groupMembership',action,groupId:curManageGroupId,groupName:group.name||'',
+    toUid:uid,kind:'groupMembership',action,groupId,groupName:group.name||'',
     actorUid:CU.uid,actorName:cleanDisplayName(MP?.name||CU.displayName||'Admin'),
     targetName:cleanDisplayName(target.name||'Student'),read:false,
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -4261,7 +4280,7 @@ async function removeGroupMember(uid){
       members:firebase.firestore.FieldValue.arrayRemove(uid),
       admins:firebase.firestore.FieldValue.arrayRemove(uid)
     });
-    await notifyGroupMembership(uid,g,'removed');
+    await notifyGroupMembership(uid,g,'removed',gid);
     showToast(t('group_member_removed'));
     openManageGroup(gid);
   }catch(e){showToast('❌ '+e.message);}
@@ -4272,7 +4291,7 @@ async function blockGroupMember(uid){
   try{
     const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
     await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)});
-    await notifyGroupMembership(uid,g,'blocked');
+    await notifyGroupMembership(uid,g,'blocked',gid);
     showToast(t('group_member_blocked'));
     openManageGroup(gid,uid);
   }catch(e){showToast('❌ '+e.message);}
@@ -4282,7 +4301,7 @@ async function unblockGroupMember(uid){
   try{
     const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
     await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
-    await notifyGroupMembership(uid,g,'unblocked');
+    await notifyGroupMembership(uid,g,'unblocked',gid);
     showToast(t('group_member_unblocked'));
     openManageGroup(gid,uid);
   }catch(e){showToast('❌ '+e.message);}
