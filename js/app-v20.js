@@ -71,7 +71,7 @@ db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore pe
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
-let statusRefreshTimer=null;
+let statusRefreshTimer=null,statusFreshUntil=0;
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
 let myPendingJoinGroupIds=new Set();
@@ -901,6 +901,7 @@ async function savePro(){
 // ── USERS ──
 function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
+    if(sn.metadata?.fromCache&&Date.now()<statusFreshUntil)return;
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
     renderStatusBar();
     // Only re-render Find if it's currently visible
@@ -941,6 +942,7 @@ async function refreshStatusesFromServer(force=false){
     fresh.forEach(u=>{if(!allUsers.some(x=>x.uid===u.uid))allUsers.push(u);});
     const mine=byUid.get(CU.uid);
     if(mine){MP={...MP,...mine};myPho=MP.photo||myPho;}
+    statusFreshUntil=Date.now()+18000;
     renderStatusBar();
   }).catch(e=>console.warn('status server refresh:',e?.code||e)).finally(()=>{statusServerRefreshPromise=null;});
   return statusServerRefreshPromise;
@@ -949,6 +951,7 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible')void refreshStatusesFromServer(true);
 });
 window.addEventListener('pageshow',()=>void refreshStatusesFromServer(true));
+window.addEventListener('online',()=>void refreshStatusesFromServer(true));
 
 // ── VISIBILITY ──
 function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
@@ -4869,7 +4872,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v56.js?v=studylink-pwa-150',location.href).href;
+  const workerUrl=new URL('sw-v57.js?v=studylink-pwa-151',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
