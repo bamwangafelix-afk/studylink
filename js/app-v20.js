@@ -1171,7 +1171,7 @@ function statusMillis(ts){
 }
 function activeStatusOf(u){
   if(!u||!u.statusPost)return null;
-  const createdMs=statusMillis(u.statusPost.createdAt);
+  const createdMs=statusMillis(u.statusPost.createdAt)||statusMillis(u.statusUpdatedAt);
   if(!createdMs)return null; // still syncing with server, not ready yet
   if(Date.now()-createdMs>STATUS_TTL_MS)return null;
   return u.statusPost;
@@ -1193,7 +1193,7 @@ function renderStatusBar(){
       <div class="stLabel">${t('st_you')}</div>
     </div>`;
   }
-  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
+  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||statusMillis(b.statusUpdatedAt)||0)-(statusMillis(a.statusPost.createdAt)||statusMillis(a.statusUpdatedAt)||0));
   others.forEach(u=>{
     const sp=u.statusPost;
     const seen=(sp.viewedBy||[]).includes(CU.uid);
@@ -1323,11 +1323,11 @@ async function publishStatus(){
   setDataRefresh(true);
   el('ov').style.display='flex';
   try{
-    await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility});
+    await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility,statusUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()});
     const localStatus={...payload,createdAt:Date.now()};
-    MP={...MP,statusPost:localStatus,statusVisibility:visibility};
+    MP={...MP,statusPost:localStatus,statusVisibility:visibility,statusUpdatedAt:Date.now()};
     const me=allUsers.find(u=>u.uid===CU.uid);
-    if(me){me.statusPost=localStatus;me.statusVisibility=visibility;}
+    if(me){me.statusPost=localStatus;me.statusVisibility=visibility;me.statusUpdatedAt=Date.now();}
     renderStatusBar();
     showToast(t('st_toast_published'),col);
     forwardedFromDraft=null;
@@ -1351,7 +1351,7 @@ function viewStatus(uid){
   const c=sp.category?CATS[sp.category]:null;
   el('stVAvatar').innerHTML=u.photo?`<img src="${u.photo}">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('stVName').textContent=uid===CU.uid?t('st_you'):(u.name||'?');
-  const createdMs=statusMillis(sp.createdAt)||Date.now();
+  const createdMs=statusMillis(sp.createdAt)||statusMillis(u.statusUpdatedAt)||Date.now();
   const mins=Math.max(1,Math.round((Date.now()-createdMs)/60000));
   const ago=mins<60?t('st_time_ago_min').replace('{n}',mins):t('st_time_ago_hour').replace('{n}',Math.round(mins/60));
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
@@ -1498,7 +1498,7 @@ async function deleteStatus(){
   el('stVMenu').style.display='none';
   if(!confirm(t('st_confirm_delete')))return;
   const col=viewingCategoryColor();
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'),col);}
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete(),statusUpdatedAt:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'),col);}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
@@ -4872,7 +4872,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v57.js?v=studylink-pwa-151',location.href).href;
+  const workerUrl=new URL('sw-v58.js?v=studylink-pwa-152',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
