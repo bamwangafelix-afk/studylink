@@ -2240,7 +2240,7 @@ function insertEmoji(emoji){
 async function groupWriteAllowed(){
   if(!curGrp||!CU)return false;
   try{
-    const gs=await db.collection('groups').doc(curGrp.id).get();
+    const gs=await db.collection('groups').doc(curGrp.id).get({source:'server'});
     const blocked=(gs.data()?.blockedUsers||[]).includes(CU.uid);
     setGroupWriteUi(blocked);
     if(blocked){showToast(t('group_blocked_write'));return false;}
@@ -4290,8 +4290,10 @@ async function blockGroupMember(uid){
   if(!confirm(t('group_confirm_block')))return;
   try{
     const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
-    await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)});
-    await notifyGroupMembership(uid,g,'blocked',gid);
+    await Promise.all([
+      db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)}),
+      notifyGroupMembership(uid,g,'blocked',gid)
+    ]);
     showToast(t('group_member_blocked'));
     openManageGroup(gid,uid);
   }catch(e){showToast('❌ '+e.message);}
@@ -4300,8 +4302,10 @@ async function unblockGroupMember(uid){
   if(!curManageGroupId)return;
   try{
     const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
-    await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
-    await notifyGroupMembership(uid,g,'unblocked',gid);
+    await Promise.all([
+      db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)}),
+      notifyGroupMembership(uid,g,'unblocked',gid)
+    ]);
     showToast(t('group_member_unblocked'));
     openManageGroup(gid,uid);
   }catch(e){showToast('❌ '+e.message);}
@@ -4926,7 +4930,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v59.js?v=studylink-pwa-153',location.href).href;
+  const workerUrl=new URL('sw-v60.js?v=studylink-pwa-154',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
