@@ -562,6 +562,7 @@ auth.onAuthStateChanged(async u=>{
     try{listenPosts();}catch(e){}
     try{listenMyGroupMemberships();}catch(e){}
     try{listenUsers();}catch(e){}
+    try{void refreshStatusesFromServer(true);}catch(e){}
     try{setupNotifL();}catch(e){}
     try{setupStudyInviteState();}catch(e){}
     try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
@@ -920,6 +921,28 @@ function listenUsers(){
     });
   },e=>console.log('users:',e));
 }
+let statusServerRefreshAt=0,statusServerRefreshPromise=null;
+async function refreshStatusesFromServer(force=false){
+  if(!CU)return;
+  const now=Date.now();
+  if(!force&&now-statusServerRefreshAt<15000)return;
+  if(statusServerRefreshPromise)return statusServerRefreshPromise;
+  statusServerRefreshAt=now;
+  statusServerRefreshPromise=db.collection('users').get({source:'server'}).then(sn=>{
+    const fresh=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
+    const byUid=new Map(fresh.map(u=>[u.uid,u]));
+    allUsers=allUsers.map(u=>byUid.get(u.uid)||u);
+    fresh.forEach(u=>{if(!allUsers.some(x=>x.uid===u.uid))allUsers.push(u);});
+    const mine=byUid.get(CU.uid);
+    if(mine){MP={...MP,...mine};myPho=MP.photo||myPho;}
+    renderStatusBar();
+  }).catch(e=>console.warn('status server refresh:',e?.code||e)).finally(()=>{statusServerRefreshPromise=null;});
+  return statusServerRefreshPromise;
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible')void refreshStatusesFromServer(true);
+});
+window.addEventListener('pageshow',()=>void refreshStatusesFromServer(true));
 
 // ── VISIBILITY ──
 function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
@@ -4840,7 +4863,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-148',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-149',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
