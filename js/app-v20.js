@@ -3821,7 +3821,7 @@ function inviteActionCardHtml(n){
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){
-  const updateKinds=new Set(['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus']);
+  const updateKinds=new Set(['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus','groupMembership']);
   db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{
     const b=db.batch();
     sn.docs.forEach(d=>{if(!updateKinds.has(d.data().kind))b.delete(d.ref);});
@@ -4261,8 +4261,7 @@ async function toggleGroupAdmin(uid,makeAdmin){
   }catch(e){showToast('❌ '+e.message);}
 }
 async function notifyGroupMembership(uid,group,action,groupId=curManageGroupId){
-  let target=allUsers.find(u=>u.uid===uid)||{};
-  if(!target.name){try{const snap=await db.collection('users').doc(uid).get();if(snap.exists){target={...snap.data(),uid};allUsers.push(target);}}catch(e){}}
+  const target=allUsers.find(u=>u.uid===uid)||{};
   const notificationId=`groupMembership_${groupId}_${uid}_${action}_${Date.now()}`;
   await db.collection('notifications').doc(notificationId).set({
     toUid:uid,kind:'groupMembership',action,groupId,groupName:group.name||'',
@@ -4271,6 +4270,7 @@ async function notifyGroupMembership(uid,group,action,groupId=curManageGroupId){
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true});
 }
+const groupActionBusy=new Set();
 async function removeGroupMember(uid){
   if(!curManageGroupId)return;
   if(!confirm(t('group_confirm_remove')))return;
@@ -4288,27 +4288,25 @@ async function removeGroupMember(uid){
 async function blockGroupMember(uid){
   if(!curManageGroupId)return;
   if(!confirm(t('group_confirm_block')))return;
-  try{
-    const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
-    await Promise.all([
-      db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)}),
-      notifyGroupMembership(uid,g,'blocked',gid)
-    ]);
-    showToast(t('group_member_blocked'));
-    openManageGroup(gid,uid);
-  }catch(e){showToast('❌ '+e.message);}
+  const gid=curManageGroupId;
+  if(groupActionBusy.has(`${gid}:${uid}`))return;
+  groupActionBusy.add(`${gid}:${uid}`);
+  const g={name:(el('gmTitle')?.textContent||'').replace(/^🏫\s*/,'').trim()};
+  showToast(t('group_member_blocked'));
+  const update=db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)});
+  const notification=notifyGroupMembership(uid,g,'blocked',gid);
+  Promise.all([update,notification]).then(()=>openManageGroup(gid,uid)).catch(e=>showToast('❌ '+e.message)).finally(()=>groupActionBusy.delete(`${gid}:${uid}`));
 }
 async function unblockGroupMember(uid){
   if(!curManageGroupId)return;
-  try{
-    const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
-    await Promise.all([
-      db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)}),
-      notifyGroupMembership(uid,g,'unblocked',gid)
-    ]);
-    showToast(t('group_member_unblocked'));
-    openManageGroup(gid,uid);
-  }catch(e){showToast('❌ '+e.message);}
+  const gid=curManageGroupId;
+  if(groupActionBusy.has(`${gid}:${uid}`))return;
+  groupActionBusy.add(`${gid}:${uid}`);
+  const g={name:(el('gmTitle')?.textContent||'').replace(/^🏫\s*/,'').trim()};
+  showToast(t('group_member_unblocked'));
+  const update=db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
+  const notification=notifyGroupMembership(uid,g,'unblocked',gid);
+  Promise.all([update,notification]).then(()=>openManageGroup(gid,uid)).catch(e=>showToast('❌ '+e.message)).finally(()=>groupActionBusy.delete(`${gid}:${uid}`));
 }
 function toggleGroupChatMenu(){
   const m=el('groupChatMenu');
