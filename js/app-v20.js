@@ -1339,12 +1339,22 @@ async function publishStatus(){
 
 // ── STATUS VIEW ──
 let curStatusUid=null;
-function viewStatus(uid){
+function statusSequence(){
+  if(!CU)return [];
+  const hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
+  return allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u))
+    .sort((a,b)=>(statusMillis(b.statusPost.createdAt)||statusMillis(b.statusUpdatedAt)||0)-(statusMillis(a.statusPost.createdAt)||statusMillis(a.statusUpdatedAt)||0));
+}
+function nextStatusUid(uid){
+  const list=statusSequence(),index=list.findIndex(u=>u.uid===uid);
+  return index>=0&&index<list.length-1?list[index+1].uid:null;
+}
+function viewStatus(uid,fromQueue=false){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
   if(!canViewVisibility(sp,CU,u))return showToast(t('st_not_available'));
-  pushModalState();
+  if(!fromQueue)pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
@@ -1384,7 +1394,11 @@ function viewStatus(uid){
   void fill.offsetWidth; // force reflow
   fill.style.transition=`width ${STATUS_VIEW_MS}ms linear`;
   requestAnimationFrame(()=>{fill.style.width='100%';});
-  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)closeStatusView();},STATUS_VIEW_MS);
+  statusAutoCloseTimer=setTimeout(()=>{
+    if(curStatusUid!==uid)return;
+    const next=nextStatusUid(uid);
+    if(next)viewStatus(next,true);else closeStatusView();
+  },STATUS_VIEW_MS);
   // mark as seen (only if viewing someone else's) → ring turns gray after this
   if(uid!==CU.uid&&!(sp.viewedBy||[]).includes(CU.uid)){
     const viewedBy=[...(sp.viewedBy||[]),CU.uid];
@@ -2212,9 +2226,18 @@ async function groupWriteAllowed(){
   if(!curGrp||!CU)return false;
   try{
     const gs=await db.collection('groups').doc(curGrp.id).get();
-    if((gs.data()?.blockedUsers||[]).includes(CU.uid)){showToast(t('group_blocked_write'));return false;}
+    const blocked=(gs.data()?.blockedUsers||[]).includes(CU.uid);
+    setGroupWriteUi(blocked);
+    if(blocked){showToast(t('group_blocked_write'));return false;}
   }catch(e){return false;}
   return true;
+}
+function setGroupWriteUi(blocked){
+  const input=el('gIn'),send=el('gSendB');
+  if(input){input.disabled=!!blocked;input.placeholder=blocked?t('group_blocked_write'):(t('chat_msg_ph')||'Message...');}
+  if(send){send.disabled=!!blocked;send.style.opacity=blocked?'.45':'';send.setAttribute('aria-disabled',blocked?'true':'false');}
+  const bar=el('gTypebar');
+  if(bar&&blocked){bar.textContent=t('group_blocked_write');bar.style.display='block';bar.style.color='#c0392b';}
 }
 async function sendSticker(sticker){
   if(!curChat&&!curGrp)return;
@@ -2314,7 +2337,7 @@ async function openGroup(postId,name){
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
-    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
+    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));curGrp={...curGrp,blockedUsers:data.blockedUsers||[]};setGroupWriteUi((data.blockedUsers||[]).includes(CU.uid));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
     grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt').limitToLast(50).onSnapshot(sn=>{
       const mb=el('grpB');
       sn.docChanges().forEach(change=>{
@@ -4210,12 +4233,13 @@ async function toggleGroupAdmin(uid,makeAdmin){
 async function notifyGroupMembership(uid,group,action){
   let target=allUsers.find(u=>u.uid===uid)||{};
   if(!target.name){try{const snap=await db.collection('users').doc(uid).get();if(snap.exists){target={...snap.data(),uid};allUsers.push(target);}}catch(e){}}
-  await db.collection('notifications').add({
+  const notificationId=`groupMembership_${curManageGroupId}_${uid}_${action}`;
+  await db.collection('notifications').doc(notificationId).set({
     toUid:uid,kind:'groupMembership',action,groupId:curManageGroupId,groupName:group.name||'',
     actorUid:CU.uid,actorName:cleanDisplayName(MP?.name||CU.displayName||'Admin'),
     targetName:cleanDisplayName(target.name||'Student'),read:false,
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  });
+  },{merge:true});
 }
 async function removeGroupMember(uid){
   if(!curManageGroupId)return;
@@ -4872,7 +4896,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v58.js?v=studylink-pwa-152',location.href).href;
+  const workerUrl=new URL('sw-v59.js?v=studylink-pwa-153',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
