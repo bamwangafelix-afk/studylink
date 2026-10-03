@@ -505,10 +505,10 @@ function compressImg(file){
 
 // ── AUTH ──
 function cleanupAuthListeners(){
-  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub,grpPresenceUnsub,window._typingUnsub,window._statusUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
+  [notifUnsub,msgBUnsub,chatUnsub,grpUnsub,grpPresenceUnsub,myGroupMembershipUnsub,window._typingUnsub,window._statusUnsub].forEach(fn=>{try{if(typeof fn==='function')fn();}catch(e){}});
   if(typeof inboxUnsub==='function')try{inboxUnsub();}catch(e){}
   if(typeof inboxChatsUnsub==='function')try{inboxChatsUnsub();}catch(e){}
-  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;grpPresenceUnsub=null;
+  notifUnsub=null;msgBUnsub=null;chatUnsub=null;grpUnsub=null;grpPresenceUnsub=null;myGroupMembershipUnsub=null;
   window._typingUnsub=null;window._statusUnsub=null;
   if(typeof inboxUnsub==='function')inboxUnsub=null;
   if(typeof inboxChatsUnsub==='function')inboxChatsUnsub=null;
@@ -560,6 +560,7 @@ auth.onAuthStateChanged(async u=>{
     // Slow mobile Firestore responses must not leave Home looking empty.
     try{setupPresence();}catch(e){}
     try{listenPosts();}catch(e){}
+    try{listenMyGroupMemberships();}catch(e){}
     try{listenUsers();}catch(e){}
     try{setupNotifL();}catch(e){}
     try{setupStudyInviteState();}catch(e){}
@@ -956,6 +957,16 @@ function visiblePosts(posts){return (posts||[]).filter(p=>canViewVisibility(p,CU
 
 // ── POSTS ──
 let cachedPosts=[],lastPostCount=0,_feedShown=10;
+let myGroupMembershipIds=new Set(),myGroupMembershipUnsub=null;
+function listenMyGroupMemberships(){
+  if(!CU?.uid)return;
+  if(myGroupMembershipUnsub)myGroupMembershipUnsub();
+  myGroupMembershipUnsub=db.collection('groups').where('members','array-contains',CU.uid).onSnapshot(sn=>{
+    myGroupMembershipIds=new Set(sn.docs.map(d=>d.id));
+    if(el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
+    if(el('Pfind')?.style.display!=='none'&&findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
+  },e=>console.warn('group membership listener:',e?.code||e));
+}
 function listenPosts(){
   // Listen to latest 30 posts in real-time; we only render _feedShown of them
   db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
@@ -1080,7 +1091,7 @@ function renderHome(posts,limit){
   const hasMore=posts.length>(limit||10);
   f.innerHTML='';
   shown.forEach(p=>{
-    const isG=p.type==='Group',isOwn=p.uid===CU?.uid;
+    const isG=p.type==='Group',isOwn=p.uid===CU?.uid,isMember=isG&&(isOwn||myGroupMembershipIds.has(p.id));
     const liveUser=allUsers.find(u=>u.uid===p.uid);
     const du=liveUser||p.user||{}; // prefer live profile data over the stale snapshot saved with the post
     const st=getStatusInfo(du.status,du.lastSeen);
@@ -1101,7 +1112,9 @@ function renderHome(posts,limit){
       ${tags?`<div style="margin-bottom:6px;">${tags}</div>`:''}
       <p style="font-size:13px;margin-bottom:8px;">${esc(p.text)}</p>
       <div style="display:flex;gap:6px;">
-        ${isG?(myPendingJoinGroupIds.has(p.id)
+        ${isG?(isMember
+              ?`<button class="btn grp-open" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">${t('group_open')}</button>`
+              :myPendingJoinGroupIds.has(p.id)
               ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>${t('group_request_sent_btn')}</button>`
               :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
@@ -1279,6 +1292,11 @@ async function publishStatus(){
   el('ov').style.display='flex';
   try{
     await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility});
+    const localStatus={...payload,createdAt:Date.now()};
+    MP={...MP,statusPost:localStatus,statusVisibility:visibility};
+    const me=allUsers.find(u=>u.uid===CU.uid);
+    if(me){me.statusPost=localStatus;me.statusVisibility=visibility;}
+    renderStatusBar();
     showToast(t('st_toast_published'),col);
     forwardedFromDraft=null;
     closeStatusCreate();
@@ -4553,8 +4571,9 @@ async function respondGroupInvite(notifId,groupId,accept){
     const g=gs.data()||{};
     if(accept){
       if((g.blockedUsers||[]).includes(CU.uid)){showToast(t('group_blocked_generic'));return;}
-      const eligibility=groupInviteEligibility(g,MP||{});
-      if(!eligibility.eligible){showToast(t('group_refused_generic'));return;}
+      // A delivered invitation is an explicit approval to join. Do not reject
+      // it by rechecking the current Invite Members filter at acceptance time;
+      // that filter is enforced when the invitation is sent.
     }
     const b=db.batch();
     if(accept)b.update(gref,{members:firebase.firestore.FieldValue.arrayUnion(CU.uid)});
@@ -4821,7 +4840,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-145',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-146',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
