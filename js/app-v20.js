@@ -71,6 +71,7 @@ db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore pe
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
+let statusRefreshTimer=null;
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
 let myPendingJoinGroupIds=new Set();
@@ -515,6 +516,7 @@ function cleanupAuthListeners(){
   if(typeof _cachedInboxDocs!=='undefined')_cachedInboxDocs=null;
 }
 function resetLoggedOutUi(){
+  if(statusRefreshTimer){clearInterval(statusRefreshTimer);statusRefreshTimer=null;}
   if(CU?.uid&&curChat)void clearPresenceState('private',getCID(CU.uid,curChat.uid));
   if(CU?.uid&&curGrp)void clearPresenceState('group',curGrp.id);
   signOutInProgress=false;
@@ -563,6 +565,10 @@ auth.onAuthStateChanged(async u=>{
     try{listenMyGroupMemberships();}catch(e){}
     try{listenUsers();}catch(e){}
     try{void refreshStatusesFromServer(true);}catch(e){}
+    if(statusRefreshTimer)clearInterval(statusRefreshTimer);
+    statusRefreshTimer=setInterval(()=>{
+      if(document.visibilityState!=='hidden')void refreshStatusesFromServer(true);
+    },20000);
     try{setupNotifL();}catch(e){}
     try{setupStudyInviteState();}catch(e){}
     try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
@@ -4816,7 +4822,7 @@ function tab(id){
     renderHome(cachedPosts,_feedShown);
     const b=el('feedB');if(b){b.style.display='none';b.textContent='';}
   }
-  if(id==='home')renderStatusBar();
+  if(id==='home'){renderStatusBar();void refreshStatusesFromServer(true);}
   // If already on home and tapped again - refresh feed from Firestore
   if(id==='home'&&el('Phome').style.display!=='none'&&arguments[1]==='refresh'){
     setDataRefresh(true);
@@ -4863,7 +4869,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-149',location.href).href;
+  const workerUrl=new URL('sw-v56.js?v=studylink-pwa-150',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
