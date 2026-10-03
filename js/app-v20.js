@@ -3492,8 +3492,9 @@ function notifAlertText(n){
   if(n.kind==='groupMembership'){
     const actor=esc(cleanDisplayName(n.actorName||'Admin'));
     const target=esc(cleanDisplayName(n.targetName||'Student'));
-    if(n.action==='blocked')return appLang==='fr'?`${target}, tu as été bloqué du groupe ${group}. Tu ne peux plus écrire jusqu’au déblocage par ${actor}.`:`${target}, you were blocked in ${group}. You cannot write until ${actor} unblocks you.`;
-    return appLang==='fr'?`${target}, tu as été retiré du groupe ${group} par ${actor}.`:`${target}, you were removed from ${group} by ${actor}.`;
+    if(n.action==='blocked')return appLang==='fr'?`${target}, tu as été bloqué du groupe ${group} par ${actor}. Tu ne peux plus écrire jusqu’au déblocage.`:`${target}, you were blocked in ${groupTarget} by ${actor}. You cannot write until you are unblocked.`;
+    if(n.action==='unblocked')return appLang==='fr'?`${target}, tu as été débloqué du groupe ${group} par ${actor}. Tu peux maintenant écrire dans le groupe.`:`${target}, you were unblocked in ${groupTarget} by ${actor}. You can now write in the group.`;
+    return appLang==='fr'?`${target}, tu as été retiré du groupe ${group} par ${actor}.`:`${target}, you were removed from ${groupTarget} by ${actor}.`;
   }
   return esc(n.body||n.title||'You have a new notification.');
 }
@@ -3818,7 +3819,7 @@ const I18N={
     profile_title:'Profil',
     chat_search_ph:'Rechercher des messages...',chat_msg_ph:'Message...',
     chat_voice_hint:'Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer',
-    media_camera:'Caméra',media_image:'Image',media_video:'Vidéo',media_music:'Musique',media_drive:'Drive',
+    media_camera:'Caméra',media_image:'Image',media_video:'Vidéo',media_music:'Musique',media_drive:'Google Drive',
     media_document:'Document',media_poll:'Sondage',media_event:'Événement',media_location:'Position',media_link:'Lien',
     time_active_while_ago:'Actif il y a un moment',time_active_now:'Actif à l’instant',
     time_active_s:'Actif il y a {n}s',time_active_m:'Actif il y a {n}m',time_active_h:'Actif il y a {n}h',
@@ -3937,7 +3938,7 @@ const I18N={
     profile_title:'Profile',
     chat_search_ph:'Search messages...',chat_msg_ph:'Message...',
     chat_voice_hint:'Hold · slide up to lock · tap mic to send',
-    media_camera:'Camera',media_image:'Image',media_video:'Video',media_music:'Music',media_drive:'Drive',
+    media_camera:'Camera',media_image:'Image',media_video:'Video',media_music:'Music',media_drive:'Google Drive',
     media_document:'Document',media_poll:'Poll',media_event:'Event',media_location:'Location',media_link:'Link',
     time_active_while_ago:'Active a while ago',time_active_now:'Active just now',
     time_active_s:'Active {n}s ago',time_active_m:'Active {n}m ago',time_active_h:'Active {n}h ago',
@@ -4194,9 +4195,11 @@ async function blockGroupMember(uid){
 async function unblockGroupMember(uid){
   if(!curManageGroupId)return;
   try{
-    await db.collection('groups').doc(curManageGroupId).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
+    const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
+    await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
+    await notifyGroupMembership(uid,g,'unblocked');
     showToast(t('group_member_unblocked'));
-    openManageGroup(curManageGroupId,uid);
+    openManageGroup(gid,uid);
   }catch(e){showToast('❌ '+e.message);}
 }
 function toggleGroupChatMenu(){
@@ -4818,7 +4821,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-142',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-143',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
