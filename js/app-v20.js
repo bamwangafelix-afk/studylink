@@ -1102,7 +1102,7 @@ function renderHome(posts,limit){
       <p style="font-size:13px;margin-bottom:8px;">${esc(p.text)}</p>
       <div style="display:flex;gap:6px;">
         ${isG?(myPendingJoinGroupIds.has(p.id)
-              ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>⏳ ${t('group_request_sent_btn')}</button>`
+              ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>${t('group_request_sent_btn')}</button>`
               :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
@@ -2158,8 +2158,17 @@ function insertEmoji(emoji){
   inp.focus();
   curGrp?onGMsgInput():onMsgInput();
 }
-function sendSticker(sticker){
+async function groupWriteAllowed(){
+  if(!curGrp||!CU)return false;
+  try{
+    const gs=await db.collection('groups').doc(curGrp.id).get();
+    if((gs.data()?.blockedUsers||[]).includes(CU.uid)){showToast(t('group_blocked_write'));return false;}
+  }catch(e){return false;}
+  return true;
+}
+async function sendSticker(sticker){
   if(!curChat&&!curGrp)return;
+  if(curGrp&&!(await groupWriteAllowed()))return;
   const cid=curChat?getCID(CU.uid,curChat.uid):null;
   const msg={type:'text',text:sticker,senderUid:CU.uid,senderName:MP?.name||'',time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(cid){
@@ -2281,6 +2290,7 @@ function closeGroup(){
 }
 async function sendGMsg(){
   const inp=el('gIn');if(!inp.value.trim()||!curGrp)return;
+  if(!(await groupWriteAllowed()))return;
   const text=inp.value.trim();inp.value='';
   clearTimeout(gTypDebounce);void setPresenceState('group',curGrp.id,'typing',false);
   const gi=el('gSendIcon');if(gi)gi.innerHTML='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
@@ -2963,6 +2973,7 @@ function cancelVoiceReady(){}
 function toggleGVoice(){gIsRec?stopAndSendGVoice():startGVoice();}
 async function startGVoice(fromGesture=false){
   if(gVFinalizing||gIsRec)return;
+  if(!(await groupWriteAllowed()))return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   let pendingGroupPresenceId=null;
   try{
@@ -3478,6 +3489,12 @@ function notifAlertText(n){
     if(n.state==='pending')return appLang==='fr'?`Ta demande pour rejoindre ${groupWithCourse} est en attente d’approbation.`:`Your request to join ${groupWithCourse} is waiting for approval.`;
     return n.state==='accepted'?(appLang==='fr'?`Ta demande pour rejoindre ${groupWithCourse} a été acceptée.`:`Your request to join ${groupWithCourse} was accepted.`):(appLang==='fr'?`Ta demande pour rejoindre ${groupWithCourse} a été refusée.`:`Your request to join ${groupWithCourse} was declined.`);
   }
+  if(n.kind==='groupMembership'){
+    const actor=esc(cleanDisplayName(n.actorName||'Admin'));
+    const target=esc(cleanDisplayName(n.targetName||'Student'));
+    if(n.action==='blocked')return appLang==='fr'?`${target}, tu as été bloqué du groupe ${group}. Tu ne peux plus écrire jusqu’au déblocage par ${actor}.`:`${target}, you were blocked in ${group}. You cannot write until ${actor} unblocks you.`;
+    return appLang==='fr'?`${target}, tu as été retiré du groupe ${group} par ${actor}.`:`${target}, you were removed from ${group} by ${actor}.`;
+  }
   return esc(n.body||n.title||'You have a new notification.');
 }
 function openInvitationUpdates(id){
@@ -3488,7 +3505,7 @@ function openInvitationUpdates(id){
     const b=document.querySelector('#findTopTabs [data-find-tab="invites"]');
     if(b)switchFindTop('invites',b);
     setTimeout(()=>{const card=document.querySelector(`[data-notif-id="${CSS.escape(id)}"]`);if(card){card.classList.add('notif-focus');card.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>card.classList.remove('notif-focus'),1800);}},80);
-    setTimeout(()=>setDataRefresh(false),520);
+    setTimeout(()=>setDataRefresh(false),40);
   },80);
 }
 async function openPostNotification(id,postId){
@@ -3519,7 +3536,7 @@ async function openPostNotification(id,postId){
   }
 }
 function notifCardHtml(n){
-  const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
+  const icon=n.kind==='groupInvite'||n.kind==='groupJoinRequest'||n.kind==='groupJoinStatus'||n.kind==='groupMembership'?'👥':n.kind==='studyInvite'?'🤝':(n.icon||'🔔');
   const isInvite=['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus'].includes(n.kind);
   const isPost=n.kind==='post'||(n.icon==='📢'&&!!n.body);
   const action=isPost?`openPostNotification('${e2(n.id)}','${e2(n.postId||'')}')`:n.kind==='groupJoinRequest'?`openGroupRequestTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.requesterUid||'')}')`:n.kind==='groupJoinStatus'?`openGroupStatusTarget('${e2(n.id)}','${e2(n.groupId||'')}','${e2(n.groupName||'')}','${e2(n.requesterUid||'')}')`:isInvite?`openInvitationUpdates('${e2(n.id)}')`:`markN('${e2(n.id)}')`;
@@ -3732,7 +3749,7 @@ const I18N={
     group_who_can_join:'Qui peut rejoindre ?',group_how_can_join:'Comment peuvent-ils rejoindre ?',group_direct_join:'Adhésion directe',
     role_owner:'Propriétaire',role_admin:'Admin',role_member:'Membre',group_make_admin:'Nommer admin',group_remove_admin:'Retirer admin',
     group_remove_member:'Retirer du groupe',group_confirm_remove:'Retirer ce membre du groupe ?',group_member_removed:'Membre retiré',
-    group_block_member:'Bloquer',group_confirm_block:'Bloquer cette personne ? Elle sera retirée du groupe et ne pourra plus le rejoindre.',group_member_blocked:'Membre bloqué',group_blocked_generic:'❌ Vous ne pouvez pas rejoindre ce groupe',
+    group_block_member:'Bloquer',group_unblock_member:'Débloquer',group_confirm_block:'Bloquer cette personne ? Elle restera membre mais ne pourra pas écrire dans le groupe.',group_member_blocked:'Membre bloqué',group_member_unblocked:'Membre débloqué',group_blocked_generic:'❌ Vous ne pouvez pas rejoindre ce groupe',group_blocked_write:'Tu es bloqué dans ce groupe et tu ne peux pas écrire.',
     group_exit:'Quitter le groupe',group_confirm_exit:'Quitter ce groupe ?',group_exited:'Vous avez quitté le groupe',
     group_who_can_invite:'Qui peut inviter ?',group_invite_owner_only:'Propriétaire uniquement',group_invite_admins_only:'Admins uniquement',group_invite_owner_admins:'Propriétaire/Admins',group_member_check:'Membre',
     post_group_settings_hint:'Tu pourras modifier ces règles à tout moment après la création, dans Paramètres du groupe.',
@@ -3851,7 +3868,7 @@ const I18N={
     group_who_can_join:'Who can join?',group_how_can_join:'How can they join?',group_direct_join:'Direct Join',
     role_owner:'Owner',role_admin:'Admin',role_member:'Member',group_make_admin:'Make Admin',group_remove_admin:'Remove Admin',
     group_remove_member:'Remove from Group',group_confirm_remove:'Remove this member from the group?',group_member_removed:'Member removed',
-    group_block_member:'Block',group_confirm_block:'Block this person? They will be removed from the group and won\u2019t be able to rejoin.',group_member_blocked:'Member blocked',group_blocked_generic:'❌ You can\u2019t join this group',
+    group_block_member:'Block',group_unblock_member:'Unblock',group_confirm_block:'Block this person? They will remain a member but won\u2019t be able to write in the group.',group_member_blocked:'Member blocked',group_member_unblocked:'Member unblocked',group_blocked_generic:'❌ You can\u2019t join this group',group_blocked_write:'You are blocked in this group and cannot write.',
     group_exit:'Exit Group',group_confirm_exit:'Leave this group?',group_exited:'You left the group',
     group_who_can_invite:'Who can invite?',group_invite_owner_only:'Owner only',group_invite_admins_only:'Admins only',group_invite_owner_admins:'Owner/Admins',group_member_check:'Member',
     post_group_settings_hint:'You can change these anytime after creating the group, in Group Settings.',
@@ -4064,7 +4081,8 @@ async function openManageGroup(postId,highlightUid=''){
     }
     if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
       mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
-      mgmt+=`<button class="btn warn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="blockGroupMember('${uid}')">${t('group_block_member')}</button>`;
+      const blocked=(g.blockedUsers||[]).includes(uid);
+      mgmt+=`<button class="btn warn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="${blocked?`unblockGroupMember('${uid}')`:`blockGroupMember('${uid}')`}">${blocked?t('group_unblock_member'):t('group_block_member')}</button>`;
     }
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
       <div onclick="openProfile('${uid}')" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
@@ -4138,29 +4156,47 @@ async function toggleGroupAdmin(uid,makeAdmin){
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
 }
+async function notifyGroupMembership(uid,group,action){
+  let target=allUsers.find(u=>u.uid===uid)||{};
+  if(!target.name){try{const snap=await db.collection('users').doc(uid).get();if(snap.exists){target={...snap.data(),uid};allUsers.push(target);}}catch(e){}}
+  await db.collection('notifications').add({
+    toUid:uid,kind:'groupMembership',action,groupId:curManageGroupId,groupName:group.name||'',
+    actorUid:CU.uid,actorName:cleanDisplayName(MP?.name||CU.displayName||'Admin'),
+    targetName:cleanDisplayName(target.name||'Student'),read:false,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
 async function removeGroupMember(uid){
   if(!curManageGroupId)return;
   if(!confirm(t('group_confirm_remove')))return;
   try{
-    await db.collection('groups').doc(curManageGroupId).update({
+    const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
+    await db.collection('groups').doc(gid).update({
       members:firebase.firestore.FieldValue.arrayRemove(uid),
       admins:firebase.firestore.FieldValue.arrayRemove(uid)
     });
+    await notifyGroupMembership(uid,g,'removed');
     showToast(t('group_member_removed'));
-    openManageGroup(curManageGroupId);
+    openManageGroup(gid);
   }catch(e){showToast('❌ '+e.message);}
 }
 async function blockGroupMember(uid){
   if(!curManageGroupId)return;
   if(!confirm(t('group_confirm_block')))return;
   try{
-    await db.collection('groups').doc(curManageGroupId).update({
-      members:firebase.firestore.FieldValue.arrayRemove(uid),
-      admins:firebase.firestore.FieldValue.arrayRemove(uid),
-      blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)
-    });
+    const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
+    await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)});
+    await notifyGroupMembership(uid,g,'blocked');
     showToast(t('group_member_blocked'));
-    openManageGroup(curManageGroupId);
+    openManageGroup(gid,uid);
+  }catch(e){showToast('❌ '+e.message);}
+}
+async function unblockGroupMember(uid){
+  if(!curManageGroupId)return;
+  try{
+    await db.collection('groups').doc(curManageGroupId).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
+    showToast(t('group_member_unblocked'));
+    openManageGroup(curManageGroupId,uid);
   }catch(e){showToast('❌ '+e.message);}
 }
 function toggleGroupChatMenu(){
@@ -4444,6 +4480,10 @@ function inviteEligibilityReasonMsg(reason){
 function renderInviteSearch(q){
   const l=el('inviteSearchL');
   let list=allUsers.filter(u=>u.uid!==CU?.uid);
+  const inviteRule=curInviteGroup?.whoCanBeInvited||'anyone';
+  if(inviteRule==='university')list=list.filter(u=>(u.uni||'').trim()===(curInviteGroup.creatorUni||'').trim());
+  else if(inviteRule==='country')list=list.filter(u=>(u.country||'').trim()===(curInviteGroup.creatorCountry||'').trim());
+  else if(inviteRule==='major')list=list.filter(u=>(u.course||'').trim()===(curInviteGroup.creatorCourse||'').trim());
   if(q){const s=q.toLowerCase();list=list.filter(u=>(u.name||'').toLowerCase().includes(s)||(u.uni||'').toLowerCase().includes(s));}
   list=list.slice(0,30);
   if(!list.length){l.innerHTML=`<p style="text-align:center;color:#888;">${t('find_no_results')}</p>`;return;}
@@ -4708,7 +4748,7 @@ function setDataRefresh(v){
   }else{
     // Keep only a short minimum duration so the bar does not linger after a
     // fast Firebase response has already completed the action.
-    const wait=Math.max(0,420-(Date.now()-refreshStartedAt));
+    const wait=Math.max(0,220-(Date.now()-refreshStartedAt));
     refreshHideTimer=setTimeout(()=>{
       b.classList.remove('active');
       if(fill){fill.style.animation='none';fill.style.width='0%';}
@@ -4778,7 +4818,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-141',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-142',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
