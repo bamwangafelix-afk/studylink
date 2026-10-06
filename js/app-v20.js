@@ -2125,14 +2125,14 @@ function smartSend(){
   if(vFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
   const hasText=el('mIn').value.trim().length>0;
   if(hasText){sendMsg();return;}
-  return;
+  startVoice(false);
 }
 function smartGSend(){
   if(gIsRec){stopAndSendGVoice();return;}
   if(gVFinalizing){showToast('⏳ Finalisation du vocal en cours…');return;}
   const hasText=el('gIn').value.trim().length>0;
   if(hasText){sendGMsg();return;}
-  return;
+  startGVoice(false);
 }
 // Camera: open real device camera
 function openCamera(dest){
@@ -3156,109 +3156,13 @@ gvCh=[];gvSec=0;clearInterval(gvInt);
 // ── WHATSAPP-STYLE HOLD / SWIPE-UP TO RECORD ──
 // Hold the mic to start, swipe up to lock, release without stopping, then tap to send.
 function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
-  const btn=el(btnId);if(!btn||btn.dataset.voiceGestureBound)return;
-  btn.dataset.voiceGestureBound='1';
-  btn.style.touchAction='none';
-  const isStatus=btnId==='stVReplyBtn';
-  const inputId=isStatus?'stVReplyInput':(btnId==='gSendB'?'gIn':'mIn');
-  // Keep haptic feedback on the earliest Android touch event as well as the
-  // Pointer Events path. The debounce prevents a double pulse on Chrome.
-  btn.addEventListener('touchstart',e=>{
-    if(e.touches?.length===1&&!v(inputId).trim())vibrate(70);
-  },{passive:true});
-  const barId=isStatus?'stVReplyBar':(btnId==='gSendB'?'gvbar':'vbar');
-  const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startX:0,startY:0};
-  const floatId=isStatus?'stVReplyFloat':(btnId==='gSendB'?'gRecordFloatB':'recordFloatB');
-  const float=el(floatId);
-  const setDragY=y=>{
-    const next=Math.round(y);
-    if(float){float.style.setProperty('--voice-float-y',`${next}px`);float.classList.toggle('is-visible',next< -4);}
-  };
-  const vibrate=pattern=>pulseHaptic(pattern,btn);
-  const hint=()=>el(barId)?.querySelector('[data-voice-hint],[data-status-voice-hint]');
-  const setHint=text=>{const h=hint();if(h)h.textContent=text;};
-  const resetState=()=>{
-    state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
-    btn.dataset.voiceLocked='0';
-    setDragY(0);
-    btn.classList.remove('voice-locked','voice-pending');
-    btn.title='Hold and slide up to record';
-    setHint('Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer');
-  };
-  const releaseCapture=()=>{try{if(state.pointerId!==null)btn.releasePointerCapture(state.pointerId);}catch(e){}state.pointerId=null;};
-  btn.addEventListener('pointerdown',e=>{
-    if(e.pointerType==='mouse'&&e.button!==0)return;
-    // Preserve normal send behavior while the text field contains a message.
-    if(v(inputId).trim())return;
-    e.preventDefault();
-    // Hide the Android keyboard before the permission prompt or recording starts.
-    if(document.activeElement?.id===inputId)document.activeElement.blur();
-    state.suppressClick=true;
-    state.startX=e.clientX;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
-    setDragY(0);
-    btn.classList.add('voice-pending');
-    try{btn.setPointerCapture(e.pointerId);}catch(err){}
-    // A locked recording is completed by the next tap, not by a second start.
-    // Keep the lock outside the transient pointer state so this also works
-    // after pointer capture has been released on the previous gesture.
-    if(btn.classList.contains('rec')&&(state.locked||btn.dataset.voiceLocked==='1')){
-      vibrate(35);
-      Promise.resolve(stopFn()).finally(resetState);
-      return;
-    }
-    // A previous vocal may have been sent by the fixed Send tap while this
-    // gesture instance was still locked. Start every new gesture cleanly.
-    state.locked=false;state.released=false;state.cancelled=false;
-    btn.dataset.voiceLocked='0';
-    btn.classList.remove('voice-locked');
-    // Fire the device vibration directly in pointerdown, before getUserMedia()
-    // can yield to a permission prompt or another asynchronous browser task.
-    vibrate(55);
-    state.pending=true;
-    Promise.resolve(startFn(true)).then(()=>{
-      state.pending=false;
-      // Permission prompts and getUserMedia can resolve after the finger is
-      // released. Do not stop a recorder that never reached the rec state.
-      if(!btn.classList.contains('rec')){resetState();return;}
-      if(state.released&&!state.locked&&!state.cancelled)stopFn();
-    }).catch(()=>{state.pending=false;resetState();});
-  },{passive:false});
-  btn.addEventListener('pointermove',e=>{
-    if(!state.active||state.pointerId!==e.pointerId)return;
-    e.preventDefault();
-    const up=state.startY-e.clientY,left=e.clientX-state.startX;
-    // Visually follow the finger upward before the existing lock threshold.
-    // The recorder lifecycle itself is intentionally unchanged in this step.
-    if(!state.locked){
-      const visualY=up>30?Math.max(-225,-up*1.5):0;
-      setDragY(visualY);
-    }
-    if(!state.locked&&left<-85){
-      state.cancelled=true;state.active=false;vibrate([25,25]);cancelFn();releaseCapture();resetState();return;
-    }
-    if(!state.locked&&up>70){
-      // Queue the lock even if getUserMedia is still pending. This prevents a
-      // fast Android swipe from being lost during the permission/startup gap.
-      state.locked=true;state.active=false;btn.dataset.voiceLocked='1';btn.classList.remove('voice-pending');btn.classList.add('voice-locked');btn.title='Tap to send voice message';
-      setHint('🔒 locked · tap mic to send');vibrate([35,55,35]);releaseCapture();
-    }
-  },{passive:false});
-  btn.addEventListener('pointerup',e=>{
-    if(!state.active||state.pointerId!==e.pointerId)return;
-    e.preventDefault();state.active=false;state.released=true;releaseCapture();
-    if(state.cancelled)return;
-    if(state.locked)return;
-    if(state.pending)return;
-    if(btn.classList.contains('rec')){vibrate(35);Promise.resolve(stopFn()).finally(resetState);}else resetState();
-  },{passive:false});
-  btn.addEventListener('pointercancel',e=>{
-    if(!state.active||state.pointerId!==e.pointerId)return;
-    e.preventDefault();state.active=false;state.cancelled=true;vibrate([20,20]);releaseCapture();cancelFn();resetState();
-  },{passive:false});
-  // Suppress the synthetic click generated after touch gestures; text sends still use onclick.
-  btn.addEventListener('click',e=>{
-    if(state.suppressClick){e.preventDefault();e.stopPropagation();state.suppressClick=false;}
-  },true);
+  const btn=el(btnId);if(!btn)return;
+  // Android-safe mode: the inline click handler performs the whole lifecycle.
+  // Avoid pointer capture, touch cancellation, and synthetic-click suppression;
+  // these were closing the PWA while MediaRecorder was active.
+  btn.dataset.voiceGestureBound='simple-tap';
+  btn.style.touchAction='manipulation';
+  btn.title='Appuyez une fois pour enregistrer, puis une fois pour envoyer';
 }
 // Stubs for smartGSend compatibility
 function stopGVoice(){stopAndSendGVoice();}
@@ -4891,7 +4795,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-153',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-154',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
