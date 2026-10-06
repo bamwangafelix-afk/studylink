@@ -2056,7 +2056,9 @@ function openChat(name,uid){
         }
         if(m.senderUid!==CU.uid&&!m.seen)change.doc.ref.update({seen:true}).catch(()=>{});
       });
-      mb.scrollTop=mb.scrollHeight;
+      const scrollMessagesBottom=()=>{mb.scrollTop=mb.scrollHeight;try{mb.scrollTo({top:mb.scrollHeight,behavior:'auto'});}catch(e){}};
+      scrollMessagesBottom();
+      requestAnimationFrame(()=>{scrollMessagesBottom();setTimeout(scrollMessagesBottom,80);});
       // Show load-more button if we hit the limit
       let loadMoreBtn=mb.querySelector('#loadMoreMsgs');
       if(sn.docs.length>=lim){
@@ -2342,7 +2344,9 @@ async function openGroup(postId,name){
         if(change.type==='added'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(!ex)mb.appendChild(node);}
         else if(change.type==='modified'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(ex)ex.replaceWith(node);else mb.appendChild(node);}
       });
-      mb.scrollTop=mb.scrollHeight;
+      const scrollGroupBottom=()=>{mb.scrollTop=mb.scrollHeight;try{mb.scrollTo({top:mb.scrollHeight,behavior:'auto'});}catch(e){}};
+      scrollGroupBottom();
+      requestAnimationFrame(()=>{scrollGroupBottom();setTimeout(scrollGroupBottom,80);});
     },e=>{
       console.warn('Group messages listener; retrying:',e?.code||e?.message||e);
       if(grpUnsub){grpUnsub();grpUnsub=null;}
@@ -3223,7 +3227,9 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   },{passive:false});
   btn.addEventListener('pointercancel',e=>{
     if(!state.active||state.pointerId!==e.pointerId)return;
-    e.preventDefault();state.active=false;state.cancelled=true;release();cancelFn();reset();
+    e.preventDefault();state.active=false;state.cancelled=true;release();
+    if(btn.classList.contains('rec'))Promise.resolve(stopFn()).finally(reset);else cancelFn();
+    reset();
   },{passive:false});
   btn.addEventListener('click',e=>{
     if(state.suppressClick){e.preventDefault();e.stopPropagation();state.suppressClick=false;}
@@ -3360,6 +3366,9 @@ function setupInbox(){
     window._inboxUnreadMap=data.unread||{};
     // Nav badge: local read overrides win over a stale Firestore snapshot.
     const unreadOverrides=window._unreadOverride||{};
+    Object.entries(window._inboxUnreadMap).forEach(([cid,count])=>{
+      if(Number(count||0)>0&&(!curChat||getCID(CU.uid,curChat.uid)!==cid))delete unreadOverrides[cid];
+    });
     let t=Object.entries(window._inboxUnreadMap).reduce((a,[cid,count])=>a+(unreadOverrides[cid]===0?0:Number(count||0)),0);
     const nb=el('msgB2');
     if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
@@ -4871,7 +4880,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-160',location.href).href;
+  const workerUrl=new URL('sw-v62.js?v=studylink-pwa-161',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
