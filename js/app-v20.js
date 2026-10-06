@@ -71,7 +71,6 @@ db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore pe
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
-let statusRefreshTimer=null,statusFreshUntil=0;
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
 let myPendingJoinGroupIds=new Set();
@@ -516,7 +515,6 @@ function cleanupAuthListeners(){
   if(typeof _cachedInboxDocs!=='undefined')_cachedInboxDocs=null;
 }
 function resetLoggedOutUi(){
-  if(statusRefreshTimer){clearInterval(statusRefreshTimer);statusRefreshTimer=null;}
   if(CU?.uid&&curChat)void clearPresenceState('private',getCID(CU.uid,curChat.uid));
   if(CU?.uid&&curGrp)void clearPresenceState('group',curGrp.id);
   signOutInProgress=false;
@@ -565,10 +563,6 @@ auth.onAuthStateChanged(async u=>{
     try{listenMyGroupMemberships();}catch(e){}
     try{listenUsers();}catch(e){}
     try{void refreshStatusesFromServer(true);}catch(e){}
-    if(statusRefreshTimer)clearInterval(statusRefreshTimer);
-    statusRefreshTimer=setInterval(()=>{
-      if(document.visibilityState!=='hidden')void refreshStatusesFromServer(true);
-    },20000);
     try{setupNotifL();}catch(e){}
     try{setupStudyInviteState();}catch(e){}
     try{setupInbox();}catch(e){showToast('❌ setupInbox failed: '+e.message);}
@@ -901,7 +895,6 @@ async function savePro(){
 // ── USERS ──
 function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
-    if(sn.metadata?.fromCache&&Date.now()<statusFreshUntil)return;
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
     renderStatusBar();
     // Only re-render Find if it's currently visible
@@ -942,7 +935,6 @@ async function refreshStatusesFromServer(force=false){
     fresh.forEach(u=>{if(!allUsers.some(x=>x.uid===u.uid))allUsers.push(u);});
     const mine=byUid.get(CU.uid);
     if(mine){MP={...MP,...mine};myPho=MP.photo||myPho;}
-    statusFreshUntil=Date.now()+18000;
     renderStatusBar();
   }).catch(e=>console.warn('status server refresh:',e?.code||e)).finally(()=>{statusServerRefreshPromise=null;});
   return statusServerRefreshPromise;
@@ -951,7 +943,6 @@ document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible')void refreshStatusesFromServer(true);
 });
 window.addEventListener('pageshow',()=>void refreshStatusesFromServer(true));
-window.addEventListener('online',()=>void refreshStatusesFromServer(true));
 
 // ── VISIBILITY ──
 function visibilityText(value){return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
@@ -1171,7 +1162,7 @@ function statusMillis(ts){
 }
 function activeStatusOf(u){
   if(!u||!u.statusPost)return null;
-  const createdMs=statusMillis(u.statusPost.createdAt)||statusMillis(u.statusUpdatedAt);
+  const createdMs=statusMillis(u.statusPost.createdAt);
   if(!createdMs)return null; // still syncing with server, not ready yet
   if(Date.now()-createdMs>STATUS_TTL_MS)return null;
   return u.statusPost;
@@ -1193,7 +1184,7 @@ function renderStatusBar(){
       <div class="stLabel">${t('st_you')}</div>
     </div>`;
   }
-  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||statusMillis(b.statusUpdatedAt)||0)-(statusMillis(a.statusPost.createdAt)||statusMillis(a.statusUpdatedAt)||0));
+  const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
   others.forEach(u=>{
     const sp=u.statusPost;
     const seen=(sp.viewedBy||[]).includes(CU.uid);
@@ -1323,11 +1314,11 @@ async function publishStatus(){
   setDataRefresh(true);
   el('ov').style.display='flex';
   try{
-    await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility,statusUpdatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility});
     const localStatus={...payload,createdAt:Date.now()};
-    MP={...MP,statusPost:localStatus,statusVisibility:visibility,statusUpdatedAt:Date.now()};
+    MP={...MP,statusPost:localStatus,statusVisibility:visibility};
     const me=allUsers.find(u=>u.uid===CU.uid);
-    if(me){me.statusPost=localStatus;me.statusVisibility=visibility;me.statusUpdatedAt=Date.now();}
+    if(me){me.statusPost=localStatus;me.statusVisibility=visibility;}
     renderStatusBar();
     showToast(t('st_toast_published'),col);
     forwardedFromDraft=null;
@@ -1339,35 +1330,19 @@ async function publishStatus(){
 
 // ── STATUS VIEW ──
 let curStatusUid=null;
-function statusSequence(){
-  if(!CU)return [];
-  const hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
-  return allUsers.filter(u=>!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u))
-    .sort((a,b)=>(statusMillis(b.statusPost.createdAt)||statusMillis(b.statusUpdatedAt)||0)-(statusMillis(a.statusPost.createdAt)||statusMillis(a.statusUpdatedAt)||0));
-}
-function nextStatusUid(uid){
-  const list=statusSequence(),index=list.findIndex(u=>u.uid===uid);
-  if(list.length<2||index<0)return null;
-  return list[(index+1)%list.length].uid;
-}
-function previousStatusUid(uid){
-  const list=statusSequence(),index=list.findIndex(u=>u.uid===uid);
-  if(list.length<2||index<0)return null;
-  return list[(index-1+list.length)%list.length].uid;
-}
-function viewStatus(uid,fromQueue=false){
+function viewStatus(uid){
   const u=allUsers.find(x=>x.uid===uid);
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
   if(!canViewVisibility(sp,CU,u))return showToast(t('st_not_available'));
-  if(!fromQueue)pushModalState();
+  pushModalState();
   curStatusUid=uid;
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
   const c=sp.category?CATS[sp.category]:null;
   el('stVAvatar').innerHTML=u.photo?`<img src="${u.photo}">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('stVName').textContent=uid===CU.uid?t('st_you'):(u.name||'?');
-  const createdMs=statusMillis(sp.createdAt)||statusMillis(u.statusUpdatedAt)||Date.now();
+  const createdMs=statusMillis(sp.createdAt)||Date.now();
   const mins=Math.max(1,Math.round((Date.now()-createdMs)/60000));
   const ago=mins<60?t('st_time_ago_min').replace('{n}',mins):t('st_time_ago_hour').replace('{n}',Math.round(mins/60));
   const left=Math.max(0,Math.round((createdMs+STATUS_TTL_MS-Date.now())/3600000));
@@ -1400,11 +1375,7 @@ function viewStatus(uid,fromQueue=false){
   void fill.offsetWidth; // force reflow
   fill.style.transition=`width ${STATUS_VIEW_MS}ms linear`;
   requestAnimationFrame(()=>{fill.style.width='100%';});
-  statusAutoCloseTimer=setTimeout(()=>{
-    if(curStatusUid!==uid)return;
-    const next=nextStatusUid(uid);
-    if(next)viewStatus(next,true);else closeStatusView();
-  },STATUS_VIEW_MS);
+  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)closeStatusView();},STATUS_VIEW_MS);
   // mark as seen (only if viewing someone else's) → ring turns gray after this
   if(uid!==CU.uid&&!(sp.viewedBy||[]).includes(CU.uid)){
     const viewedBy=[...(sp.viewedBy||[]),CU.uid];
@@ -1518,7 +1489,7 @@ async function deleteStatus(){
   el('stVMenu').style.display='none';
   if(!confirm(t('st_confirm_delete')))return;
   const col=viewingCategoryColor();
-  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete(),statusUpdatedAt:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'),col);}
+  try{await db.collection('users').doc(CU.uid).update({statusPost:firebase.firestore.FieldValue.delete()});closeStatusView();showToast(t('st_toast_deleted'),col);}
   catch(e){showToast('❌ '+(e.message||'Erreur'));}
 }
 function viewStatusProfile(){
@@ -1698,10 +1669,8 @@ function replyToStatus(){
   openChat(u?.name||'',uid);
 }
 
-let statusPressAt=0,statusPressX=0;
 function statusPressStart(e){
   if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
-  statusPressAt=Date.now();statusPressX=e.clientX||0;
   clearTimeout(statusAutoCloseTimer);
   const fill=document.querySelector('#stVProgress .stVProgFill');
   const track=fill.parentElement;
@@ -1714,13 +1683,6 @@ function statusPressStart(e){
 }
 function statusPressEnd(e){
   if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
-  const held=Date.now()-statusPressAt;
-  const moved=Math.abs((e.clientX||statusPressX)-statusPressX)>18;
-  if(held<350&&!moved&&curStatusUid){
-    const view=el('statusView'),x=e.clientX||statusPressX,width=view?.clientWidth||1;
-    const target=x<width/2?previousStatusUid(curStatusUid):nextStatusUid(curStatusUid);
-    if(target){viewStatus(target,true);return;}
-  }
   if(statusRemainingMs<=0){closeStatusView();return;}
   const fill=document.querySelector('#stVProgress .stVProgFill');
   void fill.offsetWidth;
@@ -2052,7 +2014,7 @@ function openChat(name,uid){
   let _msgLimit=50;
   const _loadMsgs=(lim)=>{
     if(chatUnsub){chatUnsub();chatUnsub=null;}
-    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('createdAt').limitToLast(lim).onSnapshot(sn=>{
+    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('time','asc').limitToLast(lim).onSnapshot(sn=>{
       const mb=el('msgB');
       sn.docChanges().forEach(change=>{
         if(change.type==='removed'){
@@ -2084,7 +2046,11 @@ function openChat(name,uid){
           mb.insertBefore(loadMoreBtn,mb.firstChild);
         }
       }else if(loadMoreBtn){loadMoreBtn.remove();}
-    },e=>console.log(e));
+    },e=>{
+      console.warn('Private messages listener; retrying:',e?.code||e?.message||e);
+      if(chatUnsub){chatUnsub();chatUnsub=null;}
+      setTimeout(()=>{if(curChat?.uid===uid)_loadMsgs(lim);},1200);
+    });
   };
   window._loadMoreMsgs=()=>{_msgLimit+=30;_loadMsgs(_msgLimit);};
   _loadMsgs(_msgLimit);
@@ -2240,33 +2206,10 @@ function insertEmoji(emoji){
 async function groupWriteAllowed(){
   if(!curGrp||!CU)return false;
   try{
-    const gs=await db.collection('groups').doc(curGrp.id).get({source:'server'});
-    const blocked=(gs.data()?.blockedUsers||[]).includes(CU.uid);
-    setGroupWriteUi(blocked);
-    if(blocked){showToast(t('group_blocked_write'));return false;}
+    const gs=await db.collection('groups').doc(curGrp.id).get();
+    if((gs.data()?.blockedUsers||[]).includes(CU.uid)){showToast(t('group_blocked_write'));return false;}
   }catch(e){return false;}
   return true;
-}
-function setGroupWriteUi(blocked){
-  const input=el('gIn'),send=el('gSendB');
-  if(input){
-    input.disabled=!!blocked;
-    input.readOnly=!!blocked;
-    input.placeholder=blocked?t('group_blocked_write'):(t('chat_msg_ph')||'Message...');
-    if(blocked&&document.activeElement===input)input.blur();
-  }
-  if(send){send.disabled=!!blocked;send.style.opacity=blocked?'.45':'';send.setAttribute('aria-disabled',blocked?'true':'false');}
-  const composer=el('groupW')?.querySelector('.cbottom');
-  if(composer){
-    composer.style.pointerEvents=blocked?'none':'';
-    composer.setAttribute('aria-disabled',blocked?'true':'false');
-  }
-  const bar=el('gTypebar');
-  if(bar){
-    bar.textContent=blocked?t('group_blocked_write'):'';
-    bar.style.display=blocked?'block':'none';
-    bar.style.color='#c0392b';
-  }
 }
 async function sendSticker(sticker){
   if(!curChat&&!curGrp)return;
@@ -2343,8 +2286,7 @@ async function openGroup(postId,name){
   }
   if(!groupData){showToast(t('group_unavailable'));showOv(false);return;}
   try{
-    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||'',photo:groupData.photo||localPost?.groupPhoto||'',blockedUsers:groupData.blockedUsers||[]};
-    setGroupWriteUi(curGrp.blockedUsers.includes(CU?.uid));
+    curGrp={id:postId,name:name||groupData.name||localPost?.groupName||t('group_name_default'),ownerUid:groupData.ownerUid||groupData.creatorUid||'',photo:groupData.photo||localPost?.groupPhoto||''};
     const groupInviteAllowed=canInviteToGroup(groupData,CU?.uid);
     if(el('gcmInviteBtn'))el('gcmInviteBtn').style.display=groupInviteAllowed?'block':'none';
     pushModalState();
@@ -2367,8 +2309,8 @@ async function openGroup(postId,name){
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
-    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));curGrp={...curGrp,blockedUsers:data.blockedUsers||[]};setGroupWriteUi((data.blockedUsers||[]).includes(CU.uid));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
-    grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt').limitToLast(50).onSnapshot(sn=>{
+    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
+    grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('time','asc').limitToLast(50).onSnapshot(sn=>{
       const mb=el('grpB');
       sn.docChanges().forEach(change=>{
         if(change.type==='removed'){const ex=mb.querySelector(`.bw[data-id="${change.doc.id}"]`);if(ex)ex.remove();return;}
@@ -2380,7 +2322,11 @@ async function openGroup(postId,name){
         else if(change.type==='modified'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(ex)ex.replaceWith(node);else mb.appendChild(node);}
       });
       mb.scrollTop=mb.scrollHeight;
-    },e=>console.warn('Group messages unavailable:',e?.message||e));
+    },e=>{
+      console.warn('Group messages listener; retrying:',e?.code||e?.message||e);
+      if(grpUnsub){grpUnsub();grpUnsub=null;}
+      setTimeout(()=>{if(curGrp?.id===postId)openGroup(postId,name);},1200);
+    });
   }catch(e){showToast(t('group_unavailable'));}
   showOv(false);
 }
@@ -3821,7 +3767,7 @@ function inviteActionCardHtml(n){
 }
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){
-  const updateKinds=new Set(['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus','groupMembership']);
+  const updateKinds=new Set(['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus']);
   db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{
     const b=db.batch();
     sn.docs.forEach(d=>{if(!updateKinds.has(d.data().kind))b.delete(d.ref);});
@@ -4260,17 +4206,16 @@ async function toggleGroupAdmin(uid,makeAdmin){
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
 }
-async function notifyGroupMembership(uid,group,action,groupId=curManageGroupId){
-  const target=allUsers.find(u=>u.uid===uid)||{};
-  const notificationId=`groupMembership_${groupId}_${uid}_${action}_${Date.now()}`;
-  await db.collection('notifications').doc(notificationId).set({
-    toUid:uid,kind:'groupMembership',action,groupId,groupName:group.name||'',
+async function notifyGroupMembership(uid,group,action){
+  let target=allUsers.find(u=>u.uid===uid)||{};
+  if(!target.name){try{const snap=await db.collection('users').doc(uid).get();if(snap.exists){target={...snap.data(),uid};allUsers.push(target);}}catch(e){}}
+  await db.collection('notifications').add({
+    toUid:uid,kind:'groupMembership',action,groupId:curManageGroupId,groupName:group.name||'',
     actorUid:CU.uid,actorName:cleanDisplayName(MP?.name||CU.displayName||'Admin'),
     targetName:cleanDisplayName(target.name||'Student'),read:false,
     createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  },{merge:true});
+  });
 }
-const groupActionBusy=new Set();
 async function removeGroupMember(uid){
   if(!curManageGroupId)return;
   if(!confirm(t('group_confirm_remove')))return;
@@ -4280,7 +4225,7 @@ async function removeGroupMember(uid){
       members:firebase.firestore.FieldValue.arrayRemove(uid),
       admins:firebase.firestore.FieldValue.arrayRemove(uid)
     });
-    await notifyGroupMembership(uid,g,'removed',gid);
+    await notifyGroupMembership(uid,g,'removed');
     showToast(t('group_member_removed'));
     openManageGroup(gid);
   }catch(e){showToast('❌ '+e.message);}
@@ -4288,25 +4233,23 @@ async function removeGroupMember(uid){
 async function blockGroupMember(uid){
   if(!curManageGroupId)return;
   if(!confirm(t('group_confirm_block')))return;
-  const gid=curManageGroupId;
-  if(groupActionBusy.has(`${gid}:${uid}`))return;
-  groupActionBusy.add(`${gid}:${uid}`);
-  const g={name:(el('gmTitle')?.textContent||'').replace(/^🏫\s*/,'').trim()};
-  showToast(t('group_member_blocked'));
-  const update=db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)});
-  const notification=notifyGroupMembership(uid,g,'blocked',gid);
-  Promise.all([update,notification]).then(()=>openManageGroup(gid,uid)).catch(e=>showToast('❌ '+e.message)).finally(()=>groupActionBusy.delete(`${gid}:${uid}`));
+  try{
+    const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
+    await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayUnion(uid)});
+    await notifyGroupMembership(uid,g,'blocked');
+    showToast(t('group_member_blocked'));
+    openManageGroup(gid,uid);
+  }catch(e){showToast('❌ '+e.message);}
 }
 async function unblockGroupMember(uid){
   if(!curManageGroupId)return;
-  const gid=curManageGroupId;
-  if(groupActionBusy.has(`${gid}:${uid}`))return;
-  groupActionBusy.add(`${gid}:${uid}`);
-  const g={name:(el('gmTitle')?.textContent||'').replace(/^🏫\s*/,'').trim()};
-  showToast(t('group_member_unblocked'));
-  const update=db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
-  const notification=notifyGroupMembership(uid,g,'unblocked',gid);
-  Promise.all([update,notification]).then(()=>openManageGroup(gid,uid)).catch(e=>showToast('❌ '+e.message)).finally(()=>groupActionBusy.delete(`${gid}:${uid}`));
+  try{
+    const gid=curManageGroupId,gs=await db.collection('groups').doc(gid).get(),g=gs.data()||{};
+    await db.collection('groups').doc(gid).update({blockedUsers:firebase.firestore.FieldValue.arrayRemove(uid)});
+    await notifyGroupMembership(uid,g,'unblocked');
+    showToast(t('group_member_unblocked'));
+    openManageGroup(gid,uid);
+  }catch(e){showToast('❌ '+e.message);}
 }
 function toggleGroupChatMenu(){
   const m=el('groupChatMenu');
@@ -4881,7 +4824,7 @@ function tab(id){
     renderHome(cachedPosts,_feedShown);
     const b=el('feedB');if(b){b.style.display='none';b.textContent='';}
   }
-  if(id==='home'){renderStatusBar();void refreshStatusesFromServer(true);}
+  if(id==='home')renderStatusBar();
   // If already on home and tapped again - refresh feed from Firestore
   if(id==='home'&&el('Phome').style.display!=='none'&&arguments[1]==='refresh'){
     setDataRefresh(true);
@@ -4928,7 +4871,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v61.js?v=studylink-pwa-155',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-150',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
