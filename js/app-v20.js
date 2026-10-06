@@ -322,8 +322,6 @@ function setupPresence(){
   });
   window.addEventListener('beforeunload',e=>{
     setPresence('Offline');
-    // Do not let an accidental navigation/reload destroy an active recording.
-    if(isRec||gIsRec||stIsRec){e.preventDefault();e.returnValue='';}
   });
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
@@ -333,12 +331,10 @@ function setupPresence(){
 }
 
 async function keepVoiceScreenOn(){
-  if(!navigator.wakeLock?.request)return;
-  if(voiceWakeLock&&!voiceWakeLock.released)return;
-  try{
-    voiceWakeLock=await navigator.wakeLock.request('screen');
-    voiceWakeLock.addEventListener?.('release',()=>{voiceWakeLock=null;});
-  }catch(e){console.warn('Wake lock unavailable:',e?.message||e);}
+  // Do not request a screen wake lock on mobile PWAs: some Android WebViews
+  // terminate the page or suspend the MediaRecorder when the lock is released.
+  // The recorder works safely without it and the page lifecycle handles cleanup.
+  return;
 }
 async function releaseVoiceScreen(){
   if(isRec||gIsRec||stIsRec)return;
@@ -2895,6 +2891,9 @@ async function startVoice(fromGesture=false){
     const refreshVoiceTimer=()=>{vSec=Math.max(0,Math.floor((Date.now()-vStartAt)/1000));const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
     refreshVoiceTimer();
     vInt=setInterval(refreshVoiceTimer,250);
+    // Safety limit prevents a background recorder from consuming the mobile
+    // microphone indefinitely if Android loses the pointer-up event.
+    setTimeout(()=>{if(isRec&&mr)stopAndSendVoice();},60000);
   }catch(err){
     isRec=false;vStartAt=0;
     if(CU&&(recChatId||pendingPresenceId))void clearPresenceState('private',recChatId||pendingPresenceId);
@@ -3063,6 +3062,7 @@ async function startGVoice(fromGesture=false){
     const refreshGroupVoiceTimer=()=>{gvSec=Math.max(0,Math.floor((Date.now()-gVStartAt)/1000));const mm=Math.floor(gvSec/60),ss=gvSec%60;el('gvTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
     refreshGroupVoiceTimer();
     gvInt=setInterval(refreshGroupVoiceTimer,250);
+    setTimeout(()=>{if(gIsRec&&gmr)stopAndSendGVoice();},60000);
   }catch(err){
     gIsRec=false;gVStartAt=0;
     if(CU&&(recGroupId||pendingGroupPresenceId))void clearPresenceState('group',recGroupId||pendingGroupPresenceId);
@@ -4891,7 +4891,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-152',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-153',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
