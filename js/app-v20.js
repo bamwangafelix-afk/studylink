@@ -1,3 +1,4 @@
+if(/Android/i.test(navigator.userAgent))document.documentElement.classList.add('android-device');
 const SUBJECT_CATEGORIES={
   programming:{en:'Programming Languages',fr:'Langages de programmation',items:['Python','JavaScript','TypeScript','Java','C++','C#','C','Rust','Go','Ruby','PHP','Swift','Kotlin','Dart','Scala','Perl','Lua','R','MATLAB','Julia','Assembly','Bash','PowerShell','Objective-C','Visual Basic','Solidity']},
   frameworks:{en:'Frameworks & Libraries',fr:'Frameworks et bibliothèques',items:['React','Vue','Angular','Node.js','Django','Laravel','Blazor','Spring Boot','Ruby on Rails','Express.js','Next.js','Flutter']},
@@ -4900,7 +4901,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v64.js?v=studylink-pwa-163',location.href).href;
+  const workerUrl=new URL('sw-v65.js?v=studylink-pwa-164',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
