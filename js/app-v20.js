@@ -2014,8 +2014,11 @@ function openChat(name,uid){
     db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     db.collection('users').doc(uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     markChatRead(cid).then(()=>{
-      // Firestore confirmed both resets; new incoming messages may now increment normally.
-      if(window._unreadOverride)delete window._unreadOverride[cid];
+      // Don't drop the override the instant the write resolves: on a slow/flaky connection
+      // the inbox's realtime listener can still be mid-flight with the pre-reset count and
+      // would "stick" the unread badge right back on if we let it win the race. Give the
+      // listener a window to actually catch up with the server-confirmed reset first.
+      setTimeout(()=>{if(window._unreadOverride)delete window._unreadOverride[cid];},4000);
     }).catch(e=>console.warn('mark chat read:',e?.code||e?.message||e));
   }).catch(e=>console.log('chatInit:',e));
 
@@ -4857,7 +4860,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-159',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-160',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});

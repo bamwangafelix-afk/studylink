@@ -85,7 +85,10 @@ body.dark #statusCreate .stSection,body.dark #statusCreate .stPhotoEmpty,body.da
 .mp-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;}
 .mpbtn span{font-size:10px;color:var(--sub);}
 /* CHAT INPUT BAR */
-.cin-wrap{display:flex;align-items:center;gap:6px;padding:8px 10px;position:relative;}
+.cin-wrap{display:flex;align-items:center;gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom, 0px));position:relative;}
+/* Keep the mic/send button clear of Android's bottom gesture-navigation strip — holding
+   or swiping up on a control that sits flush against the very edge of the screen can be
+   intercepted by the OS as a "go home" gesture instead of reaching the page at all. */
 .cin-emoji{background:none;border:none;cursor:pointer;font-size:22px;flex-shrink:0;padding:4px;}
 .cin-input{flex:1;padding:9px 14px;border-radius:22px;font-size:14px;border:1px solid var(--brd);background:var(--inp);color:var(--txt);margin:0;outline:none;}
 .cin-attach{background:none;border:none;cursor:pointer;flex-shrink:0;padding:4px;color:var(--sub);}
