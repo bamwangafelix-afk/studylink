@@ -2005,6 +2005,7 @@ function openChat(name,uid){
   // Override map hard-forces 0 even if Firestore snapshot still has old value
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
+  window._chatReadAt[cid]=Date.now();
   void markChatRead(cid).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
   // Re-render inbox immediately — badge gone before any Firestore round-trip
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -3332,6 +3333,7 @@ function drawWave(canvasId,isRecFn){drawBars(canvasId,isRecFn);}
 // ── INBOX ──
 let inboxUnsub=null;
 let inboxChatsUnsub=null;
+window._chatReadAt=window._chatReadAt||{};
 let _cachedInboxDocs=null; // last fetched chat docs
 
 function setupInbox(){
@@ -3350,6 +3352,12 @@ function setupInbox(){
     const viewerUid=CU.uid;
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
+      const overrides=window._unreadOverride||{};
+      sn.docs.forEach(doc=>{
+        const readAt=window._chatReadAt[doc.id], ts=doc.data()?.lastTs;
+        const lastMs=ts?.toMillis?ts.toMillis():(ts?.seconds?ts.seconds*1000:0);
+        if(overrides[doc.id]===0&&readAt&&lastMs>readAt)delete overrides[doc.id];
+      });
       _cachedInboxDocs=sn.docs.slice();
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     },e=>console.log('inboxChats:',e));
@@ -3366,9 +3374,6 @@ function setupInbox(){
     window._inboxUnreadMap=data.unread||{};
     // Nav badge: local read overrides win over a stale Firestore snapshot.
     const unreadOverrides=window._unreadOverride||{};
-    Object.entries(window._inboxUnreadMap).forEach(([cid,count])=>{
-      if(Number(count||0)>0&&(!curChat||getCID(CU.uid,curChat.uid)!==cid))delete unreadOverrides[cid];
-    });
     let t=Object.entries(window._inboxUnreadMap).reduce((a,[cid,count])=>a+(unreadOverrides[cid]===0?0:Number(count||0)),0);
     const nb=el('msgB2');
     if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
@@ -4880,7 +4885,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v62.js?v=studylink-pwa-161',location.href).href;
+  const workerUrl=new URL('sw-v63.js?v=studylink-pwa-162',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
