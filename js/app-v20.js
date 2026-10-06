@@ -3172,13 +3172,14 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
     btn.dataset.voiceLocked='0';btn.classList.remove('voice-locked','voice-pending');setDragY(0);
     const h=hint();if(h)h.textContent='Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer';
   };
-  const release=()=>{try{if(state.pointerId!==null)btn.releasePointerCapture(state.pointerId);}catch(e){}state.pointerId=null;};
+  // Do not use pointer capture on Android Chrome/WebView: it can dispatch a
+  // late cancel event that closes the PWA while MediaRecorder is active.
+  const release=()=>{state.pointerId=null;};
   btn.addEventListener('pointerdown',e=>{
     if(e.pointerType==='mouse'&&e.button!==0)return;
     if(v(inputId).trim())return;
     e.preventDefault();state.suppressClick=true;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
     if(document.activeElement?.id===inputId)document.activeElement.blur();
-    try{btn.setPointerCapture(e.pointerId);}catch(err){}
     if(btn.classList.contains('rec')||btn.dataset.voiceLocked==='1'){
       Promise.resolve(stopFn()).finally(reset);return;
     }
@@ -4845,7 +4846,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-156',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-157',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
