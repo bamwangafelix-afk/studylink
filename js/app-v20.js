@@ -386,6 +386,14 @@ async function getVoiceStream(){
   }
   return navigator.mediaDevices.getUserMedia({audio:true});
 }
+function createSafeMediaRecorder(stream){
+  const candidates=[];
+  try{if(typeof MediaRecorder.isTypeSupported==='function'&&MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))candidates.push({mimeType:'audio/webm;codecs=opus'});}catch(e){}
+  candidates.push({});
+  let lastError=null;
+  for(const options of candidates){try{return new MediaRecorder(stream,options);}catch(e){lastError=e;}}
+  throw lastError||new Error('MediaRecorder indisponible sur cet appareil');
+}
 
 // ── CLOUDINARY ──
 // Public Cloudinary configuration for the unsigned StudyLink upload preset.
@@ -1584,13 +1592,13 @@ async function startStatusVoice(fromGesture=false){
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone non supporté. Utilisez Chrome.');return;}
   clearTimeout(statusAutoCloseTimer);
   recStatusUid=toUid;
+  let stream=null;
   try{
     if(!fromGesture)pulseHaptic(55,el('stVReplyBtn'));
-    const stream=await getVoiceStream();
+    stream=await getVoiceStream();
     if(el('statusView')?.style.display==='none'||curStatusUid!==toUid){try{stream.getTracks().forEach(track=>track.stop());}catch(e){}recStatusUid=null;return;}
     bindStatusVoiceSafety(stream);
-    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
-    stmr=new MediaRecorder(stream,opts);stvCh=[];
+    stmr=createSafeMediaRecorder(stream);stvCh=[];
     stmr.onerror=e=>{console.error('Status voice recorder error:',e.error||e);resetStatusReplyButton();showToast('🎙️ Erreur du microphone. Réessayez.');};
     stmr.ondataavailable=e=>{if(e.data?.size>0)stvCh.push(e.data);};
     stmr.start(200);stIsRec=true;stvSec=0;stVStartAt=Date.now();
@@ -1604,6 +1612,7 @@ async function startStatusVoice(fromGesture=false){
     const refresh=()=>{stvSec=Math.max(0,Math.floor((Date.now()-stVStartAt)/1000));const mm=Math.floor(stvSec/60),ss=stvSec%60;const timer=el('stVReplyTimer');if(timer)timer.textContent=mm+':'+(ss<10?'0':'')+ss;};
     refresh();stvInt=setInterval(refresh,250);
   }catch(err){
+    try{stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
     resetStatusReplyButton();
     const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
     showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
@@ -2018,7 +2027,8 @@ function openChat(name,uid){
       // the inbox's realtime listener can still be mid-flight with the pre-reset count and
       // would "stick" the unread badge right back on if we let it win the race. Give the
       // listener a window to actually catch up with the server-confirmed reset first.
-      setTimeout(()=>{if(window._unreadOverride)delete window._unreadOverride[cid];},4000);
+      // Keep the local zero for this session so an older cached snapshot cannot
+      // resurrect the unread badge after the conversation was opened.
     }).catch(e=>console.warn('mark chat read:',e?.code||e?.message||e));
   }).catch(e=>console.log('chatInit:',e));
 
@@ -2867,7 +2877,7 @@ function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(fromGesture=false){
   if(vFinalizing||isRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
-  let pendingPresenceId=null;
+  let pendingPresenceId=null,stream=null;
   try{
     // Publish before awaiting the microphone permission prompt so the other
     // participant sees recording immediately on Android.
@@ -2875,10 +2885,9 @@ async function startVoice(fromGesture=false){
     recChatId=pendingPresenceId;
     if(recChatId)void setPresenceState('private',recChatId,'recording',true);
     if(!fromGesture)pulseHaptic(55,el('sendB'));
-    const s=await getVoiceStream();
-    bindRecorderSafety(s,'private');
-    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
-    mr=new MediaRecorder(s,opts);vCh=[];
+    stream=await getVoiceStream();
+    bindRecorderSafety(stream,'private');
+    mr=createSafeMediaRecorder(stream);vCh=[];
     mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);resetRecorderUi('private');showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
@@ -2899,6 +2908,7 @@ async function startVoice(fromGesture=false){
     // microphone indefinitely if Android loses the pointer-up event.
     setTimeout(()=>{if(isRec&&mr)stopAndSendVoice();},60000);
   }catch(err){
+    try{stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
     isRec=false;vStartAt=0;
     if(CU&&(recChatId||pendingPresenceId))void clearPresenceState('private',recChatId||pendingPresenceId);
     recChatId=null;
@@ -3038,7 +3048,7 @@ async function startGVoice(fromGesture=false){
   if(gVFinalizing||gIsRec)return;
   if(!(await groupWriteAllowed()))return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
-  let pendingGroupPresenceId=null;
+  let pendingGroupPresenceId=null,stream=null;
   try{
     // Publish before awaiting the microphone permission prompt so group members
     // see recording immediately on Android.
@@ -3046,10 +3056,9 @@ async function startGVoice(fromGesture=false){
     recGroupId=pendingGroupPresenceId;
     if(recGroupId)void setPresenceState('group',recGroupId,'recording',true);
     if(!fromGesture)pulseHaptic(55,el('gSendB'));
-    const s=await getVoiceStream();
-    bindRecorderSafety(s,'group');
-    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
-    gmr=new MediaRecorder(s,opts);gvCh=[];
+    stream=await getVoiceStream();
+    bindRecorderSafety(stream,'group');
+    gmr=createSafeMediaRecorder(stream);gvCh=[];
     gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);resetRecorderUi('group');showToast('🎙️ Erreur du microphone. Réessayez.');};
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;gVStartAt=Date.now();
@@ -3068,6 +3077,7 @@ async function startGVoice(fromGesture=false){
     gvInt=setInterval(refreshGroupVoiceTimer,250);
     setTimeout(()=>{if(gIsRec&&gmr)stopAndSendGVoice();},60000);
   }catch(err){
+    try{stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
     gIsRec=false;gVStartAt=0;
     if(CU&&(recGroupId||pendingGroupPresenceId))void clearPresenceState('group',recGroupId||pendingGroupPresenceId);
     recGroupId=null;
@@ -3348,8 +3358,9 @@ function setupInbox(){
     const chatIds=data.chatIds||[];
     // Keep unread map in memory so renderInbox never needs to fetch it
     window._inboxUnreadMap=data.unread||{};
-    // Nav badge
-    let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0);
+    // Nav badge: local read overrides win over a stale Firestore snapshot.
+    const unreadOverrides=window._unreadOverride||{};
+    let t=Object.entries(window._inboxUnreadMap).reduce((a,[cid,count])=>a+(unreadOverrides[cid]===0?0:Number(count||0)),0);
     const nb=el('msgB2');
     if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
     if(t>lastUnreadTotal&&!curChat){
