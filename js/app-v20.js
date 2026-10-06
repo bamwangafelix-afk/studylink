@@ -1537,8 +1537,8 @@ async function sendQuickStatusReply(toUid,text){
     await db.collection('chats').doc(cid).set(upd,{merge:true});
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
     receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-    db.collection('users').doc(toUid).update(receiverUpd).catch(()=>{db.collection('users').doc(toUid).set(receiverUpd,{merge:true}).catch(()=>{});});
-    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    await db.collection('users').doc(toUid).set(receiverUpd,{merge:true});
+    await db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)},{merge:true});
     return true;
   }catch(e){showToast('Erreur: '+(e.message||''));return false;}
 }
@@ -1943,6 +1943,20 @@ function renderFind(q=""){
 
 // ── CHAT ──
 function getCID(a,b){return [a,b].sort().join('_');}
+async function markChatRead(cid){
+  if(!cid||!CU?.uid)return;
+  if(!window._unreadOverride)window._unreadOverride={};
+  window._unreadOverride[cid]=0;
+  if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
+  const chatUnread={};chatUnread['unread.'+CU.uid]=0;
+  const userUnread={};userUnread['unread.'+cid]=0;
+  await Promise.all([
+    db.collection('chats').doc(cid).set(chatUnread,{merge:true}),
+    db.collection('users').doc(CU.uid).set(userUnread,{merge:true})
+  ]);
+  if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
+  if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
+}
 function setupMsgBL(){
   // Replaced by setupInbox() which handles both badge and real-time inbox updates
   setupInbox();
@@ -1985,6 +1999,7 @@ function openChat(name,uid){
   // Override map hard-forces 0 even if Firestore snapshot still has old value
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
+  void markChatRead(cid).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
   // Re-render inbox immediately — badge gone before any Firestore round-trip
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
 
@@ -2001,13 +2016,10 @@ function openChat(name,uid){
   db.collection('chats').doc(cid).set(initData,{merge:true}).then(()=>{
     db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     db.collection('users').doc(uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
-    const resetUnread={};resetUnread['unread.'+CU.uid]=0;
-    db.collection('chats').doc(cid).update(resetUnread).then(()=>{
-      // Firestore confirmed reset — remove override so future messages can show badge again
+    markChatRead(cid).then(()=>{
+      // Firestore confirmed both resets; new incoming messages may now increment normally.
       if(window._unreadOverride)delete window._unreadOverride[cid];
-    }).catch(()=>{});
-    const userReset={};userReset['unread.'+cid]=0;
-    db.collection('users').doc(CU.uid).update(userReset).catch(()=>{});
+    }).catch(e=>console.warn('mark chat read:',e?.code||e?.message||e));
   }).catch(e=>console.log('chatInit:',e));
 
   // Messages listener — paginated with limit(50), supports load-more
@@ -2046,6 +2058,7 @@ function openChat(name,uid){
           mb.insertBefore(loadMoreBtn,mb.firstChild);
         }
       }else if(loadMoreBtn){loadMoreBtn.remove();}
+      if(curChat?.uid===uid)void markChatRead(cid).catch(()=>{});
     },e=>{
       console.warn('Private messages listener; retrying:',e?.code||e?.message||e);
       if(chatUnsub){chatUnsub();chatUnsub=null;}
@@ -2259,10 +2272,8 @@ async function sendMsg(){
     // Register chatId and signal unread on receiver's user document so their inbox listener fires
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
     receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-    db.collection('users').doc(curChat.uid).update(receiverUpd).catch(()=>{
-      db.collection('users').doc(curChat.uid).set(receiverUpd,{merge:true}).catch(()=>{});
-    });
-    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    await db.collection('users').doc(curChat.uid).set(receiverUpd,{merge:true});
+    await db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)},{merge:true});
     // Message notification goes to Msgs tab only — NOT to alerts
     // unread count handled by setupMsgBL
   }catch(e){showToast('❌ '+e.message);}
@@ -4871,7 +4882,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-150',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-151',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
