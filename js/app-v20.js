@@ -3377,16 +3377,22 @@ function setupInbox(){
     },e=>console.log('inboxChats:',e));
   };
 
+  let lastUnreadTotal=0;
   inboxUnsub=db.collection('users').doc(CU.uid).onSnapshot(snap=>{
     const data=snap.data()||{};
     const chatIds=data.chatIds||[];
     // Keep unread map in memory so renderInbox never needs to fetch it
     window._inboxUnreadMap=data.unread||{};
     // Nav badge
-    let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+(b||0),0);
+    let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0);
     const nb=el('msgB2');
     if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
-    if(t>0&&!curChat)showToast('💬 '+t+' unread message'+(t>1?'s':''));
+    if(t>lastUnreadTotal&&!curChat){
+      showToast('💬 '+t+' unread message'+(t>1?'s':''));
+      try{if(navigator.vibrate)navigator.vibrate([120,60,120]);}catch(e){}
+      try{document.title='('+t+') StudyLink';setTimeout(()=>{if(!curChat)document.title='StudyLink';},5000);}catch(e){}
+    }
+    lastUnreadTotal=t;
     // The user document is only an unread/badge source. Presence and conversation
     // discovery must remain active even when chatIds is stale or absent.
     if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -3447,7 +3453,10 @@ function renderInbox(q="",sn=null){
       const cid=d.id;
       const st=getStatusInfo(o.status,o.lastSeen);
       // Override wins — set to 0 the moment chat is opened, cleared once Firestore confirms
-      const unread=(_overrides[cid]===0)?0:Math.max((data.unread||{})[CU.uid]||0,_userUnreadMap[cid]||0);
+      // The user document is the authoritative inbox counter. The chat copy is
+      // only a fallback for older records and must never resurrect a stale badge.
+      const hasUserUnread=Object.prototype.hasOwnProperty.call(_userUnreadMap,cid);
+      const unread=(_overrides[cid]===0)?0:(hasUserUnread?Number(_userUnreadMap[cid]||0):Number((data.unread||{})[CU.uid]||0));
       // Presence takes priority over the last message, like WhatsApp. It is
       // rendered in the list and the open conversation from the same Firestore
       // chat document, so both surfaces update through the inbox snapshot.
@@ -4882,7 +4891,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-151',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-152',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
