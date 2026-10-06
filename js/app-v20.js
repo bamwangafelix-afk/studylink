@@ -3353,10 +3353,13 @@ function setupInbox(){
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
       const overrides=window._unreadOverride||{};
+      const activeChatId=curChat&&CU?.uid?getCID(CU.uid,curChat.uid):null;
       sn.docs.forEach(doc=>{
         const readAt=window._chatReadAt[doc.id], ts=doc.data()?.lastTs;
         const lastMs=ts?.toMillis?ts.toMillis():(ts?.seconds?ts.seconds*1000:0);
-        if(overrides[doc.id]===0&&readAt&&lastMs>readAt)delete overrides[doc.id];
+        // A new message stays read while its conversation is open; only a later
+        // message arriving after the conversation is closed may clear the override.
+        if(overrides[doc.id]===0&&readAt&&lastMs>readAt&&activeChatId!==doc.id)delete overrides[doc.id];
       });
       _cachedInboxDocs=sn.docs.slice();
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -3372,6 +3375,18 @@ function setupInbox(){
     const chatIds=data.chatIds||[];
     // Keep unread map in memory so renderInbox never needs to fetch it
     window._inboxUnreadMap=data.unread||{};
+    // A sender may publish the unread increment after our message snapshot has
+    // already marked the message read. Re-clear it while this chat is still open.
+    const activeChatId=curChat&&CU?.uid?getCID(CU.uid,curChat.uid):null;
+    if(activeChatId&&Number(window._inboxUnreadMap[activeChatId]||0)>0){
+      if(!window._unreadOverride)window._unreadOverride={};
+      window._unreadOverride[activeChatId]=0;
+      const pending=window._readRepairPending||(window._readRepairPending=new Set());
+      if(!pending.has(activeChatId)){
+        pending.add(activeChatId);
+        void markChatRead(activeChatId).catch(e=>console.warn('active chat read repair:',e?.code||e?.message||e)).finally(()=>pending.delete(activeChatId));
+      }
+    }
     // Nav badge: local read overrides win over a stale Firestore snapshot.
     const unreadOverrides=window._unreadOverride||{};
     let t=Object.entries(window._inboxUnreadMap).reduce((a,[cid,count])=>a+(unreadOverrides[cid]===0?0:Number(count||0)),0);
@@ -4885,7 +4900,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v63.js?v=studylink-pwa-162',location.href).href;
+  const workerUrl=new URL('sw-v64.js?v=studylink-pwa-163',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
