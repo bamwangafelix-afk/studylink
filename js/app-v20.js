@@ -1958,6 +1958,7 @@ function setupMsgBL(){
   setupInbox();
 }
 function openChat(name,uid){
+  if(!CU?.uid)return;
   if(!uid||uid==='undefined'||uid==='null'||uid===''){
     const found=allUsers.find(u=>u.name===name||u.name?.toLowerCase()===name?.toLowerCase());
     if(found)uid=found.uid;else return showToast('❌ User not found. Try from Find tab.');
@@ -3323,17 +3324,23 @@ function setupInbox(){
   window._inboxUnreadMap={};
 
   const startChatListener=()=>{
+    if(!CU?.uid)return;
     if(inboxChatsUnsub){inboxChatsUnsub();inboxChatsUnsub=null;}
     // Presence is stored on each chat document. Query by participants directly
     // so the Messages list cannot miss a conversation due to a stale chatIds index.
-    inboxChatsUnsub=db.collection('chats').where('participants','array-contains',CU.uid).onSnapshot(sn=>{
+    const viewerUid=CU.uid;
+    inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
+      if(!CU?.uid||CU.uid!==viewerUid)return;
       _cachedInboxDocs=sn.docs.slice();
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     },e=>console.log('inboxChats:',e));
   };
 
   let lastUnreadTotal=0;
-  inboxUnsub=db.collection('users').doc(CU.uid).onSnapshot(snap=>{
+  if(!CU?.uid)return;
+  const viewerUid=CU.uid;
+  inboxUnsub=db.collection('users').doc(viewerUid).onSnapshot(snap=>{
+    if(!CU?.uid||CU.uid!==viewerUid)return;
     const data=snap.data()||{};
     const chatIds=data.chatIds||[];
     // Keep unread map in memory so renderInbox never needs to fetch it
@@ -3361,7 +3368,10 @@ function setupInbox(){
 }
 
 function renderInbox(q="",sn=null){
+  if(!CU?.uid)return;
+  const viewerUid=CU.uid;
   const _execRender=async(snapshot)=>{
+    if(!CU?.uid||CU.uid!==viewerUid)return;
     const f=el('inboxL');
     const seenUid={};
     const docList=Array.isArray(snapshot)?snapshot:(snapshot.docs||[]);
@@ -3396,6 +3406,7 @@ function renderInbox(q="",sn=null){
     const missingUids=entries.map(d=>(d.data().participants||[]).find(id=>id!==CU.uid)).filter(uid=>uid&&!allUsers.find(u=>u.uid===uid));
     if(missingUids.length){
       const fetched=await Promise.all(missingUids.map(uid=>db.collection('users').doc(uid).get().catch(()=>null)));
+      if(!CU?.uid||CU.uid!==viewerUid)return;
       fetched.forEach(snap=>{if(snap&&snap.exists){const d=snap.data();if(d&&!allUsers.find(u=>u.uid===d.uid))allUsers.push(d);}});
     }
     f.innerHTML='';
@@ -4846,7 +4857,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-157',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-158',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
