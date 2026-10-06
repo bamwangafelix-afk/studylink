@@ -3156,13 +3156,63 @@ gvCh=[];gvSec=0;clearInterval(gvInt);
 // ── WHATSAPP-STYLE HOLD / SWIPE-UP TO RECORD ──
 // Hold the mic to start, swipe up to lock, release without stopping, then tap to send.
 function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
-  const btn=el(btnId);if(!btn)return;
-  // Android-safe mode: the inline click handler performs the whole lifecycle.
-  // Avoid pointer capture, touch cancellation, and synthetic-click suppression;
-  // these were closing the PWA while MediaRecorder was active.
-  btn.dataset.voiceGestureBound='simple-tap';
-  btn.style.touchAction='manipulation';
-  btn.title='Appuyez une fois pour enregistrer, puis une fois pour envoyer';
+  const btn=el(btnId);if(!btn||btn.dataset.voiceGestureBound==='hold-swipe')return;
+  btn.dataset.voiceGestureBound='hold-swipe';
+  btn.style.touchAction='none';
+  const isStatus=btnId==='stVReplyBtn';
+  const inputId=isStatus?'stVReplyInput':(btnId==='gSendB'?'gIn':'mIn');
+  const barId=isStatus?'stVReplyBar':(btnId==='gSendB'?'gvbar':'vbar');
+  const floatId=isStatus?'stVReplyFloat':(btnId==='gSendB'?'gRecordFloatB':'recordFloatB');
+  const float=el(floatId);
+  const state={pointerId:null,active:false,pending:false,released:false,locked:false,cancelled:false,suppressClick:false,startY:0};
+  const setDragY=y=>{if(float){float.style.setProperty('--voice-float-y',`${Math.round(y)}px`);float.classList.toggle('is-visible',y< -4);}};
+  const hint=()=>el(barId)?.querySelector('[data-voice-hint],[data-status-voice-hint]');
+  const reset=()=>{
+    state.pointerId=null;state.active=false;state.pending=false;state.released=false;state.locked=false;state.cancelled=false;
+    btn.dataset.voiceLocked='0';btn.classList.remove('voice-locked','voice-pending');setDragY(0);
+    const h=hint();if(h)h.textContent='Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer';
+  };
+  const release=()=>{try{if(state.pointerId!==null)btn.releasePointerCapture(state.pointerId);}catch(e){}state.pointerId=null;};
+  btn.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    if(v(inputId).trim())return;
+    e.preventDefault();state.suppressClick=true;state.startY=e.clientY;state.pointerId=e.pointerId;state.active=true;state.released=false;state.cancelled=false;
+    if(document.activeElement?.id===inputId)document.activeElement.blur();
+    try{btn.setPointerCapture(e.pointerId);}catch(err){}
+    if(btn.classList.contains('rec')||btn.dataset.voiceLocked==='1'){
+      Promise.resolve(stopFn()).finally(reset);return;
+    }
+    btn.classList.add('voice-pending');state.pending=true;
+    Promise.resolve(startFn(true)).then(()=>{
+      state.pending=false;
+      if(!btn.classList.contains('rec')){reset();return;}
+      if(state.released&&!state.locked&&!state.cancelled)Promise.resolve(stopFn()).finally(reset);
+    }).catch(()=>{state.pending=false;reset();});
+  },{passive:false});
+  btn.addEventListener('pointermove',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();
+    const up=state.startY-e.clientY;
+    if(!state.locked)setDragY(up>25?Math.max(-180,-up*1.35):0);
+    if(!state.locked&&up>70){
+      state.locked=true;state.active=false;btn.dataset.voiceLocked='1';btn.classList.remove('voice-pending');btn.classList.add('voice-locked');
+      const h=hint();if(h)h.textContent='🔒 locked · tap mic to send';release();
+    }
+  },{passive:false});
+  btn.addEventListener('pointerup',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();state.active=false;state.released=true;release();
+    if(state.locked||state.cancelled)return;
+    if(state.pending)return;
+    if(btn.classList.contains('rec'))Promise.resolve(stopFn()).finally(reset);else reset();
+  },{passive:false});
+  btn.addEventListener('pointercancel',e=>{
+    if(!state.active||state.pointerId!==e.pointerId)return;
+    e.preventDefault();state.active=false;state.cancelled=true;release();cancelFn();reset();
+  },{passive:false});
+  btn.addEventListener('click',e=>{
+    if(state.suppressClick){e.preventDefault();e.stopPropagation();state.suppressClick=false;}
+  },true);
 }
 // Stubs for smartGSend compatibility
 function stopGVoice(){stopAndSendGVoice();}
@@ -4795,7 +4845,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-155',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-156',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
