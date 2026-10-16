@@ -1993,6 +1993,8 @@ function openChat(name,uid){
   // Override map hard-forces 0 even if Firestore snapshot still has old value
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
+  const navBadge=el('msgB2');
+  if(navBadge){navBadge.textContent='';navBadge.style.display='none';}
   void markChatRead(cid).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
   // Re-render inbox immediately — badge gone before any Firestore round-trip
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -2011,8 +2013,8 @@ function openChat(name,uid){
     db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     db.collection('users').doc(uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     markChatRead(cid).then(()=>{
-      // Firestore confirmed both resets; new incoming messages may now increment normally.
-      if(window._unreadOverride)delete window._unreadOverride[cid];
+      // Keep the local override until the user snapshot confirms zero. This
+      // prevents a stale snapshot from restoring the blue badge while opening.
     }).catch(e=>console.warn('mark chat read:',e?.code||e?.message||e));
   }).catch(e=>console.log('chatInit:',e));
 
@@ -3329,7 +3331,15 @@ function setupInbox(){
     const data=snap.data()||{};
     const chatIds=data.chatIds||[];
     // Keep unread map in memory so renderInbox never needs to fetch it
-    window._inboxUnreadMap=data.unread||{};
+    const rawUnread=data.unread||{};
+    window._inboxUnreadMap={...rawUnread};
+    // A read action wins over a delayed/stale Firestore snapshot. Release the
+    // override only after Firestore itself reports zero for that chat.
+    const readOverrides=window._unreadOverride||{};
+    Object.keys(readOverrides).forEach(cid=>{
+      if(Number(rawUnread[cid]||0)===0)delete readOverrides[cid];
+      else window._inboxUnreadMap[cid]=0;
+    });
     // Nav badge
     let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0);
     const nb=el('msgB2');
@@ -4844,7 +4854,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-160',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-161',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
