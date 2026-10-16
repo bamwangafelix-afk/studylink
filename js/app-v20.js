@@ -3319,6 +3319,9 @@ function setupInbox(){
         Object.keys(staleOwnUnread).forEach(k=>{if(window._inboxUnreadMap)window._inboxUnreadMap[k.slice(7)]=0;});
         db.collection('users').doc(viewerUid).set(staleOwnUnread,{merge:true}).catch(()=>{});
       }
+      const repairedTotal=Object.values(window._inboxUnreadMap||{}).reduce((a,b)=>a+Number(b||0),0);
+      const repairedBadge=el('msgB2');
+      if(repairedBadge){repairedBadge.textContent=repairedTotal>9?'9+':repairedTotal;repairedBadge.style.display=repairedTotal>0?'inline-flex':'none';}
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     },e=>console.log('inboxChats:',e));
   };
@@ -3340,6 +3343,18 @@ function setupInbox(){
       if(Number(rawUnread[cid]||0)===0)delete readOverrides[cid];
       else window._inboxUnreadMap[cid]=0;
     });
+    // The user snapshot can arrive before the chat query after a refresh.
+    // Repair sender-owned counters here too, instead of waiting for a second
+    // snapshot that may never arrive in the same order.
+    const ownUnreadRepair={};
+    (_cachedInboxDocs||[]).forEach(d=>{
+      const chatData=d.data()||{};
+      if(chatData.lastSenderUid===viewerUid&&Number(rawUnread[d.id]||0)>0){
+        window._inboxUnreadMap[d.id]=0;
+        ownUnreadRepair['unread.'+d.id]=0;
+      }
+    });
+    if(Object.keys(ownUnreadRepair).length)db.collection('users').doc(viewerUid).set(ownUnreadRepair,{merge:true}).catch(()=>{});
     // Nav badge
     let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0);
     const nb=el('msgB2');
@@ -4854,7 +4869,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-161',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-162',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
