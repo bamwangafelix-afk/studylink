@@ -72,7 +72,7 @@ const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
-let curChat=null,chatUnsub=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
+let curChat=null,chatUnsub=null,chatReadHeartbeat=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
 let myPendingJoinGroupIds=new Set();
 let curProfileUid=null;
 let myStudyInviteMap={};
@@ -2018,6 +2018,10 @@ function openChat(name,uid){
   const navBadge=el('msgB2');
   if(navBadge){navBadge.textContent='';navBadge.style.display='none';}
   void markChatRead(cid).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
+  if(chatReadHeartbeat)clearInterval(chatReadHeartbeat);
+  chatReadHeartbeat=setInterval(()=>{
+    if(curChat?.uid===uid&&document.visibilityState!=='hidden')void markChatRead(cid).catch(()=>{});
+  },2500);
   // Re-render inbox immediately — badge gone before any Firestore round-trip
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
 
@@ -2112,6 +2116,7 @@ function openChat(name,uid){
 }
 function closeChat(){
   if(curChat&&CU){clearTimeout(typDebounce);void clearPresenceState('private',getCID(CU.uid,curChat.uid));}
+  if(chatReadHeartbeat){clearInterval(chatReadHeartbeat);chatReadHeartbeat=null;}
   el('typebar').style.display='none';
   el('chatW').style.display='none';
   if(chatUnsub){chatUnsub();chatUnsub=null;}
@@ -4957,7 +4962,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v66.js?v=studylink-pwa-172',location.href).href;
+  const workerUrl=new URL('sw-v67.js?v=studylink-pwa-173',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
