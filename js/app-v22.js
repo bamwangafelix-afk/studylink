@@ -1943,10 +1943,17 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   }
   // Keep unread state only on the receiver's user document. The old chat mirror
   // made the sender see their own message as a new message.
-  const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-  receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
   await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
-  await db.collection('users').doc(receiverUid).set(receiverUpd,{merge:true});
+  // Do not re-increment after the receiver has already opened the chat.
+  const receiverRef=db.collection('users').doc(receiverUid);
+  await db.runTransaction(async tx=>{
+    const receiverSnap=await tx.get(receiverRef);
+    const receiverData=receiverSnap.data()||{};
+    const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
+    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+    if(receiverReadAt<sentAt)receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    tx.set(receiverRef,receiverUpd,{merge:true});
+  });
   const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
   // Sending a message also means the sender has the conversation open/read.
   // Explicitly clear any stale unread value left by older releases.
@@ -2057,6 +2064,14 @@ function openChat(name,uid){
         }
         if(m.senderUid!==CU.uid&&!m.seen)change.doc.ref.update({seen:true}).catch(()=>{});
       });
+      if(curChat?.uid===uid){
+        const unseen=sn.docs.filter(d=>{const m=d.data()||{};return m.senderUid!==CU.uid&&!m.seen;});
+        if(unseen.length){
+          const seenBatch=db.batch();
+          unseen.forEach(d=>seenBatch.update(d.ref,{seen:true}));
+          seenBatch.commit().catch(()=>{});
+        }
+      }
       mb.scrollTop=mb.scrollHeight;
       // Show load-more button if we hit the limit
       let loadMoreBtn=mb.querySelector('#loadMoreMsgs');
@@ -4942,7 +4957,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-171',location.href).href;
+  const workerUrl=new URL('sw-v66.js?v=studylink-pwa-172',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
