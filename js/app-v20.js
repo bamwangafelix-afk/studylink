@@ -3373,6 +3373,14 @@ function setupInbox(){
       }
     });
     if(Object.keys(ownUnreadRepair).length)db.collection('users').doc(viewerUid).set(ownUnreadRepair,{merge:true}).catch(()=>{});
+    // Never show an unread badge for the conversation currently open. This
+    // protects the UI from delayed snapshots while a new message is sent.
+    if(curChat?.uid){
+      const openCid=getCID(viewerUid,curChat.uid);
+      window._inboxUnreadMap[openCid]=0;
+      const openBadge=el('msgB2');
+      if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
+    }
     // Nav badge
     let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0);
     const nb=el('msgB2');
@@ -4887,7 +4895,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-165',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-166',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
