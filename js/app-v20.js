@@ -1946,7 +1946,11 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
   await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
   await db.collection('users').doc(receiverUid).set(receiverUpd,{merge:true});
-  await db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)},{merge:true});
+  const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+  // Sending a message also means the sender has the conversation open/read.
+  // Explicitly clear any stale unread value left by older releases.
+  senderUpd['unread.'+cid]=0;
+  await db.collection('users').doc(CU.uid).set(senderUpd,{merge:true});
 }
 async function markChatRead(cid){
   if(!cid||!CU?.uid)return;
@@ -4877,7 +4881,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-163',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-164',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
