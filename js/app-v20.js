@@ -1931,12 +1931,13 @@ function renderFind(q=""){
 function getCID(a,b){return [a,b].sort().join('_');}
 async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
-  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastSenderUid:CU.uid,...extra};
+  const sentAt=Date.now();
+  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,...extra};
   // A stale/incorrect conversation target must never notify the current user.
   // Still save the chat preview, but do not create an unread counter for self.
   if(receiverUid===CU.uid){
     await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
-    const clearSelf={};clearSelf['unread.'+cid]=0;
+    const clearSelf={};clearSelf['unread.'+cid]=0;clearSelf['readAt.'+cid]=sentAt;
     await db.collection('users').doc(CU.uid).set(clearSelf,{merge:true});
     return;
   }
@@ -1950,6 +1951,7 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   // Sending a message also means the sender has the conversation open/read.
   // Explicitly clear any stale unread value left by older releases.
   senderUpd['unread.'+cid]=0;
+  senderUpd['readAt.'+cid]=sentAt;
   await db.collection('users').doc(CU.uid).set(senderUpd,{merge:true});
 }
 async function markChatRead(cid){
@@ -1958,6 +1960,7 @@ async function markChatRead(cid){
   window._unreadOverride[cid]=0;
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   const userUnread={};userUnread['unread.'+cid]=0;
+  userUnread['readAt.'+cid]=Date.now();
   await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -3325,7 +3328,8 @@ function setupInbox(){
       const ownMap=window._inboxUnreadMap||{};
       sn.docs.forEach(d=>{
         const data=d.data()||{};
-        if(data.lastSenderUid===viewerUid&&Number(ownMap[d.id]||0)>0)staleOwnUnread['unread.'+d.id]=0;
+        const readAt=(window._inboxReadAt||{})[d.id]||0;
+        if(data.lastSenderUid===viewerUid&&Number(ownMap[d.id]||0)>0&&readAt>=Number(data.lastMessageAt||0))staleOwnUnread['unread.'+d.id]=0;
       });
       if(Object.keys(staleOwnUnread).length){
         Object.keys(staleOwnUnread).forEach(k=>{if(window._inboxUnreadMap)window._inboxUnreadMap[k.slice(7)]=0;});
@@ -3348,6 +3352,7 @@ function setupInbox(){
     // Keep unread map in memory so renderInbox never needs to fetch it
     const rawUnread=data.unread||{};
     window._inboxUnreadMap={...rawUnread};
+    window._inboxReadAt={...(data.readAt||{})};
     // A read action wins over a delayed/stale Firestore snapshot. Release the
     // override only after Firestore itself reports zero for that chat.
     const readOverrides=window._unreadOverride||{};
@@ -3361,7 +3366,8 @@ function setupInbox(){
     const ownUnreadRepair={};
     (_cachedInboxDocs||[]).forEach(d=>{
       const chatData=d.data()||{};
-      if(chatData.lastSenderUid===viewerUid&&Number(rawUnread[d.id]||0)>0){
+      const readAt=window._inboxReadAt?.[d.id]||0;
+      if(chatData.lastSenderUid===viewerUid&&Number(rawUnread[d.id]||0)>0&&readAt>=Number(chatData.lastMessageAt||0)){
         window._inboxUnreadMap[d.id]=0;
         ownUnreadRepair['unread.'+d.id]=0;
       }
@@ -4881,7 +4887,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-164',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-165',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
