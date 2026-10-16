@@ -72,7 +72,7 @@ const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
 let selTags=[],ftab='all',dark=false,favs=new Set();
-let curChat=null,chatUnsub=null,chatReadHeartbeat=null,curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
+let curChat=null,chatUnsub=null,chatReadHeartbeat=null,curChatReadAt={},curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
 let myPendingJoinGroupIds=new Set();
 let curProfileUid=null;
 let myStudyInviteMap={};
@@ -1929,6 +1929,25 @@ function renderFind(q=""){
 
 // ── CHAT ──
 function getCID(a,b){return [a,b].sort().join('_');}
+function messageMillis(value){
+  if(value?.toMillis)return value.toMillis();
+  if(value?.seconds)return value.seconds*1000;
+  return Number(value)||0;
+}
+function messageWasReadByOther(m){
+  if(!m||m.senderUid!==CU?.uid||!curChat?.uid)return false;
+  return messageMillis(curChatReadAt[curChat.uid])>=messageMillis(m.time);
+}
+function refreshPrivateReceipts(){
+  if(!curChat)return;
+  document.querySelectorAll('#msgB .bw.s').forEach(bw=>{
+    const id=bw.dataset.id;
+    const receipt=bw.querySelector('.receipt,[data-vreceipt]');
+    if(!receipt)return;
+    const read=messageWasReadByOther({id,senderUid:CU.uid,time:bw.dataset.time});
+    if(read){receipt.innerHTML='✓✓ '+t('msg_seen');receipt.style.color='#4fc3f7';}
+  });
+}
 async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Date.now();
@@ -2115,7 +2134,12 @@ function openChat(name,uid){
     }
     renderPrivatePresence(merged);
   };
-  const chatPresenceUnsub=db.collection('chats').doc(cid).onSnapshot(sn=>{latestChat=sn.data()||{};paint();});
+  const chatPresenceUnsub=db.collection('chats').doc(cid).onSnapshot(sn=>{
+    latestChat=sn.data()||{};
+    curChatReadAt[uid]=latestChat.readAt?.[uid]||0;
+    paint();
+    refreshPrivateReceipts();
+  });
   const mirrorPresenceUnsub=db.collection('users').doc(uid).onSnapshot(sn=>{latestMirror=sn.data()||{};paint();});
   window._typingUnsub=()=>{chatPresenceUnsub();mirrorPresenceUnsub();};
 }
@@ -2493,8 +2517,9 @@ function buildBbl(m,isGrp){
   const nameTag=isGrp&&!self?`<div class="bname" onclick="openProfile('${e2(m.senderUid||'')}')" style="cursor:pointer;display:flex;align-items:center;gap:5px;">${m.senderPhoto?`<img src="${esc(m.senderPhoto)}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0;">`:'<span style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.15);display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;">👤</span>'}<span>${esc(m.senderName||'')}</span></div>`:'';
   const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
-  const receipt=self&&type==='text'?`<div class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
-  const mediaReceipt=self?`<div class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
+  const wasRead=!!m.seen||messageWasReadByOther(m);
+  const receipt=self&&type==='text'?`<div class="receipt">${wasRead?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
+  const mediaReceipt=self?`<div class="receipt">${wasRead?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
   const rc=m.reactions||{},ec={};
   Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
   const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
@@ -2560,8 +2585,8 @@ function buildBbl(m,isGrp){
     let voiceReceipt='';
     if(self){
       if(m.voicePlayed){voiceReceipt=`<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;}
-      else if(m.seen){voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.9);margin-left:4px;">✓✓</span>';}
-      else{voiceReceipt='<span style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
+      else if(wasRead){voiceReceipt='<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.9);margin-left:4px;">✓✓</span>';}
+      else{voiceReceipt='<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
     }
     const durLabel=m.dur||'0:00';
     const playBtnBg=self?'rgba(255,255,255,0.25)':vAccent;
@@ -2599,7 +2624,7 @@ function buildBbl(m,isGrp){
     if(!m.data)inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${rcHtml}`;
     else inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div>${self?`<span class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓'}</span>`:''}</div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;
   }
-  return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${m.time||''}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
+  return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${m.time||''}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
 let _lpTimer=null,_lpFired=false;
@@ -4967,7 +4992,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v68.js?v=studylink-pwa-174',location.href).href;
+  const workerUrl=new URL('sw-v69.js?v=studylink-pwa-175',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
