@@ -1,4 +1,3 @@
-if(/Android/i.test(navigator.userAgent))document.documentElement.classList.add('android-device');
 const SUBJECT_CATEGORIES={
   programming:{en:'Programming Languages',fr:'Langages de programmation',items:['Python','JavaScript','TypeScript','Java','C++','C#','C','Rust','Go','Ruby','PHP','Swift','Kotlin','Dart','Scala','Perl','Lua','R','MATLAB','Julia','Assembly','Bash','PowerShell','Objective-C','Visual Basic','Solidity']},
   frameworks:{en:'Frameworks & Libraries',fr:'Frameworks et bibliothèques',items:['React','Vue','Angular','Node.js','Django','Laravel','Blazor','Spring Boot','Ruby on Rails','Express.js','Next.js','Flutter']},
@@ -386,14 +385,6 @@ async function getVoiceStream(){
     const err=new Error('Microphone permission denied');err.name='MicPermissionDenied';throw err;
   }
   return navigator.mediaDevices.getUserMedia({audio:true});
-}
-function createSafeMediaRecorder(stream){
-  const candidates=[];
-  try{if(typeof MediaRecorder.isTypeSupported==='function'&&MediaRecorder.isTypeSupported('audio/webm;codecs=opus'))candidates.push({mimeType:'audio/webm;codecs=opus'});}catch(e){}
-  candidates.push({});
-  let lastError=null;
-  for(const options of candidates){try{return new MediaRecorder(stream,options);}catch(e){lastError=e;}}
-  throw lastError||new Error('MediaRecorder indisponible sur cet appareil');
 }
 
 // ── CLOUDINARY ──
@@ -1537,13 +1528,7 @@ async function sendQuickStatusReply(toUid,text){
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     await db.collection('chats').doc(cid).collection('messages').add(md);
-    const upd={participants:[CU.uid,toUid],lastMsg:text,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
-    upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
-    await db.collection('chats').doc(cid).set(upd,{merge:true});
-    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-    receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-    await db.collection('users').doc(toUid).set(receiverUpd,{merge:true});
-    await db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)},{merge:true});
+    await recordPrivateSend(cid,toUid,text);
     return true;
   }catch(e){showToast('Erreur: '+(e.message||''));return false;}
 }
@@ -1593,13 +1578,13 @@ async function startStatusVoice(fromGesture=false){
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone non supporté. Utilisez Chrome.');return;}
   clearTimeout(statusAutoCloseTimer);
   recStatusUid=toUid;
-  let stream=null;
   try{
     if(!fromGesture)pulseHaptic(55,el('stVReplyBtn'));
-    stream=await getVoiceStream();
+    const stream=await getVoiceStream();
     if(el('statusView')?.style.display==='none'||curStatusUid!==toUid){try{stream.getTracks().forEach(track=>track.stop());}catch(e){}recStatusUid=null;return;}
     bindStatusVoiceSafety(stream);
-    stmr=createSafeMediaRecorder(stream);stvCh=[];
+    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
+    stmr=new MediaRecorder(stream,opts);stvCh=[];
     stmr.onerror=e=>{console.error('Status voice recorder error:',e.error||e);resetStatusReplyButton();showToast('🎙️ Erreur du microphone. Réessayez.');};
     stmr.ondataavailable=e=>{if(e.data?.size>0)stvCh.push(e.data);};
     stmr.start(200);stIsRec=true;stvSec=0;stVStartAt=Date.now();
@@ -1613,7 +1598,6 @@ async function startStatusVoice(fromGesture=false){
     const refresh=()=>{stvSec=Math.max(0,Math.floor((Date.now()-stVStartAt)/1000));const mm=Math.floor(stvSec/60),ss=stvSec%60;const timer=el('stVReplyTimer');if(timer)timer.textContent=mm+':'+(ss<10?'0':'')+ss;};
     refresh();stvInt=setInterval(refresh,250);
   }catch(err){
-    try{stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
     resetStatusReplyButton();
     const denied=err.name==='NotAllowedError'||err.name==='MicPermissionDenied';
     showToast(denied?'🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.':'🎙️ '+err.message);
@@ -1645,11 +1629,7 @@ async function stopAndSendStatusVoice(){
     if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
     if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.',viewingCategoryColor());stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
     if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
-    const upd={participants:[CU.uid,toUid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};upd['unread.'+toUid]=firebase.firestore.FieldValue.increment(1);
-    await db.collection('chats').doc(cid).set(upd,{merge:true});
-    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-    db.collection('users').doc(toUid).update(receiverUpd).catch(()=>{db.collection('users').doc(toUid).set(receiverUpd,{merge:true}).catch(()=>{});});
-    db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
+    await recordPrivateSend(cid,toUid,'__voice__',{lastVoiceDur:mm+':'+(ss<10?'0':'')+ss});
     showToast(t('st_toast_audio_sent'),viewingCategoryColor());
   }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.',viewingCategoryColor());}
   stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();
@@ -1949,17 +1929,24 @@ function renderFind(q=""){
 
 // ── CHAT ──
 function getCID(a,b){return [a,b].sort().join('_');}
+async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
+  if(!cid||!receiverUid||!CU?.uid)return;
+  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastSenderUid:CU.uid,...extra};
+  // Keep unread state only on the receiver's user document. The old chat mirror
+  // made the sender see their own message as a new message.
+  const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+  receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+  await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
+  await db.collection('users').doc(receiverUid).set(receiverUpd,{merge:true});
+  await db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)},{merge:true});
+}
 async function markChatRead(cid){
   if(!cid||!CU?.uid)return;
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
-  const chatUnread={};chatUnread['unread.'+CU.uid]=0;
   const userUnread={};userUnread['unread.'+cid]=0;
-  await Promise.all([
-    db.collection('chats').doc(cid).set(chatUnread,{merge:true}),
-    db.collection('users').doc(CU.uid).set(userUnread,{merge:true})
-  ]);
+  await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
 }
@@ -2006,7 +1993,6 @@ function openChat(name,uid){
   // Override map hard-forces 0 even if Firestore snapshot still has old value
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
-  window._chatReadAt[cid]=Date.now();
   void markChatRead(cid).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
   // Re-render inbox immediately — badge gone before any Firestore round-trip
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -2025,12 +2011,8 @@ function openChat(name,uid){
     db.collection('users').doc(CU.uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     db.collection('users').doc(uid).update({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)}).catch(()=>{});
     markChatRead(cid).then(()=>{
-      // Don't drop the override the instant the write resolves: on a slow/flaky connection
-      // the inbox's realtime listener can still be mid-flight with the pre-reset count and
-      // would "stick" the unread badge right back on if we let it win the race. Give the
-      // listener a window to actually catch up with the server-confirmed reset first.
-      // Keep the local zero for this session so an older cached snapshot cannot
-      // resurrect the unread badge after the conversation was opened.
+      // Firestore confirmed both resets; new incoming messages may now increment normally.
+      if(window._unreadOverride)delete window._unreadOverride[cid];
     }).catch(e=>console.warn('mark chat read:',e?.code||e?.message||e));
   }).catch(e=>console.log('chatInit:',e));
 
@@ -2058,9 +2040,7 @@ function openChat(name,uid){
         }
         if(m.senderUid!==CU.uid&&!m.seen)change.doc.ref.update({seen:true}).catch(()=>{});
       });
-      const scrollMessagesBottom=()=>{mb.scrollTop=mb.scrollHeight;try{mb.scrollTo({top:mb.scrollHeight,behavior:'auto'});}catch(e){}};
-      scrollMessagesBottom();
-      requestAnimationFrame(()=>{scrollMessagesBottom();setTimeout(scrollMessagesBottom,80);});
+      mb.scrollTop=mb.scrollHeight;
       // Show load-more button if we hit the limit
       let loadMoreBtn=mb.querySelector('#loadMoreMsgs');
       if(sn.docs.length>=lim){
@@ -2245,7 +2225,7 @@ async function sendSticker(sticker){
   const msg={type:'text',text:sticker,senderUid:CU.uid,senderName:MP?.name||'',time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(cid){
     db.collection('chats').doc(cid).collection('messages').add(msg);
-    const _sd1={participants:[CU.uid,curChat.uid],lastMsg:sticker,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};_sd1['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);db.collection('chats').doc(cid).set(_sd1,{merge:true});
+    void recordPrivateSend(cid,curChat.uid,sticker);
   }else if(curGrp){
     db.collection('groups').doc(curGrp.id).collection('messages').add({...msg,senderPhoto:myPho||''});
   }
@@ -2266,7 +2246,7 @@ function sendSpecial(type){
     type:'text',text:`${icons[type]} ${text}`,senderUid:CU.uid,senderName:MP?.name||'',
     time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
   });
-  const _sd2={participants:[CU.uid,curChat.uid],lastMsg:icons[type]+' '+text,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};_sd2['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);db.collection('chats').doc(cid).set(_sd2,{merge:true});
+  void recordPrivateSend(cid,curChat.uid,icons[type]+' '+text);
 }
 
 async function sendMsg(){
@@ -2280,14 +2260,7 @@ async function sendMsg(){
   replyMsg=null;el('rplybar').style.display='none';
   try{
     await db.collection('chats').doc(cid).collection('messages').add(md);
-    const upd={participants:[CU.uid,curChat.uid],lastMsg:text,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
-    upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
-    await db.collection('chats').doc(cid).set(upd,{merge:true});
-    // Register chatId and signal unread on receiver's user document so their inbox listener fires
-    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-    receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-    await db.collection('users').doc(curChat.uid).set(receiverUpd,{merge:true});
-    await db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid)},{merge:true});
+    await recordPrivateSend(cid,curChat.uid,text);
     // Message notification goes to Msgs tab only — NOT to alerts
     // unread count handled by setupMsgBL
   }catch(e){showToast('❌ '+e.message);}
@@ -2346,9 +2319,7 @@ async function openGroup(postId,name){
         if(change.type==='added'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(!ex)mb.appendChild(node);}
         else if(change.type==='modified'){const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);if(ex)ex.replaceWith(node);else mb.appendChild(node);}
       });
-      const scrollGroupBottom=()=>{mb.scrollTop=mb.scrollHeight;try{mb.scrollTo({top:mb.scrollHeight,behavior:'auto'});}catch(e){}};
-      scrollGroupBottom();
-      requestAnimationFrame(()=>{scrollGroupBottom();setTimeout(scrollGroupBottom,80);});
+      mb.scrollTop=mb.scrollHeight;
     },e=>{
       console.warn('Group messages listener; retrying:',e?.code||e?.message||e);
       if(grpUnsub){grpUnsub();grpUnsub=null;}
@@ -2674,9 +2645,7 @@ async function sendDriveLink(dest){
     if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
       await db.collection('chats').doc(cid).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const upd={participants:[CU.uid,curChat.uid],lastMsg:'__gdrive__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
-      upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
-      await db.collection('chats').doc(cid).set(upd,{merge:true});
+      await recordPrivateSend(cid,curChat.uid,'__gdrive__');
     }else if(dest==='g'&&curGrp){
       await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:t,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     }
@@ -2758,12 +2727,7 @@ async function handleF(e,dest){
       pendingMedia[msgRef.id]=URL.createObjectURL(file);
       insertPendingBubble({...m,id:msgRef.id},false);
       await msgRef.set(m);
-      const _upd={participants:[CU.uid,curChat.uid],lastMsg:_typeLabel,lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
-      _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
-      await db.collection('chats').doc(cid).set(_upd,{merge:true});
-      const _fRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-      _fRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-      db.collection('users').doc(curChat.uid).update(_fRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_fRecvUpd,{merge:true}).catch(()=>{});});
+      await recordPrivateSend(cid,curChat.uid,_typeLabel);
     }
     // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
     if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
@@ -2837,11 +2801,7 @@ async function sendPreviewImg(){
       refreshPendingBubble({...m,id:ref.id},false);
       // ✅ BACKGROUND UPLOAD
       fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
-      const _upd={participants:[CU.uid,curChat.uid],lastMsg:'__photo__',lastTime:t,lastTs:firebase.firestore.FieldValue.serverTimestamp()};
-      _upd['unread.'+curChat.uid]=firebase.firestore.FieldValue.increment(1);
-      await db.collection('chats').doc(cid).set(_upd,{merge:true});
-      const _pRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};_pRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-      db.collection('users').doc(curChat.uid).update(_pRecvUpd).catch(()=>{db.collection('users').doc(curChat.uid).set(_pRecvUpd,{merge:true}).catch(()=>{});});
+      await recordPrivateSend(cid,curChat.uid,'__photo__');
     }
   }catch(ex){showToast('❌ '+ex.message);}
   _previewFile=null;_previewDest=null;
@@ -2883,7 +2843,7 @@ function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(fromGesture=false){
   if(vFinalizing||isRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
-  let pendingPresenceId=null,stream=null;
+  let pendingPresenceId=null;
   try{
     // Publish before awaiting the microphone permission prompt so the other
     // participant sees recording immediately on Android.
@@ -2891,9 +2851,10 @@ async function startVoice(fromGesture=false){
     recChatId=pendingPresenceId;
     if(recChatId)void setPresenceState('private',recChatId,'recording',true);
     if(!fromGesture)pulseHaptic(55,el('sendB'));
-    stream=await getVoiceStream();
-    bindRecorderSafety(stream,'private');
-    mr=createSafeMediaRecorder(stream);vCh=[];
+    const s=await getVoiceStream();
+    bindRecorderSafety(s,'private');
+    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
+    mr=new MediaRecorder(s,opts);vCh=[];
     mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);resetRecorderUi('private');showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
@@ -2914,7 +2875,6 @@ async function startVoice(fromGesture=false){
     // microphone indefinitely if Android loses the pointer-up event.
     setTimeout(()=>{if(isRec&&mr)stopAndSendVoice();},60000);
   }catch(err){
-    try{stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
     isRec=false;vStartAt=0;
     if(CU&&(recChatId||pendingPresenceId))void clearPresenceState('private',recChatId||pendingPresenceId);
     recChatId=null;
@@ -3016,14 +2976,7 @@ async function stopAndSendVoice(){
       return;
     }
     if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
-    const _vUpd={participants:[CU.uid,chat.uid],lastMsg:'__voice__',lastVoiceDur:mm+':'+(ss<10?'0':'')+ss,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp()};
-    _vUpd['unread.'+chat.uid]=firebase.firestore.FieldValue.increment(1);
-    await db.collection('chats').doc(cid).set(_vUpd,{merge:true});
-    const _vRecvUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-    _vRecvUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
-    db.collection('users').doc(chat.uid).update(_vRecvUpd).catch(()=>{
-      db.collection('users').doc(chat.uid).set(_vRecvUpd,{merge:true}).catch(()=>{});
-    });
+    await recordPrivateSend(cid,chat.uid,'__voice__',{lastVoiceDur:mm+':'+(ss<10?'0':'')+ss});
   }catch(err){
     console.error('Voice send error:',err);
     if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Voice send failed'}).catch(()=>{});
@@ -3054,7 +3007,7 @@ async function startGVoice(fromGesture=false){
   if(gVFinalizing||gIsRec)return;
   if(!(await groupWriteAllowed()))return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
-  let pendingGroupPresenceId=null,stream=null;
+  let pendingGroupPresenceId=null;
   try{
     // Publish before awaiting the microphone permission prompt so group members
     // see recording immediately on Android.
@@ -3062,9 +3015,10 @@ async function startGVoice(fromGesture=false){
     recGroupId=pendingGroupPresenceId;
     if(recGroupId)void setPresenceState('group',recGroupId,'recording',true);
     if(!fromGesture)pulseHaptic(55,el('gSendB'));
-    stream=await getVoiceStream();
-    bindRecorderSafety(stream,'group');
-    gmr=createSafeMediaRecorder(stream);gvCh=[];
+    const s=await getVoiceStream();
+    bindRecorderSafety(s,'group');
+    const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
+    gmr=new MediaRecorder(s,opts);gvCh=[];
     gmr.onerror=e=>{console.error('Group voice recorder error:',e.error||e);resetRecorderUi('group');showToast('🎙️ Erreur du microphone. Réessayez.');};
     gmr.ondataavailable=e=>{if(e.data?.size>0)gvCh.push(e.data);};
     gmr.start(200);gIsRec=true;gvSec=0;gVStartAt=Date.now();
@@ -3083,7 +3037,6 @@ async function startGVoice(fromGesture=false){
     gvInt=setInterval(refreshGroupVoiceTimer,250);
     setTimeout(()=>{if(gIsRec&&gmr)stopAndSendGVoice();},60000);
   }catch(err){
-    try{stream?.getTracks?.().forEach(track=>track.stop());}catch(e){}
     gIsRec=false;gVStartAt=0;
     if(CU&&(recGroupId||pendingGroupPresenceId))void clearPresenceState('group',recGroupId||pendingGroupPresenceId);
     recGroupId=null;
@@ -3229,9 +3182,7 @@ function setupVoiceSwipe(btnId,startFn,stopFn,cancelFn){
   },{passive:false});
   btn.addEventListener('pointercancel',e=>{
     if(!state.active||state.pointerId!==e.pointerId)return;
-    e.preventDefault();state.active=false;state.cancelled=true;release();
-    if(btn.classList.contains('rec'))Promise.resolve(stopFn()).finally(reset);else cancelFn();
-    reset();
+    e.preventDefault();state.active=false;state.cancelled=true;release();cancelFn();reset();
   },{passive:false});
   btn.addEventListener('click',e=>{
     if(state.suppressClick){e.preventDefault();e.stopPropagation();state.suppressClick=false;}
@@ -3334,7 +3285,6 @@ function drawWave(canvasId,isRecFn){drawBars(canvasId,isRecFn);}
 // ── INBOX ──
 let inboxUnsub=null;
 let inboxChatsUnsub=null;
-window._chatReadAt=window._chatReadAt||{};
 let _cachedInboxDocs=null; // last fetched chat docs
 
 function setupInbox(){
@@ -3353,16 +3303,20 @@ function setupInbox(){
     const viewerUid=CU.uid;
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
-      const overrides=window._unreadOverride||{};
-      const activeChatId=curChat&&CU?.uid?getCID(CU.uid,curChat.uid):null;
-      sn.docs.forEach(doc=>{
-        const readAt=window._chatReadAt[doc.id], ts=doc.data()?.lastTs;
-        const lastMs=ts?.toMillis?ts.toMillis():(ts?.seconds?ts.seconds*1000:0);
-        // A new message stays read while its conversation is open; only a later
-        // message arriving after the conversation is closed may clear the override.
-        if(overrides[doc.id]===0&&readAt&&lastMs>readAt&&activeChatId!==doc.id)delete overrides[doc.id];
-      });
       _cachedInboxDocs=sn.docs.slice();
+      // Repair counters created by the previous two-counter implementation:
+      // a chat whose latest message was sent by this user must never be unread
+      // for this same user.
+      const staleOwnUnread={};
+      const ownMap=window._inboxUnreadMap||{};
+      sn.docs.forEach(d=>{
+        const data=d.data()||{};
+        if(data.lastSenderUid===viewerUid&&Number(ownMap[d.id]||0)>0)staleOwnUnread['unread.'+d.id]=0;
+      });
+      if(Object.keys(staleOwnUnread).length){
+        Object.keys(staleOwnUnread).forEach(k=>{if(window._inboxUnreadMap)window._inboxUnreadMap[k.slice(7)]=0;});
+        db.collection('users').doc(viewerUid).set(staleOwnUnread,{merge:true}).catch(()=>{});
+      }
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     },e=>console.log('inboxChats:',e));
   };
@@ -3376,21 +3330,8 @@ function setupInbox(){
     const chatIds=data.chatIds||[];
     // Keep unread map in memory so renderInbox never needs to fetch it
     window._inboxUnreadMap=data.unread||{};
-    // A sender may publish the unread increment after our message snapshot has
-    // already marked the message read. Re-clear it while this chat is still open.
-    const activeChatId=curChat&&CU?.uid?getCID(CU.uid,curChat.uid):null;
-    if(activeChatId&&Number(window._inboxUnreadMap[activeChatId]||0)>0){
-      if(!window._unreadOverride)window._unreadOverride={};
-      window._unreadOverride[activeChatId]=0;
-      const pending=window._readRepairPending||(window._readRepairPending=new Set());
-      if(!pending.has(activeChatId)){
-        pending.add(activeChatId);
-        void markChatRead(activeChatId).catch(e=>console.warn('active chat read repair:',e?.code||e?.message||e)).finally(()=>pending.delete(activeChatId));
-      }
-    }
-    // Nav badge: local read overrides win over a stale Firestore snapshot.
-    const unreadOverrides=window._unreadOverride||{};
-    let t=Object.entries(window._inboxUnreadMap).reduce((a,[cid,count])=>a+(unreadOverrides[cid]===0?0:Number(count||0)),0);
+    // Nav badge
+    let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0);
     const nb=el('msgB2');
     if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
     if(t>lastUnreadTotal&&!curChat){
@@ -3466,7 +3407,9 @@ function renderInbox(q="",sn=null){
       // The user document is the authoritative inbox counter. The chat copy is
       // only a fallback for older records and must never resurrect a stale badge.
       const hasUserUnread=Object.prototype.hasOwnProperty.call(_userUnreadMap,cid);
-      const unread=(_overrides[cid]===0)?0:(hasUserUnread?Number(_userUnreadMap[cid]||0):Number((data.unread||{})[CU.uid]||0));
+      // Only users.{uid}.unread is authoritative. Never fall back to the old
+      // chats.unread mirror, which could mark the sender's own message unread.
+      const unread=(_overrides[cid]===0)?0:(hasUserUnread?Number(_userUnreadMap[cid]||0):0);
       // Presence takes priority over the last message, like WhatsApp. It is
       // rendered in the list and the open conversation from the same Firestore
       // chat document, so both surfaces update through the inbox snapshot.
@@ -4901,7 +4844,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v65.js?v=studylink-pwa-164',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-157',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
