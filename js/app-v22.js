@@ -307,11 +307,17 @@ async function saveFavs(){
 // ── AUTO PRESENCE ──
 async function setPresence(status){
   if(!CU)return;
+  const upd={status};
+  if(status==='Offline')upd.lastSeen=firebase.firestore.FieldValue.serverTimestamp();
+  // Update local UI first; the network write should not delay presence indicators.
+  MP={...(MP||{}),status};
+  const me=allUsers.find(u=>u.uid===CU.uid);
+  if(me)me.status=status;
+  if(el('Phome')?.style.display!=='none'&&cachedPosts.length)renderHome(cachedPosts,_feedShown);
+  if(el('Pmsgs')?.style.display!=='none'&&typeof renderInbox==='function')renderInbox(el('inboxQ')?.value||'');
   try{
-    const upd={status};
-    if(status==='Offline')upd.lastSeen=firebase.firestore.FieldValue.serverTimestamp();
     await db.collection('users').doc(CU.uid).update(upd);
-  }catch(e){}
+  }catch(e){console.warn('presence update:',e?.message||e);}
 }
 function setupPresence(){
   setPresence('Online');
@@ -1307,10 +1313,8 @@ async function publishStatus(){
   rememberStatusVisibility(visibility);
   const payload={category:selStatusCat||null,message:msg||null,subject:selStatusSubject||null,photo:statusPhotoUrl||null,visibility,forwardedFrom:forwardedFromDraft||null,linkedGroupId:selStatusGroup?.id||null,linkedGroupName:selStatusGroup?.name||null,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   const col=creatingCategoryColor();
-  setDataRefresh(true);
-  el('ov').style.display='flex';
+  setDataRefresh(false);
   try{
-    await db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility});
     const localStatus={...payload,createdAt:Date.now()};
     MP={...MP,statusPost:localStatus,statusVisibility:visibility};
     const me=allUsers.find(u=>u.uid===CU.uid);
@@ -1319,9 +1323,10 @@ async function publishStatus(){
     showToast(t('st_toast_published'),col);
     forwardedFromDraft=null;
     closeStatusCreate();
+    // Persist after the local UI has updated so publishing never waits on Firestore.
+    db.collection('users').doc(CU.uid).update({statusPost:payload,statusVisibility:visibility})
+      .catch(e=>showToast('⚠️ Statut non synchronisé: '+(e.message||'Erreur'),col));
   }catch(e){showToast('❌ '+(e.message||'Erreur'));}
-  el('ov').style.display='none';
-  setTimeout(()=>setDataRefresh(false),260);
 }
 
 // ── STATUS VIEW ──
@@ -2329,12 +2334,19 @@ async function sendMsg(){
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(replyMsg)md.replyTo={text:replyMsg.text,senderName:replyMsg.sender};
   replyMsg=null;el('rplybar').style.display='none';
+  const msgRef=db.collection('chats').doc(cid).collection('messages').doc();
+  const localMsg={...md,id:msgRef.id};
+  insertPendingBubble(localMsg,false);
   try{
-    await db.collection('chats').doc(cid).collection('messages').add(md);
-    await recordPrivateSend(cid,curChat.uid,text);
+    // Paint the outgoing bubble before any network round-trip.
+    await msgRef.set(md);
+    void recordPrivateSend(cid,curChat.uid,text);
     // Message notification goes to Msgs tab only — NOT to alerts
     // unread count handled by setupMsgBL
-  }catch(e){showToast('❌ '+e.message);}
+  }catch(e){
+    document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();
+    showToast('❌ '+e.message);
+  }
 }
 
 // ── GROUP ──
@@ -2412,8 +2424,11 @@ async function sendGMsg(){
   const text=inp.value.trim();inp.value='';
   clearTimeout(gTypDebounce);void setPresenceState('group',curGrp.id,'typing',false);
   const gi=el('gSendIcon');if(gi)gi.innerHTML='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
-  try{await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});}
-  catch(e){showToast('❌ '+e.message);}
+  const msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
+  const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  insertPendingBubble({...md,id:msgRef.id},true);
+  try{await msgRef.set(md);}
+  catch(e){document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();showToast('❌ '+e.message);}
 }
 
 // ── BUILD BUBBLE ──
