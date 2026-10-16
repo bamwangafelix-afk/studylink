@@ -3329,7 +3329,12 @@ function setupInbox(){
       sn.docs.forEach(d=>{
         const data=d.data()||{};
         const readAt=(window._inboxReadAt||{})[d.id]||0;
-        if(data.lastSenderUid===viewerUid&&Number(ownMap[d.id]||0)>0&&readAt>=Number(data.lastMessageAt||0))staleOwnUnread['unread.'+d.id]=0;
+        if(data.lastSenderUid===viewerUid){
+          if(Number(ownMap[d.id]||0)>0)staleOwnUnread['unread.'+d.id]=0;
+          // Always remove it from the in-memory badge, even when the stored
+          // value arrives after the message was sent or after a refresh.
+          if(window._inboxUnreadMap)window._inboxUnreadMap[d.id]=0;
+        }
       });
       if(Object.keys(staleOwnUnread).length){
         Object.keys(staleOwnUnread).forEach(k=>{if(window._inboxUnreadMap)window._inboxUnreadMap[k.slice(7)]=0;});
@@ -3382,7 +3387,10 @@ function setupInbox(){
       if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
     }
     // Nav badge
-    let t=Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0);
+    // Do not render a badge until the chat query has identified message owners.
+    // This prevents the user snapshot's stale counters from flashing on both
+    // accounts during startup.
+    let t=_cachedInboxDocs?Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0):0;
     const nb=el('msgB2');
     if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
     if(t>lastUnreadTotal&&!curChat){
@@ -4895,7 +4903,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-166',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-167',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
