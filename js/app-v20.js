@@ -3398,12 +3398,27 @@ function setupInbox(){
     }
     if(_cachedInboxDocs){
       const canonicalUnread={};
+      const senderOwnedRepair={};
       _cachedInboxDocs.forEach(d=>{
-        const other=(d.data()?.participants||[]).find(id=>id!==viewerUid);
+        const chatData=d.data()||{};
+        const other=(chatData.participants||[]).find(id=>id!==viewerUid);
         const canonical=other&&getCID(viewerUid,other);
-        if(canonical&&d.id===canonical)canonicalUnread[canonical]=Number(window._inboxUnreadMap[canonical]||0);
+        if(canonical&&d.id===canonical){
+          // The user snapshot can arrive after the chat snapshot and contain
+          // a stale counter written by an older release. The latest sender is
+          // authoritative: a sender's own message is never unread for them.
+          if(chatData.lastSenderUid===viewerUid){
+            canonicalUnread[canonical]=0;
+            if(Number(rawUnread[canonical]||0)>0)senderOwnedRepair['unread.'+canonical]=0;
+          }else{
+            canonicalUnread[canonical]=Number(window._inboxUnreadMap[canonical]||0);
+          }
+        }
       });
       window._inboxUnreadMap=canonicalUnread;
+      if(Object.keys(senderOwnedRepair).length){
+        db.collection('users').doc(viewerUid).set(senderOwnedRepair,{merge:true}).catch(()=>{});
+      }
     }
     // Nav badge
     // Do not render a badge until the chat query has identified message owners.
