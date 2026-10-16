@@ -1948,6 +1948,13 @@ function refreshPrivateReceipts(){
     if(read){receipt.innerHTML='✓✓ '+t('msg_seen');receipt.style.color='#4fc3f7';}
   });
 }
+// Firestore's set(...,{merge:true}) does NOT parse dotted keys as nested paths: a key like
+// 'unread.<cid>' creates a literal top-level field named "unread.<cid>" and never touches the
+// `unread` map the app actually reads — so "mark as read" writes silently landed in the wrong
+// place and the old counter came back after every refresh. Always send nested objects.
+function readState(key,unread,readAt){
+  return {unread:{[key]:unread},readAt:{[key]:readAt}};
+}
 async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Date.now();
@@ -1956,7 +1963,7 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   // Still save the chat preview, but do not create an unread counter for self.
   if(receiverUid===CU.uid){
     await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
-    const clearSelf={};clearSelf['unread.'+cid]=0;clearSelf['readAt.'+cid]=sentAt;
+    const clearSelf=readState(cid,0,sentAt);
     await db.collection('users').doc(CU.uid).set(clearSelf,{merge:true});
     return;
   }
@@ -1970,14 +1977,13 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
     const receiverData=receiverSnap.data()||{};
     const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-    if(receiverReadAt<sentAt)receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    if(receiverReadAt<sentAt)receiverUpd.unread={[cid]:firebase.firestore.FieldValue.increment(1)};
     tx.set(receiverRef,receiverUpd,{merge:true});
   });
   const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
   // Sending a message also means the sender has the conversation open/read.
   // Explicitly clear any stale unread value left by older releases.
-  senderUpd['unread.'+cid]=0;
-  senderUpd['readAt.'+cid]=sentAt;
+  Object.assign(senderUpd,readState(cid,0,sentAt));
   await db.collection('users').doc(CU.uid).set(senderUpd,{merge:true});
 }
 async function markChatRead(cid){
@@ -1985,13 +1991,12 @@ async function markChatRead(cid){
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
-  const userUnread={};userUnread['unread.'+cid]=0;
-  userUnread['readAt.'+cid]=Date.now();
+  const userUnread=readState(cid,0,Date.now());
   await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
   // Clear the legacy unread mirror too. Older StudyLink builds read this
   // field from the shared chat document, which could make Salva's chat appear
   // unread again after the user document had already been cleared.
-  const chatRead={};chatRead['unread.'+CU.uid]=0;chatRead['readAt.'+CU.uid]=Date.now();
+  const chatRead=readState(CU.uid,0,Date.now());
   db.collection('chats').doc(cid).set(chatRead,{merge:true}).catch(()=>{});
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -3373,7 +3378,7 @@ function setupInbox(){
       _cachedInboxDocs=sn.docs.slice();
       if(curChat?.uid===viewerUid||curChat?.uid){
         const openCid=getCID(viewerUid,curChat.uid);
-        const openRead={};openRead['unread.'+openCid]=0;openRead['readAt.'+openCid]=Date.now();
+        const openRead=readState(openCid,0,Date.now());
         db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
       }
       // There may be legacy chat documents for the same pair of users. Only
@@ -3395,15 +3400,15 @@ function setupInbox(){
         const data=d.data()||{};
         const readAt=(window._inboxReadAt||{})[d.id]||0;
         if(data.lastSenderUid===viewerUid){
-          if(Number(ownMap[d.id]||0)>0)staleOwnUnread['unread.'+d.id]=0;
+          if(Number(ownMap[d.id]||0)>0)staleOwnUnread[d.id]=0;
           // Always remove it from the in-memory badge, even when the stored
           // value arrives after the message was sent or after a refresh.
           if(window._inboxUnreadMap)window._inboxUnreadMap[d.id]=0;
         }
       });
       if(Object.keys(staleOwnUnread).length){
-        Object.keys(staleOwnUnread).forEach(k=>{if(window._inboxUnreadMap)window._inboxUnreadMap[k.slice(7)]=0;});
-        db.collection('users').doc(viewerUid).set(staleOwnUnread,{merge:true}).catch(()=>{});
+        Object.keys(staleOwnUnread).forEach(k=>{if(window._inboxUnreadMap)window._inboxUnreadMap[k]=0;});
+        db.collection('users').doc(viewerUid).set({unread:staleOwnUnread},{merge:true}).catch(()=>{});
       }
       const repairedTotal=Object.values(window._inboxUnreadMap||{}).reduce((a,b)=>a+Number(b||0),0);
       const repairedBadge=el('msgB2');
@@ -3439,22 +3444,18 @@ function setupInbox(){
       const readAt=window._inboxReadAt?.[d.id]||0;
       if(chatData.lastSenderUid===viewerUid&&Number(rawUnread[d.id]||0)>0&&readAt>=Number(chatData.lastMessageAt||0)){
         window._inboxUnreadMap[d.id]=0;
-        ownUnreadRepair['unread.'+d.id]=0;
+        ownUnreadRepair[d.id]=0;
       }
     });
-    if(Object.keys(ownUnreadRepair).length)db.collection('users').doc(viewerUid).set(ownUnreadRepair,{merge:true}).catch(()=>{});
+    if(Object.keys(ownUnreadRepair).length)db.collection('users').doc(viewerUid).set({unread:ownUnreadRepair},{merge:true}).catch(()=>{});
     // Never show an unread badge for the conversation currently open. This
     // protects the UI from delayed snapshots while a new message is sent.
     if(curChat?.uid){
       const openCid=getCID(viewerUid,curChat.uid);
       window._inboxUnreadMap[openCid]=0;
-      const openRead={};
-      openRead['unread.'+openCid]=0;
-      openRead['readAt.'+openCid]=Date.now();
+      const openRead=readState(openCid,0,Date.now());
       db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
-      const openChatRead={};
-      openChatRead['unread.'+viewerUid]=0;
-      openChatRead['readAt.'+viewerUid]=Date.now();
+      const openChatRead=readState(viewerUid,0,Date.now());
       db.collection('chats').doc(openCid).set(openChatRead,{merge:true}).catch(()=>{});
       const openBadge=el('msgB2');
       if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
@@ -3477,7 +3478,7 @@ function setupInbox(){
           if(chatData.lastSenderUid===viewerUid||
              (readAt>0&&lastMessageAt>0&&readAt>=lastMessageAt)){
             canonicalUnread[canonical]=0;
-            if(Number(rawUnread[canonical]||0)>0)senderOwnedRepair['unread.'+canonical]=0;
+            if(Number(rawUnread[canonical]||0)>0)senderOwnedRepair[canonical]=0;
           }else{
             canonicalUnread[canonical]=Number(window._inboxUnreadMap[canonical]||0);
           }
@@ -3485,7 +3486,7 @@ function setupInbox(){
       });
       window._inboxUnreadMap=canonicalUnread;
       if(Object.keys(senderOwnedRepair).length){
-        db.collection('users').doc(viewerUid).set(senderOwnedRepair,{merge:true}).catch(()=>{});
+        db.collection('users').doc(viewerUid).set({unread:senderOwnedRepair},{merge:true}).catch(()=>{});
       }
     }
     // Nav badge
@@ -5005,7 +5006,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v70.js?v=studylink-pwa-176',location.href).href;
+  const workerUrl=new URL('sw-v70.js?v=studylink-pwa-177',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
