@@ -1969,6 +1969,11 @@ async function markChatRead(cid){
   const userUnread={};userUnread['unread.'+cid]=0;
   userUnread['readAt.'+cid]=Date.now();
   await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
+  // Clear the legacy unread mirror too. Older StudyLink builds read this
+  // field from the shared chat document, which could make Salva's chat appear
+  // unread again after the user document had already been cleared.
+  const chatRead={};chatRead['unread.'+CU.uid]=0;chatRead['readAt.'+CU.uid]=Date.now();
+  db.collection('chats').doc(cid).set(chatRead,{merge:true}).catch(()=>{});
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
 }
@@ -4962,7 +4967,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v67.js?v=studylink-pwa-173',location.href).href;
+  const workerUrl=new URL('sw-v68.js?v=studylink-pwa-174',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
