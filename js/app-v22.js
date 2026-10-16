@@ -1527,8 +1527,8 @@ async function sendQuickStatusReply(toUid,text){
   const cid=getCID(CU.uid,toUid);const t=now();
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
-    await db.collection('chats').doc(cid).collection('messages').add(md);
-    await recordPrivateSend(cid,toUid,text);
+    const messageRef=await db.collection('chats').doc(cid).collection('messages').add(md);
+    await recordPrivateSend(cid,toUid,text,{},messageRef);
     return true;
   }catch(e){showToast('Erreur: '+(e.message||''));return false;}
 }
@@ -1629,7 +1629,7 @@ async function stopAndSendStatusVoice(){
     if(!url){const inlineUrl=await readVoiceAsDataUrl(file);if(inlineUrl){try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;}catch(e){fallbackError=e?.message||'Inline voice fallback failed';}}}
     if(!url){await msgRef.update({status:'failed',error:[uploadCloud.lastError,fallbackError].filter(Boolean).join(' · ')||'Audio upload failed'}).catch(()=>{});showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.',viewingCategoryColor());stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();return;}
     if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
-    await recordPrivateSend(cid,toUid,'__voice__',{lastVoiceDur:mm+':'+(ss<10?'0':'')+ss});
+    await recordPrivateSend(cid,toUid,'__voice__',{lastVoiceDur:mm+':'+(ss<10?'0':'')+ss},msgRef);
     showToast(t('st_toast_audio_sent'),viewingCategoryColor());
   }catch(err){console.error('Status voice send error:',err);if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Status voice send failed'}).catch(()=>{});showToast('⚠️ Envoi vocal impossible. Réessayez.',viewingCategoryColor());}
   stVoiceSending=false;stVFinalizing=false;recStatusUid=null;restartStatusReplyTimer();
@@ -1931,8 +1931,20 @@ function renderFind(q=""){
 function getCID(a,b){return [a,b].sort().join('_');}
 function messageMillis(value){
   if(value?.toMillis)return value.toMillis();
-  if(value?.seconds)return value.seconds*1000;
+  if(value instanceof Date)return value.getTime();
+  if(value?.seconds!==undefined)return Number(value.seconds)*1000+Number(value.nanoseconds||0)/1000000;
   return Number(value)||0;
+}
+function messageTimeParts(value){
+  if(value?.seconds!==undefined)return{seconds:Number(value.seconds)||0,nanoseconds:Number(value.nanoseconds)||0};
+  const ms=value instanceof Date?value.getTime():Number(value)||0;
+  const seconds=Math.floor(ms/1000);
+  return{seconds,nanoseconds:Math.floor((ms-seconds*1000)*1000000)};
+}
+function compareMessageTimes(a,b){
+  const x=messageTimeParts(a),y=messageTimeParts(b);
+  if(x.seconds!==y.seconds)return x.seconds>y.seconds?1:-1;
+  return x.nanoseconds===y.nanoseconds?0:x.nanoseconds>y.nanoseconds?1:-1;
 }
 function messageWasReadByOther(m){
   if(!m||m.senderUid!==CU?.uid||!curChat?.uid)return false;
@@ -1948,37 +1960,40 @@ function refreshPrivateReceipts(){
     if(read){receipt.innerHTML='✓✓ '+t('msg_seen');receipt.style.color='#4fc3f7';}
   });
 }
-async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
+async function recordPrivateSend(cid,receiverUid,lastMsg,extra={},messageRef=null){
   if(!cid||!receiverUid||!CU?.uid)return;
-  const sentAt=Date.now();
-  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,...extra};
-  // A stale/incorrect conversation target must never notify the current user.
-  // Still save the chat preview, but do not create an unread counter for self.
-  if(receiverUid===CU.uid){
-    await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
-    const clearSelf={};clearSelf['unread.'+cid]=0;clearSelf['readAt.'+cid]=sentAt;
-    await db.collection('users').doc(CU.uid).set(clearSelf,{merge:true});
-    return;
-  }
-  // Keep unread state only on the receiver's user document. The old chat mirror
-  // made the sender see their own message as a new message.
-  await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
-  // Do not re-increment after the receiver has already opened the chat.
+  if(!messageRef)throw new Error('Private message reference is required to sync unread state.');
+  const chatRef=db.collection('chats').doc(cid);
   const receiverRef=db.collection('users').doc(receiverUid);
+  const senderRef=db.collection('users').doc(CU.uid);
   await db.runTransaction(async tx=>{
-    const receiverSnap=await tx.get(receiverRef);
+    const messageSnap=await tx.get(messageRef);
+    const messageData=messageSnap.data()||{};
+    const sentAt=messageMillis(messageData.createdAt);
+    if(!sentAt)throw new Error('Private message is missing its server timestamp.');
+    const receiverSnap=receiverUid===CU.uid?null:await tx.get(receiverRef);
+    const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:messageData.createdAt,lastMessageAt:sentAt,lastSenderUid:CU.uid,...extra};
+    tx.set(chatRef,chatUpd,{merge:true});
+    if(receiverUid===CU.uid){
+      const selfUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+      selfUpd['unread.'+cid]=0;
+      selfUpd['readAt.'+cid]=sentAt;
+      selfUpd['readAtServer.'+cid]=firebase.firestore.FieldValue.serverTimestamp();
+      tx.set(receiverRef,selfUpd,{merge:true});
+      return;
+    }
     const receiverData=receiverSnap.data()||{};
-    const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
+    const receiverReadAt=receiverData.readAtServer?.[cid];
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-    if(receiverReadAt<sentAt)receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    if(compareMessageTimes(receiverReadAt,messageData.createdAt)>=0)receiverUpd['unread.'+cid]=0;
+    else receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
     tx.set(receiverRef,receiverUpd,{merge:true});
+    const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+    senderUpd['unread.'+cid]=0;
+    senderUpd['readAt.'+cid]=sentAt;
+    senderUpd['readAtServer.'+cid]=firebase.firestore.FieldValue.serverTimestamp();
+    tx.set(senderRef,senderUpd,{merge:true});
   });
-  const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-  // Sending a message also means the sender has the conversation open/read.
-  // Explicitly clear any stale unread value left by older releases.
-  senderUpd['unread.'+cid]=0;
-  senderUpd['readAt.'+cid]=sentAt;
-  await db.collection('users').doc(CU.uid).set(senderUpd,{merge:true});
 }
 async function markChatRead(cid){
   if(!cid||!CU?.uid)return;
@@ -1987,11 +2002,11 @@ async function markChatRead(cid){
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   const userUnread={};userUnread['unread.'+cid]=0;
   userUnread['readAt.'+cid]=Date.now();
+  userUnread['readAtServer.'+cid]=firebase.firestore.FieldValue.serverTimestamp();
   await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
-  // Clear the legacy unread mirror too. Older StudyLink builds read this
-  // field from the shared chat document, which could make Salva's chat appear
-  // unread again after the user document had already been cleared.
+  // Keep the legacy chat mirror for older clients, with a server-time read marker.
   const chatRead={};chatRead['unread.'+CU.uid]=0;chatRead['readAt.'+CU.uid]=Date.now();
+  chatRead['readAtServer.'+CU.uid]=firebase.firestore.FieldValue.serverTimestamp();
   db.collection('chats').doc(cid).set(chatRead,{merge:true}).catch(()=>{});
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -2136,7 +2151,7 @@ function openChat(name,uid){
   };
   const chatPresenceUnsub=db.collection('chats').doc(cid).onSnapshot(sn=>{
     latestChat=sn.data()||{};
-    curChatReadAt[uid]=latestChat.readAt?.[uid]||0;
+    curChatReadAt[uid]=latestChat.readAtServer?.[uid]||latestChat.readAt?.[uid]||0;
     paint();
     refreshPrivateReceipts();
   });
@@ -2290,15 +2305,15 @@ async function sendSticker(sticker){
   const cid=curChat?getCID(CU.uid,curChat.uid):null;
   const msg={type:'text',text:sticker,senderUid:CU.uid,senderName:MP?.name||'',time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(cid){
-    db.collection('chats').doc(cid).collection('messages').add(msg);
-    void recordPrivateSend(cid,curChat.uid,sticker);
+    const messageRef=await db.collection('chats').doc(cid).collection('messages').add(msg);
+    await recordPrivateSend(cid,curChat.uid,sticker,{},messageRef);
   }else if(curGrp){
     db.collection('groups').doc(curGrp.id).collection('messages').add({...msg,senderPhoto:myPho||''});
   }
   closeStickers();
 }
 
-function sendSpecial(type){
+async function sendSpecial(type){
   if(!curChat)return;
   let text='';
   if(type==='poll')text=prompt(t('prompt_poll_question'));
@@ -2308,11 +2323,11 @@ function sendSpecial(type){
   if(!text)return;
   const icons={poll:'📊',event:'📅',location:'📍',link:'🔗'};
   const cid=getCID(CU.uid,curChat.uid);
-  db.collection('chats').doc(cid).collection('messages').add({
+  const messageRef=await db.collection('chats').doc(cid).collection('messages').add({
     type:'text',text:`${icons[type]} ${text}`,senderUid:CU.uid,senderName:MP?.name||'',
     time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
   });
-  void recordPrivateSend(cid,curChat.uid,icons[type]+' '+text);
+  await recordPrivateSend(cid,curChat.uid,icons[type]+' '+text,{},messageRef);
 }
 
 async function sendMsg(){
@@ -2325,8 +2340,8 @@ async function sendMsg(){
   if(replyMsg)md.replyTo={text:replyMsg.text,senderName:replyMsg.sender};
   replyMsg=null;el('rplybar').style.display='none';
   try{
-    await db.collection('chats').doc(cid).collection('messages').add(md);
-    await recordPrivateSend(cid,curChat.uid,text);
+    const messageRef=await db.collection('chats').doc(cid).collection('messages').add(md);
+    await recordPrivateSend(cid,curChat.uid,text,{},messageRef);
     // Message notification goes to Msgs tab only — NOT to alerts
     // unread count handled by setupMsgBL
   }catch(e){showToast('❌ '+e.message);}
@@ -2711,8 +2726,8 @@ async function sendDriveLink(dest){
   try{
     if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
-      await db.collection('chats').doc(cid).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      await recordPrivateSend(cid,curChat.uid,'__gdrive__');
+      const messageRef=await db.collection('chats').doc(cid).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      await recordPrivateSend(cid,curChat.uid,'__gdrive__',{},messageRef);
     }else if(dest==='g'&&curGrp){
       await db.collection('groups').doc(curGrp.id).collection('messages').add({type:'text',text:link,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:t,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     }
@@ -2794,7 +2809,7 @@ async function handleF(e,dest){
       pendingMedia[msgRef.id]=URL.createObjectURL(file);
       insertPendingBubble({...m,id:msgRef.id},false);
       await msgRef.set(m);
-      await recordPrivateSend(cid,curChat.uid,_typeLabel);
+      await recordPrivateSend(cid,curChat.uid,_typeLabel,{},msgRef);
     }
     // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
     if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
@@ -2868,7 +2883,7 @@ async function sendPreviewImg(){
       refreshPendingBubble({...m,id:ref.id},false);
       // ✅ BACKGROUND UPLOAD
       fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
-      await recordPrivateSend(cid,curChat.uid,'__photo__');
+      await recordPrivateSend(cid,curChat.uid,'__photo__',{},ref);
     }
   }catch(ex){showToast('❌ '+ex.message);}
   _previewFile=null;_previewDest=null;
@@ -3043,7 +3058,7 @@ async function stopAndSendVoice(){
       return;
     }
     if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
-    await recordPrivateSend(cid,chat.uid,'__voice__',{lastVoiceDur:mm+':'+(ss<10?'0':'')+ss});
+    await recordPrivateSend(cid,chat.uid,'__voice__',{lastVoiceDur:mm+':'+(ss<10?'0':'')+ss},msgRef);
   }catch(err){
     console.error('Voice send error:',err);
     if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Voice send failed'}).catch(()=>{});
@@ -3374,6 +3389,7 @@ function setupInbox(){
       if(curChat?.uid===viewerUid||curChat?.uid){
         const openCid=getCID(viewerUid,curChat.uid);
         const openRead={};openRead['unread.'+openCid]=0;openRead['readAt.'+openCid]=Date.now();
+        openRead['readAtServer.'+openCid]=firebase.firestore.FieldValue.serverTimestamp();
         db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
       }
       // There may be legacy chat documents for the same pair of users. Only
@@ -3393,7 +3409,7 @@ function setupInbox(){
       const ownMap=window._inboxUnreadMap||{};
       Object.values(canonicalDocs).forEach(d=>{
         const data=d.data()||{};
-        const readAt=(window._inboxReadAt||{})[d.id]||0;
+        const readAt=messageMillis((window._inboxReadAt||{})[d.id]);
         if(data.lastSenderUid===viewerUid){
           if(Number(ownMap[d.id]||0)>0)staleOwnUnread['unread.'+d.id]=0;
           // Always remove it from the in-memory badge, even when the stored
@@ -3422,7 +3438,7 @@ function setupInbox(){
     // Keep unread map in memory so renderInbox never needs to fetch it
     const rawUnread=data.unread||{};
     window._inboxUnreadMap={...rawUnread};
-    window._inboxReadAt={...(data.readAt||{})};
+    window._inboxReadAt={...(data.readAtServer||{})};
     // A read action wins over a delayed/stale Firestore snapshot. Release the
     // override only after Firestore itself reports zero for that chat.
     const readOverrides=window._unreadOverride||{};
@@ -3436,8 +3452,8 @@ function setupInbox(){
     const ownUnreadRepair={};
     (_cachedInboxDocs||[]).forEach(d=>{
       const chatData=d.data()||{};
-      const readAt=window._inboxReadAt?.[d.id]||0;
-      if(chatData.lastSenderUid===viewerUid&&Number(rawUnread[d.id]||0)>0&&readAt>=Number(chatData.lastMessageAt||0)){
+      const readAt=messageMillis(window._inboxReadAt?.[d.id]);
+      if(chatData.lastSenderUid===viewerUid&&Number(rawUnread[d.id]||0)>0&&readAt>=messageMillis(chatData.lastMessageAt)){
         window._inboxUnreadMap[d.id]=0;
         ownUnreadRepair['unread.'+d.id]=0;
       }
@@ -3451,10 +3467,12 @@ function setupInbox(){
       const openRead={};
       openRead['unread.'+openCid]=0;
       openRead['readAt.'+openCid]=Date.now();
+      openRead['readAtServer.'+openCid]=firebase.firestore.FieldValue.serverTimestamp();
       db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
       const openChatRead={};
       openChatRead['unread.'+viewerUid]=0;
       openChatRead['readAt.'+viewerUid]=Date.now();
+      openChatRead['readAtServer.'+viewerUid]=firebase.firestore.FieldValue.serverTimestamp();
       db.collection('chats').doc(openCid).set(openChatRead,{merge:true}).catch(()=>{});
       const openBadge=el('msgB2');
       if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
@@ -3472,8 +3490,8 @@ function setupInbox(){
           // authoritative: a sender's own message is never unread for them.
           // A persisted readAt at or after the latest message also wins over
           // any stale unread counter left by an older release.
-          const readAt=Number((window._inboxReadAt||{})[canonical]||0);
-          const lastMessageAt=Number(chatData.lastMessageAt||0);
+          const readAt=messageMillis((window._inboxReadAt||{})[canonical]);
+          const lastMessageAt=messageMillis(chatData.lastMessageAt);
           if(chatData.lastSenderUid===viewerUid||
              (readAt>0&&lastMessageAt>0&&readAt>=lastMessageAt)){
             canonicalUnread[canonical]=0;
@@ -5005,7 +5023,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v70.js?v=studylink-pwa-176',location.href).href;
+  const workerUrl=new URL('sw-v71.js?v=studylink-pwa-177',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
