@@ -1932,6 +1932,14 @@ function getCID(a,b){return [a,b].sort().join('_');}
 async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastSenderUid:CU.uid,...extra};
+  // A stale/incorrect conversation target must never notify the current user.
+  // Still save the chat preview, but do not create an unread counter for self.
+  if(receiverUid===CU.uid){
+    await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
+    const clearSelf={};clearSelf['unread.'+cid]=0;
+    await db.collection('users').doc(CU.uid).set(clearSelf,{merge:true});
+    return;
+  }
   // Keep unread state only on the receiver's user document. The old chat mirror
   // made the sender see their own message as a new message.
   const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
@@ -4869,7 +4877,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-162',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-163',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
