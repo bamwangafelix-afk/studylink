@@ -556,8 +556,16 @@ auth.onAuthStateChanged(async u=>{
       showStep2();
       return;
     }
-    try{await loadPro();}catch(e){console.log('loadPro error:',e);}
-    try{await loadFavs();}catch(e){}
+    // Hydrate the current profile from the first auth document immediately.
+    // The previous sequential loadPro/loadFavs reads delayed all realtime
+    // listeners after a refresh on slow mobile connections.
+    if(data){
+      MP=data;myPho=MP.photo||'';
+      el('topN').textContent=MP.name||'';
+      if(MP.name){updatePC();el('pcardEl').style.display='flex';el('EF').style.display='none';}
+    }
+    void loadPro().catch(e=>console.log('loadPro error:',e));
+    void loadFavs().catch(()=>{});
     // Start the visible account/feed experience before the optional chat migration.
     // Slow mobile Firestore responses must not leave Home looking empty.
     try{setupPresence();}catch(e){}
@@ -2089,7 +2097,11 @@ function openChat(name,uid){
   let _msgLimit=50;
   const _loadMsgs=(lim)=>{
     if(chatUnsub){chatUnsub();chatUnsub=null;}
-    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('time','asc').limitToLast(lim).onSnapshot(sn=>{
+    // `time` is a display field with legacy string values such as "16:40".
+    // Mixing those strings with the newer numeric timestamps can make Firestore
+    // omit freshly sent messages from limitToLast(). createdAt is the canonical
+    // server timestamp for delivery and keeps the listener ordered correctly.
+    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limitToLast(lim).onSnapshot(sn=>{
       const mb=el('msgB');
       sn.docChanges().forEach(change=>{
         if(change.type==='removed'){
@@ -2398,7 +2410,8 @@ async function openGroup(postId,name){
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
     grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
-    grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('time','asc').limitToLast(50).onSnapshot(sn=>{
+    // Use the real server timestamp, not the legacy display-hour field.
+    grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt','asc').limitToLast(50).onSnapshot(sn=>{
       const mb=el('grpB');
       sn.docChanges().forEach(change=>{
         if(change.type==='removed'){const ex=mb.querySelector(`.bw[data-id="${change.doc.id}"]`);if(ex)ex.remove();return;}
