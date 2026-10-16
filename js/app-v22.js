@@ -1529,7 +1529,7 @@ function reportStatus(){
   }
 }
 async function sendQuickStatusReply(toUid,text){
-  const cid=getCID(CU.uid,toUid);const t=now();
+  const cid=getCID(CU.uid,toUid);const t=messageTime();
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     await db.collection('chats').doc(cid).collection('messages').add(md);
@@ -1624,7 +1624,7 @@ async function stopAndSendStatusVoice(){
   void releaseVoiceScreen();recorder.ondataavailable=null;recorder.onstop=null;
   stvCh=[];stvSec=0;stmr=null;stVStartAt=0;
   if(!chunks.length||!toUid||toUid===CU?.uid){stVoiceSending=false;stVFinalizing=false;recStatusUid=null;showToast('⚠️ Rien n’a été enregistré.',viewingCategoryColor());restartStatusReplyTimer();return;}
-  const file=voiceFileFromChunks(chunks),mm=Math.floor(dur/60),ss=dur%60,cid=getCID(CU.uid,toUid),t=now();
+  const file=voiceFileFromChunks(chunks),mm=Math.floor(dur/60),ss=dur%60,cid=getCID(CU.uid,toUid),t=messageTime();
   let msgRef=null,uploadCommitted=false;
   try{
     msgRef=await db.collection('chats').doc(cid).collection('messages').add({type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -1938,6 +1938,13 @@ function messageMillis(value){
   if(value?.toMillis)return value.toMillis();
   if(value?.seconds)return value.seconds*1000;
   return Number(value)||0;
+}
+function displayMessageTime(value){
+  if(typeof value==='string')return value;
+  const ms=messageMillis(value);
+  if(!ms)return '';
+  const d=new Date(ms);
+  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
 }
 function messageWasReadByOther(m){
   if(!m||m.senderUid!==CU?.uid||!curChat?.uid)return false;
@@ -2298,7 +2305,7 @@ async function sendSticker(sticker){
   if(!curChat&&!curGrp)return;
   if(curGrp&&!(await groupWriteAllowed()))return;
   const cid=curChat?getCID(CU.uid,curChat.uid):null;
-  const msg={type:'text',text:sticker,senderUid:CU.uid,senderName:MP?.name||'',time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const msg={type:'text',text:sticker,senderUid:CU.uid,senderName:MP?.name||'',time:messageTime(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(cid){
     db.collection('chats').doc(cid).collection('messages').add(msg);
     void recordPrivateSend(cid,curChat.uid,sticker);
@@ -2320,7 +2327,7 @@ function sendSpecial(type){
   const cid=getCID(CU.uid,curChat.uid);
   db.collection('chats').doc(cid).collection('messages').add({
     type:'text',text:`${icons[type]} ${text}`,senderUid:CU.uid,senderName:MP?.name||'',
-    time:now(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    time:messageTime(),seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()
   });
   void recordPrivateSend(cid,curChat.uid,icons[type]+' '+text);
 }
@@ -2329,7 +2336,7 @@ async function sendMsg(){
   const inp=el('mIn');if(!inp.value.trim()||!curChat)return;
   const text=inp.value.trim();inp.value='';
   setMicIcon('sendIcon');
-  const cid=getCID(CU.uid,curChat.uid);const t=now();
+  const cid=getCID(CU.uid,curChat.uid);const t=messageTime();
   clearTimeout(typDebounce);void setPresenceState('private',cid,'typing',false);
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   if(replyMsg)md.replyTo={text:replyMsg.text,senderName:replyMsg.sender};
@@ -2425,7 +2432,7 @@ async function sendGMsg(){
   clearTimeout(gTypDebounce);void setPresenceState('group',curGrp.id,'typing',false);
   const gi=el('gSendIcon');if(gi)gi.innerHTML='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
   const msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
-  const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:messageTime(),createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   insertPendingBubble({...md,id:msgRef.id},true);
   try{await msgRef.set(md);}
   catch(e){document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();showToast('❌ '+e.message);}
@@ -2644,7 +2651,7 @@ function buildBbl(m,isGrp){
     if(!m.data)inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${rcHtml}`;
     else inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div>${self?`<span class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓'}</span>`:''}</div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;
   }
-  return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${m.time||''}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
+  return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${displayMessageTime(m.time)}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
 let _lpTimer=null,_lpFired=false;
@@ -2727,7 +2734,7 @@ async function sendDriveLink(dest){
   if(!link){showToast('❌ Please paste a link first');return;}
   if(!link.startsWith('http')){showToast('❌ Please paste a valid link');return;}
   el('driveSheet')?.remove();
-  const t=now();
+  const t=messageTime();
   try{
     if(dest==='p'&&curChat){
       const cid=getCID(CU.uid,curChat.uid);
@@ -2791,7 +2798,7 @@ async function handleF(e,dest){
   if(fType==='video'&&file.size>200*1024*1024){showToast('⚠️ Video too large. Max 200MB.');return;}
   if(fType==='audio'&&file.size>50*1024*1024){showToast('⚠️ Audio too large. Max 50MB.');return;}
   if(fType==='doc'&&file.size>200*1024*1024){showToast('⚠️ Document too large. Max 200MB.');return;}
-  const t=now();
+  const t=messageTime();
   const ext=file.name.split('.').pop().toLowerCase();
   const localType=fType==='video'?'video':fType==='audio'?'audio':'doc';
   const rtype=fType==='video'?'video':fType==='audio'?'video':fType==='doc'?'raw':'auto';
@@ -2868,7 +2875,7 @@ async function sendPreviewImg(){
   if(!_previewFile)return;
   // ✅ INSTANT: Show image message immediately with sending status
   const fileToSendPromise=compressImage(_previewFile).catch(()=>_previewFile);
-  const t=now();
+  const t=messageTime();
   const m={type:'image',data:'',senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     if(_previewDest==='g'&&curGrp){
@@ -3026,7 +3033,7 @@ async function stopAndSendVoice(){
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
   const cid=getCID(CU.uid,chat.uid);
-  const t=now();
+  const t=messageTime();
   let msgRef=null,uploadCommitted=false;
   try{
     msgRef=await db.collection('chats').doc(cid).collection('messages').add({
@@ -3158,7 +3165,7 @@ async function stopAndSendGVoice(){
   if(!chunks.length||!group){gVoiceSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
-  const t=now();
+  const t=messageTime();
   let gvRef=null,uploadCommitted=false;
   try{
     gvRef=await db.collection('groups').doc(group.id).collection('messages').add({
@@ -4931,6 +4938,7 @@ function viewingCategoryColor(){
   return sp?.category?CAT_TOAST_COLOR[sp.category]:null;
 }
 function now(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+function messageTime(){return Date.now();}
 function showOv(v){
   // Data actions use the lightweight blue top bar only. Keep the full-screen
   // spinner reserved for the initial authentication shell hydration.
