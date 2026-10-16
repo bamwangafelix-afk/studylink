@@ -3321,12 +3321,22 @@ function setupInbox(){
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
       _cachedInboxDocs=sn.docs.slice();
+      // There may be legacy chat documents for the same pair of users. Only
+      // the deterministic CID is allowed to contribute to the unread badge.
+      const canonicalDocs={};
+      sn.docs.forEach(d=>{
+        const other=(d.data()?.participants||[]).find(id=>id!==viewerUid);
+        if(other){const canonical=getCID(viewerUid,other);if(d.id===canonical)canonicalDocs[canonical]=d;}
+      });
+      const cleanUnread={};
+      Object.keys(canonicalDocs).forEach(cid=>{cleanUnread[cid]=Number((window._inboxUnreadMap||{})[cid]||0);});
+      window._inboxUnreadMap=cleanUnread;
       // Repair counters created by the previous two-counter implementation:
       // a chat whose latest message was sent by this user must never be unread
       // for this same user.
       const staleOwnUnread={};
       const ownMap=window._inboxUnreadMap||{};
-      sn.docs.forEach(d=>{
+      Object.values(canonicalDocs).forEach(d=>{
         const data=d.data()||{};
         const readAt=(window._inboxReadAt||{})[d.id]||0;
         if(data.lastSenderUid===viewerUid){
@@ -3385,6 +3395,15 @@ function setupInbox(){
       window._inboxUnreadMap[openCid]=0;
       const openBadge=el('msgB2');
       if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
+    }
+    if(_cachedInboxDocs){
+      const canonicalUnread={};
+      _cachedInboxDocs.forEach(d=>{
+        const other=(d.data()?.participants||[]).find(id=>id!==viewerUid);
+        const canonical=other&&getCID(viewerUid,other);
+        if(canonical&&d.id===canonical)canonicalUnread[canonical]=Number(window._inboxUnreadMap[canonical]||0);
+      });
+      window._inboxUnreadMap=canonicalUnread;
     }
     // Nav badge
     // Do not render a badge until the chat query has identified message owners.
@@ -4903,7 +4922,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-167',location.href).href;
+  const workerUrl=new URL('sw-v48.js?v=studylink-pwa-168',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
