@@ -1943,10 +1943,19 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   }
   // Keep unread state only on the receiver's user document. The old chat mirror
   // made the sender see their own message as a new message.
-  const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-  receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
   await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
-  await db.collection('users').doc(receiverUid).set(receiverUpd,{merge:true});
+  // Read the receiver's current readAt together with the increment. If the
+  // receiver opened the conversation while this send was still finishing, do
+  // not resurrect an unread badge after their read operation.
+  const receiverRef=db.collection('users').doc(receiverUid);
+  await db.runTransaction(async tx=>{
+    const receiverSnap=await tx.get(receiverRef);
+    const receiverData=receiverSnap.data()||{};
+    const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
+    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+    if(receiverReadAt<sentAt)receiverUpd['unread.'+cid]=firebase.firestore.FieldValue.increment(1);
+    tx.set(receiverRef,receiverUpd,{merge:true});
+  });
   const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
   // Sending a message also means the sender has the conversation open/read.
   // Explicitly clear any stale unread value left by older releases.
@@ -2057,6 +2066,18 @@ function openChat(name,uid){
         }
         if(m.senderUid!==CU.uid&&!m.seen)change.doc.ref.update({seen:true}).catch(()=>{});
       });
+      // A snapshot can contain messages that were added before this listener
+      // was attached, so docChanges alone is not enough for the read receipt.
+      // When this conversation is open, mark every currently loaded incoming
+      // message seen; this also updates the sender's double-checkmark live.
+      if(curChat?.uid===uid){
+        const unseen=sn.docs.filter(d=>{const m=d.data()||{};return m.senderUid!==CU.uid&&!m.seen;});
+        if(unseen.length){
+          const seenBatch=db.batch();
+          unseen.forEach(d=>seenBatch.update(d.ref,{seen:true}));
+          seenBatch.commit().catch(()=>{});
+        }
+      }
       mb.scrollTop=mb.scrollHeight;
       // Show load-more button if we hit the limit
       let loadMoreBtn=mb.querySelector('#loadMoreMsgs');
