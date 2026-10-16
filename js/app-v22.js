@@ -3371,6 +3371,11 @@ function setupInbox(){
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
       _cachedInboxDocs=sn.docs.slice();
+      if(curChat?.uid===viewerUid||curChat?.uid){
+        const openCid=getCID(viewerUid,curChat.uid);
+        const openRead={};openRead['unread.'+openCid]=0;openRead['readAt.'+openCid]=Date.now();
+        db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
+      }
       // There may be legacy chat documents for the same pair of users. Only
       // the deterministic CID is allowed to contribute to the unread badge.
       const canonicalDocs={};
@@ -3443,6 +3448,14 @@ function setupInbox(){
     if(curChat?.uid){
       const openCid=getCID(viewerUid,curChat.uid);
       window._inboxUnreadMap[openCid]=0;
+      const openRead={};
+      openRead['unread.'+openCid]=0;
+      openRead['readAt.'+openCid]=Date.now();
+      db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
+      const openChatRead={};
+      openChatRead['unread.'+viewerUid]=0;
+      openChatRead['readAt.'+viewerUid]=Date.now();
+      db.collection('chats').doc(openCid).set(openChatRead,{merge:true}).catch(()=>{});
       const openBadge=el('msgB2');
       if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
     }
@@ -4992,7 +5005,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v69.js?v=studylink-pwa-175',location.href).href;
+  const workerUrl=new URL('sw-v70.js?v=studylink-pwa-176',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
