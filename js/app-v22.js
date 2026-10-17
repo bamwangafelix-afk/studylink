@@ -68,14 +68,6 @@ const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAu
 // when that happens, and local persistence lets reads succeed from cache during brief drops.
 db.settings({experimentalAutoDetectLongPolling:true,merge:true});
 db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
-// Force Firestore to reconnect when network returns after a drop
-window.addEventListener('online',()=>{
-  db.disableNetwork().then(()=>db.enableNetwork()).catch(()=>{});
-  if(CU)setPresence('Online');
-});
-window.addEventListener('offline',()=>{
-  if(CU)setPresence('Offline');
-});
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
@@ -329,8 +321,8 @@ async function setPresence(status){
 }
 function setupPresence(){
   setPresence('Online');
-  // Heartbeat every 30 seconds — reduces unnecessary Firestore writes
-  setInterval(()=>{if(CU&&document.visibilityState!=='hidden')setPresence('Online');},30000);
+  // Heartbeat every 15 seconds for faster online detection
+  setInterval(()=>{if(CU&&document.visibilityState!=='hidden')setPresence('Online');},15000);
   document.addEventListener('visibilitychange',()=>{
     setPresence(document.visibilityState==='hidden'?'Offline':'Online');
   });
@@ -1997,23 +1989,22 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   }
   // Keep unread state only on the receiver's user document. The old chat mirror
   // made the sender see their own message as a new message.
-  // Run chat update and sender update in parallel for speed
-  const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-  Object.assign(senderUpd,readState(cid,0,sentAt));
-  await Promise.all([
-    db.collection('chats').doc(cid).set(chatUpd,{merge:true}),
-    db.collection('users').doc(CU.uid).set(senderUpd,{merge:true})
-  ]);
+  await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
   // Do not re-increment after the receiver has already opened the chat.
   const receiverRef=db.collection('users').doc(receiverUid);
-  db.runTransaction(async tx=>{
+  await db.runTransaction(async tx=>{
     const receiverSnap=await tx.get(receiverRef);
     const receiverData=receiverSnap.data()||{};
     const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
     const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
     if(receiverReadAt<sentAt)receiverUpd.unread={[cid]:firebase.firestore.FieldValue.increment(1)};
     tx.set(receiverRef,receiverUpd,{merge:true});
-  }).catch(e=>console.warn('receiver unread update:',e?.message||e));
+  });
+  const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+  // Sending a message also means the sender has the conversation open/read.
+  // Explicitly clear any stale unread value left by older releases.
+  Object.assign(senderUpd,readState(cid,0,sentAt));
+  await db.collection('users').doc(CU.uid).set(senderUpd,{merge:true});
 }
 async function markChatRead(cid){
   if(!cid||!CU?.uid)return;
@@ -2110,7 +2101,7 @@ function openChat(name,uid){
     // Mixing those strings with the newer numeric timestamps can make Firestore
     // omit freshly sent messages from limitToLast(). createdAt is the canonical
     // server timestamp for delivery and keeps the listener ordered correctly.
-    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limitToLast(lim).onSnapshot({includeMetadataChanges:false},sn=>{
+    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limitToLast(lim).onSnapshot(sn=>{
       const mb=el('msgB');
       sn.docChanges().forEach(change=>{
         if(change.type==='removed'){
@@ -2154,7 +2145,7 @@ function openChat(name,uid){
     },e=>{
       console.warn('Private messages listener; retrying:',e?.code||e?.message||e);
       if(chatUnsub){chatUnsub();chatUnsub=null;}
-      setTimeout(()=>{if(curChat?.uid===uid)_loadMsgs(lim);},800);
+      setTimeout(()=>{if(curChat?.uid===uid)_loadMsgs(lim);},1200);
     });
   };
   window._loadMoreMsgs=()=>{_msgLimit+=30;_loadMsgs(_msgLimit);};
@@ -2420,7 +2411,7 @@ async function openGroup(postId,name){
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
     grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
     // Use the real server timestamp, not the legacy display-hour field.
-    grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt','asc').limitToLast(50).onSnapshot({includeMetadataChanges:false},sn=>{
+    grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt','asc').limitToLast(50).onSnapshot(sn=>{
       const mb=el('grpB');
       sn.docChanges().forEach(change=>{
         if(change.type==='removed'){const ex=mb.querySelector(`.bw[data-id="${change.doc.id}"]`);if(ex)ex.remove();return;}
@@ -2435,7 +2426,7 @@ async function openGroup(postId,name){
     },e=>{
       console.warn('Group messages listener; retrying:',e?.code||e?.message||e);
       if(grpUnsub){grpUnsub();grpUnsub=null;}
-      setTimeout(()=>{if(curGrp?.id===postId)openGroup(postId,name);},800);
+      setTimeout(()=>{if(curGrp?.id===postId)openGroup(postId,name);},1200);
     });
   }catch(e){showToast(t('group_unavailable'));}
   showOv(false);
@@ -3417,7 +3408,7 @@ function setupInbox(){
     // Presence is stored on each chat document. Query by participants directly
     // so the Messages list cannot miss a conversation due to a stale chatIds index.
     const viewerUid=CU.uid;
-    inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot({includeMetadataChanges:false},sn=>{
+    inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
       _cachedInboxDocs=sn.docs.slice();
       if(curChat?.uid===viewerUid||curChat?.uid){
@@ -5051,7 +5042,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v72.js?v=studylink-pwa-181',location.href).href;
+  const workerUrl=new URL('sw-v70.js?v=studylink-pwa-177',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
