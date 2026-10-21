@@ -62,11 +62,11 @@ window.addEventListener('error',e=>{
 
 firebase.initializeApp({apiKey:"AIzaSyBQXvheNG_6r5NYjwru_0l_EUsKYrT4w1g",authDomain:"studylink-e1803.firebaseapp.com",projectId:"studylink-e1803",storageBucket:"studylink-e1803.firebasestorage.app",messagingSenderId:"51988890739",appId:"1:51988890739:web:fa5b3486e7a32c3fe95606"});
 const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAuthProvider();
-// Some mobile carriers (common on flaky 3G/4G networks) block or throttle the WebChannel/QUIC
-// connection Firestore prefers by default, which surfaces as "client is offline" errors even
-// though the device has internet. Long-polling auto-detection falls back to plain HTTP requests
-// when that happens, and local persistence lets reads succeed from cache during brief drops.
-db.settings({experimentalAutoDetectLongPolling:true,merge:true});
+// Some mobile carriers and Android browsers block or repeatedly reset the WebChannel/QUIC
+// transport. Force Firestore onto HTTP long-polling so messages and receipts do not wait for
+// a QUIC channel that is already failing. Local persistence still serves cached data briefly
+// during a real connection drop.
+db.settings({experimentalForceLongPolling:true,useFetchStreams:false,merge:true});
 db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
@@ -2002,6 +2002,7 @@ function refreshPrivateReceipts(){
 function readState(key,unread,readAt){
   return {unread:{[key]:unread},readAt:{[key]:readAt}};
 }
+let _lastChatReadWrite={};
 async function firestoreRetry(work,label){
   let lastError=null;
   for(let attempt=0;attempt<2;attempt++){
@@ -2031,12 +2032,18 @@ async function markChatRead(cid){
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
-  const userUnread=readState(cid,0,Date.now());
+  const nowMs=Date.now();
+  // Opening a chat clears the UI immediately, but do not send the same pair of
+  // read-state writes every few seconds while the conversation remains open.
+  // Repeated writes were competing with message delivery on unstable mobile links.
+  if(nowMs-Number(_lastChatReadWrite[cid]||0)<10000)return;
+  _lastChatReadWrite[cid]=nowMs;
+  const userUnread=readState(cid,0,nowMs);
   await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
   // Clear the legacy unread mirror too. Older StudyLink builds read this
   // field from the shared chat document, which could make Salva's chat appear
   // unread again after the user document had already been cleared.
-  const chatRead=readState(CU.uid,0,Date.now());
+  const chatRead=readState(CU.uid,0,nowMs);
   db.collection('chats').doc(cid).set(chatRead,{merge:true}).catch(()=>{});
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
@@ -2090,7 +2097,7 @@ function openChat(name,uid){
   if(chatReadHeartbeat)clearInterval(chatReadHeartbeat);
   chatReadHeartbeat=setInterval(()=>{
     if(curChat?.uid===uid&&document.visibilityState!=='hidden')void markChatRead(cid).catch(()=>{});
-  },2500);
+  },10000);
   // Re-render inbox immediately — badge gone before any Firestore round-trip
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
 
@@ -5049,7 +5056,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v78.js?v=studylink-pwa-187',location.href).href;
+  const workerUrl=new URL('sw-v79.js?v=studylink-pwa-188',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
