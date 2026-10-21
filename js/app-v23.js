@@ -2018,26 +2018,19 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Date.now();
   const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,...extra};
-  // Commit the chat summary, receiver counter, and sender read state in one
-  // retried transaction so a partial write cannot leave either device stale.
-  await firestoreRetry(()=>db.runTransaction(async tx=>{
-    const receiverRef=db.collection('users').doc(receiverUid);
-    const receiverSnap=receiverUid===CU.uid?null:await tx.get(receiverRef);
-    const receiverData=receiverSnap?.data()||{};
-    const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
-    const chatRef=db.collection('chats').doc(cid);
-    const senderRef=db.collection('users').doc(CU.uid);
-    tx.set(chatRef,chatUpd,{merge:true});
-    if(receiverUid===CU.uid){
-      tx.set(senderRef,readState(cid,0,sentAt),{merge:true});
-      return;
-    }
-    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-    if(receiverReadAt<sentAt)receiverUpd.unread={[cid]:firebase.firestore.FieldValue.increment(1)};
-    tx.set(receiverRef,receiverUpd,{merge:true});
-    const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid),...readState(cid,0,sentAt)};
-    tx.set(senderRef,senderUpd,{merge:true});
-  }),'private message summary and unread state');
+  // Avoid reading the other user's document: rules may allow cross-user writes
+  // but deny cross-user reads. A batch keeps the summary and indexes together.
+  const batch=db.batch();
+  batch.set(db.collection('chats').doc(cid),chatUpd,{merge:true});
+  const senderRef=db.collection('users').doc(CU.uid);
+  if(receiverUid===CU.uid){
+    batch.set(senderRef,readState(cid,0,sentAt),{merge:true});
+  }else{
+    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid),unread:{[cid]:firebase.firestore.FieldValue.increment(1)}};
+    batch.set(db.collection('users').doc(receiverUid),receiverUpd,{merge:true});
+    batch.set(senderRef,{chatIds:firebase.firestore.FieldValue.arrayUnion(cid),...readState(cid,0,sentAt)},{merge:true});
+  }
+  await firestoreRetry(()=>batch.commit(),'private message summary and unread state');
 }
 async function markChatRead(cid){
   if(!cid||!CU?.uid)return;
@@ -2126,54 +2119,32 @@ function openChat(name,uid){
     }).catch(e=>console.warn('mark chat read:',e?.code||e?.message||e));
   }).catch(e=>console.log('chatInit:',e));
 
-  // Messages listener — paginated with limit(50), supports load-more
-  let _msgLimit=50;
+  // Messages listener. Do not order by createdAt: older documents can lack
+  // that field, which makes orderBy hide messages or fail on mobile. Sort the
+  // snapshot locally so legacy and new messages are displayed together.
+  let _msgLimit=100;
   const _loadMsgs=(lim)=>{
     if(chatUnsub){chatUnsub();chatUnsub=null;}
-    // `time` is a display field with legacy string values such as "16:40".
-    // Mixing those strings with the newer numeric timestamps can make Firestore
-    // omit freshly sent messages from limitToLast(). createdAt is the canonical
-    // server timestamp for delivery and keeps the listener ordered correctly.
-    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limitToLast(lim).onSnapshot(sn=>{
+    chatUnsub=db.collection('chats').doc(cid).collection('messages').limit(lim).onSnapshot(sn=>{
       const mb=el('msgB');
-      sn.docChanges().forEach(change=>{
-        if(change.type==='removed'){
-          const ex=mb.querySelector(`.bw[data-id="${change.doc.id}"]`);
-          if(ex)ex.remove();return;
-        }
-        const m={id:change.doc.id,...change.doc.data()};
+      const docs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
+        const at=messageMillis(a.createdAt)||messageMillis(a.time)||0;
+        const bt=messageMillis(b.createdAt)||messageMillis(b.time)||0;
+        return at-bt;
+      });
+      mb.innerHTML='';
+      docs.forEach(m=>{
         const bbl=buildBbl(m,false);if(!bbl)return;
         const tmp=document.createElement('div');tmp.innerHTML=bbl;
-        const node=tmp.firstElementChild;if(!node)return;
-        if(change.type==='added'){
-          const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);
-          if(!ex)mb.appendChild(node);
-        }else if(change.type==='modified'){
-          const ex=mb.querySelector(`.bw[data-id="${m.id}"]`);
-          if(ex)ex.replaceWith(node);else mb.appendChild(node);
-        }
-        if(m.senderUid!==CU.uid&&!m.seen)change.doc.ref.update({seen:true}).catch(()=>{});
+        const node=tmp.firstElementChild;if(node)mb.appendChild(node);
       });
-      if(curChat?.uid===uid){
-        const unseen=sn.docs.filter(d=>{const m=d.data()||{};return m.senderUid!==CU.uid&&!m.seen;});
-        if(unseen.length){
-          const seenBatch=db.batch();
-          unseen.forEach(d=>seenBatch.update(d.ref,{seen:true}));
-          seenBatch.commit().catch(()=>{});
-        }
+      const unseen=sn.docs.filter(d=>{const m=d.data()||{};return m.senderUid!==CU.uid&&!m.seen;});
+      if(unseen.length){
+        const seenBatch=db.batch();
+        unseen.forEach(d=>seenBatch.update(d.ref,{seen:true}));
+        seenBatch.commit().catch(()=>{});
       }
       mb.scrollTop=mb.scrollHeight;
-      // Show load-more button if we hit the limit
-      let loadMoreBtn=mb.querySelector('#loadMoreMsgs');
-      if(sn.docs.length>=lim){
-        if(!loadMoreBtn){
-          loadMoreBtn=document.createElement('div');
-          loadMoreBtn.id='loadMoreMsgs';
-          loadMoreBtn.style.cssText='text-align:center;padding:8px;';
-          loadMoreBtn.innerHTML=`<button onclick="window._loadMoreMsgs&&window._loadMoreMsgs()" style="font-size:12px;color:var(--sub);background:var(--card);border:1px solid var(--brd);border-radius:16px;padding:6px 18px;cursor:pointer;">↑ Load more</button>`;
-          mb.insertBefore(loadMoreBtn,mb.firstChild);
-        }
-      }else if(loadMoreBtn){loadMoreBtn.remove();}
       if(curChat?.uid===uid)void markChatRead(cid).catch(()=>{});
     },e=>{
       console.warn('Private messages listener; retrying:',e?.code||e?.message||e);
@@ -2181,9 +2152,8 @@ function openChat(name,uid){
       setTimeout(()=>{if(curChat?.uid===uid)_loadMsgs(lim);},1200);
     });
   };
-  window._loadMoreMsgs=()=>{_msgLimit+=30;_loadMsgs(_msgLimit);};
+  window._loadMoreMsgs=()=>{_msgLimit+=100;_loadMsgs(_msgLimit);};
   _loadMsgs(_msgLimit);
-
   // Listen to the shared chat and each participant's mirror. The mirror is
   // sender-owned, so either account can publish and the other can receive it.
   let latestChat={},latestMirror={};
