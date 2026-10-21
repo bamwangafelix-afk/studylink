@@ -2150,6 +2150,17 @@ function openChat(name,uid){
     if(chatUnsub){chatUnsub();chatUnsub=null;}
     const messageRef=db.collection('chats').doc(cid).collection('messages');
     let timestampDocs=[],legacyDocs=[];
+    // Keep known message documents across overlapping realtime snapshots. Each
+    // query can emit a partial cached view before the other catches up.
+    const messageDocsById=new Map();
+    const rememberMessageSnapshot=sn=>{
+      sn.docs.forEach(d=>messageDocsById.set(d.id,d));
+      try{
+        sn.docChanges().forEach(change=>{
+          if(change.type==='removed'&&!change.doc.exists)messageDocsById.delete(change.doc.id);
+        });
+      }catch(e){}
+    };
     const messageSortTime=m=>{
       const timestamp=messageMillis(m.createdAt)||messageMillis(m.time);
       if(timestamp)return timestamp;
@@ -2157,8 +2168,8 @@ function openChat(name,uid){
       return match?(Number(match[1])*3600000+Number(match[2])*60000+Number(match[3]||0)*1000):0;
     };
     const renderMessages=()=>{
-      const byId=new Map();
-      [...timestampDocs,...legacyDocs].forEach(d=>byId.set(d.id,d));
+      const byId=new Map(messageDocsById);
+      [...legacyDocs,...timestampDocs].forEach(d=>byId.set(d.id,d));
       const pending=pendingPrivateMessages[cid]||(pendingPrivateMessages[cid]=new Map());
       pending.forEach((message,id)=>{
         if(byId.has(id))pending.delete(id);
@@ -2175,7 +2186,10 @@ function openChat(name,uid){
         const tmp=document.createElement('div');tmp.innerHTML=bbl;
         const node=tmp.firstElementChild;if(node)mb.appendChild(node);
       });
-      const unseen=docs.filter(m=>m.senderUid!==CU.uid&&!m.seen);
+      const visibleSnapshotDocs=new Map();
+      [...legacyDocs,...timestampDocs].forEach(d=>visibleSnapshotDocs.set(d.id,d));
+      const unseen=[...visibleSnapshotDocs.values()].map(d=>({id:d.id,...d.data(),_doc:d}))
+        .filter(m=>m.senderUid!==CU.uid&&!m.seen);
       if(unseen.length){
         const seenBatch=db.batch();
         unseen.forEach(m=>seenBatch.update(m._doc.ref,{seen:true}));
@@ -2192,6 +2206,7 @@ function openChat(name,uid){
     const unsubscribers=[];
     unsubscribers.push(messageRef.orderBy('createdAt','desc').limit(lim).onSnapshot(sn=>{
       timestampDocs=sn.docs;
+      rememberMessageSnapshot(sn);
       renderMessages();
     },handleError));
     // Older StudyLink messages may have only a display-time field. This
@@ -2199,6 +2214,7 @@ function openChat(name,uid){
     // query reliably selects the newest messages first.
     unsubscribers.push(messageRef.orderBy('time','desc').limit(lim).onSnapshot(sn=>{
       legacyDocs=sn.docs;
+      rememberMessageSnapshot(sn);
       renderMessages();
     },handleError));
     chatUnsub=()=>unsubscribers.forEach(unsubscribe=>unsubscribe());
