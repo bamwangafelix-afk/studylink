@@ -2026,7 +2026,7 @@ async function firestoreRetry(work,label){
 async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Date.now();
-  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,...extra};
+  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,unread:{[receiverUid]:firebase.firestore.FieldValue.increment(1),[CU.uid]:0},...extra};
   // Delivery depends only on the shared chat summary. Never put a write to
   // the receiver's private user document on this critical path: security
   // rules may reject it and must not prevent the conversation update.
@@ -2038,7 +2038,7 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
 async function writePrivateMessageAndSummary(cid,receiverUid,msgRef,msg,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Number(msg.time)||Date.now();
-  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,...extra};
+  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,unread:{[receiverUid]:firebase.firestore.FieldValue.increment(1),[CU.uid]:0},...extra};
   // The message and the shared chat summary must succeed together. If only the
   // message is written, the receiver's inbox listener has no reliable signal
   // that a new conversation item exists.
@@ -2149,7 +2149,11 @@ function openChat(name,uid){
   let _msgLimit=100;
   const _loadMsgs=(lim)=>{
     if(chatUnsub){chatUnsub();chatUnsub=null;}
-    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('time','desc').limit(lim).onSnapshot(sn=>{
+    // Do not order in Firestore: legacy messages may not have `time`, and an
+    // orderBy query silently excludes those documents on a reopened chat.
+    // Read the bounded collection and sort all returned legacy/new messages in
+    // the client so the conversation never opens blank after a refresh.
+    chatUnsub=db.collection('chats').doc(cid).collection('messages').limit(lim).onSnapshot(sn=>{
       const mb=el('msgB');
       const docs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
         const at=messageMillis(a.createdAt)||messageMillis(a.time)||0;
@@ -3452,7 +3456,11 @@ function setupInbox(){
         if(other){const canonical=getCID(viewerUid,other);if(d.id===canonical)canonicalDocs[canonical]=d;}
       });
       const cleanUnread={};
-      Object.keys(canonicalDocs).forEach(cid=>{cleanUnread[cid]=Number((window._inboxUnreadMap||{})[cid]||0);});
+      Object.keys(canonicalDocs).forEach(cid=>{
+        const chatUnread=Number((canonicalDocs[cid].data()?.unread||{})[viewerUid]||0);
+        const userUnread=Number((window._inboxUnreadMap||{})[cid]||0);
+        cleanUnread[cid]=Math.max(userUnread,chatUnread);
+      });
       window._inboxUnreadMap=cleanUnread;
       // Repair counters created by the previous two-counter implementation:
       // a chat whose latest message was sent by this user must never be unread
@@ -3543,7 +3551,8 @@ function setupInbox(){
             canonicalUnread[canonical]=0;
             if(Number(rawUnread[canonical]||0)>0)senderOwnedRepair[canonical]=0;
           }else{
-            canonicalUnread[canonical]=Number(window._inboxUnreadMap[canonical]||0);
+            const sharedUnread=Number((chatData.unread||{})[viewerUid]||0);
+            canonicalUnread[canonical]=Math.max(Number(window._inboxUnreadMap[canonical]||0),sharedUnread);
           }
         }
       });
@@ -3635,7 +3644,8 @@ function renderInbox(q="",sn=null){
       const hasUserUnread=Object.prototype.hasOwnProperty.call(_userUnreadMap,cid);
       // Only users.{uid}.unread is authoritative. Never fall back to the old
       // chats.unread mirror, which could mark the sender's own message unread.
-      const unread=(_overrides[cid]===0)?0:(hasUserUnread?Number(_userUnreadMap[cid]||0):0);
+      const sharedUnread=Number((data.unread||{})[CU.uid]||0);
+      const unread=(_overrides[cid]===0)?0:Math.max(Number(_userUnreadMap[cid]||0),sharedUnread);
       // Presence takes priority over the last message, like WhatsApp. It is
       // rendered in the list and the open conversation from the same Firestore
       // chat document, so both surfaces update through the inbox snapshot.
@@ -5071,7 +5081,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v81.js?v=studylink-pwa-190',location.href).href;
+  const workerUrl=new URL('sw-v82.js?v=studylink-pwa-191',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
