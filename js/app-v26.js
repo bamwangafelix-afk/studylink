@@ -62,16 +62,13 @@ window.addEventListener('error',e=>{
 
 firebase.initializeApp({apiKey:"AIzaSyBQXvheNG_6r5NYjwru_0l_EUsKYrT4w1g",authDomain:"studylink-e1803.firebaseapp.com",projectId:"studylink-e1803",storageBucket:"studylink-e1803.firebasestorage.app",messagingSenderId:"51988890739",appId:"1:51988890739:web:fa5b3486e7a32c3fe95606"});
 const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAuthProvider();
-// Some mobile carriers and Android browsers block or repeatedly reset the WebChannel/QUIC
-// transport. Force Firestore onto HTTP long-polling so messages and receipts do not wait for
-// a QUIC channel that is already failing. Local persistence still serves cached data briefly
-// during a real connection drop.
+// Let Firestore choose its normal real-time transport and fall back to long-polling
+// only on networks where its auto-detection finds that long-polling is needed.
+// Forcing long-polling on every device adds avoidable delay to live message updates.
 try{
-  db.settings({experimentalForceLongPolling:true,useFetchStreams:false,merge:true});
+  db.settings({experimentalAutoDetectLongPolling:true,merge:true});
 }catch(e){
-  // A browser that rejects an experimental transport must not prevent Auth and
-  // the login screen from starting. Firestore will use its default transport.
-  console.warn('Firestore long-polling unavailable; using default transport:',e?.message||e);
+  console.warn('Firestore transport auto-detection unavailable; using SDK defaults:',e?.message||e);
 }
 try{
   db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
@@ -3445,6 +3442,23 @@ let inboxUnsub=null;
 let inboxChatsUnsub=null;
 let _cachedInboxDocs=null; // last fetched chat docs
 
+function inboxUnreadForChat(cid,chatData,viewerUid,userUnreadMap={},userReadAtMap={},overrides={}){
+  if(overrides[cid]===0)return 0;
+  const data=chatData||{};
+  const lastMessageAt=Number(data.lastMessageAt||0)||messageMillis(data.lastTs)||0;
+  const readAt=Math.max(
+    Number(userReadAtMap[cid]||0),
+    Number((data.readAt||{})[viewerUid]||0)
+  );
+  if(data.lastSenderUid===viewerUid||(readAt>0&&lastMessageAt>0&&readAt>=lastMessageAt))return 0;
+  const sharedUnread=data.unread||{};
+  // The chat document is updated atomically with a message. The user document
+  // is a fallback for legacy chats whose shared unread entry has not been set.
+  return Object.prototype.hasOwnProperty.call(sharedUnread,viewerUid)
+    ? Number(sharedUnread[viewerUid]||0)
+    : Number(userUnreadMap[cid]||0);
+}
+
 function setupInbox(){
   if(inboxUnsub)inboxUnsub();
   if(inboxChatsUnsub){inboxChatsUnsub();inboxChatsUnsub=null;}
@@ -3452,6 +3466,7 @@ function setupInbox(){
   let _watchingIds=[];
   // Cache user-doc unread map in memory — updated by the user-doc listener in real time
   window._inboxUnreadMap={};
+  window._inboxUserUnreadMap={};
 
   const startChatListener=()=>{
     if(!CU?.uid)return;
@@ -3475,9 +3490,10 @@ function setupInbox(){
       });
       const cleanUnread={};
       Object.keys(canonicalDocs).forEach(cid=>{
-        const chatUnread=Number((canonicalDocs[cid].data()?.unread||{})[viewerUid]||0);
-        const userUnread=Number((window._inboxUnreadMap||{})[cid]||0);
-        cleanUnread[cid]=Math.max(userUnread,chatUnread);
+        cleanUnread[cid]=inboxUnreadForChat(
+          cid,canonicalDocs[cid].data(),viewerUid,
+          window._inboxUserUnreadMap||{},window._inboxReadAt||{},window._unreadOverride||{}
+        );
       });
       window._inboxUnreadMap=cleanUnread;
       // Repair counters created by the previous two-counter implementation:
@@ -3515,6 +3531,7 @@ function setupInbox(){
     const chatIds=data.chatIds||[];
     // Keep unread map in memory so renderInbox never needs to fetch it
     const rawUnread=data.unread||{};
+    window._inboxUserUnreadMap={...rawUnread};
     window._inboxUnreadMap={...rawUnread};
     window._inboxReadAt={...(data.readAt||{})};
     // A read action wins over a delayed/stale Firestore snapshot. Release the
@@ -3561,13 +3578,12 @@ function setupInbox(){
           // any stale unread counter left by an older release.
           const readAt=Number((window._inboxReadAt||{})[canonical]||0);
           const lastMessageAt=Number(chatData.lastMessageAt||0);
-          if(chatData.lastSenderUid===viewerUid||
-             (readAt>0&&lastMessageAt>0&&readAt>=lastMessageAt)){
-            canonicalUnread[canonical]=0;
-            if(Number(rawUnread[canonical]||0)>0)senderOwnedRepair[canonical]=0;
-          }else{
-            const sharedUnread=Number((chatData.unread||{})[viewerUid]||0);
-            canonicalUnread[canonical]=Math.max(Number(window._inboxUnreadMap[canonical]||0),sharedUnread);
+          canonicalUnread[canonical]=inboxUnreadForChat(
+            canonical,chatData,viewerUid,rawUnread,window._inboxReadAt||{},window._unreadOverride||{}
+          );
+          if(canonicalUnread[canonical]===0&&Number(rawUnread[canonical]||0)>0&&
+             (chatData.lastSenderUid===viewerUid||(readAt>0&&lastMessageAt>0&&readAt>=lastMessageAt))){
+            senderOwnedRepair[canonical]=0;
           }
         }
       });
@@ -3646,21 +3662,19 @@ function renderInbox(q="",sn=null){
     }
     f.innerHTML='';
     // Use in-memory unread map — NO extra Firestore fetch needed
-    const _userUnreadMap=window._inboxUnreadMap||{};
+    const _userUnreadMap=window._inboxUserUnreadMap||window._inboxUnreadMap||{};
     const _overrides=window._unreadOverride||{};
     entries.forEach(d=>{
       const data=d.data(),ouid=(data.participants||[]).find(id=>id!==CU.uid);
       const o=allUsers.find(u=>u.uid===ouid)||{name:'User',status:'Offline',photo:'',country:'',uni:''};
       const cid=d.id;
       const st=getStatusInfo(o.status,o.lastSeen);
-      // Override wins — set to 0 the moment chat is opened, cleared once Firestore confirms
-      // The user document is the authoritative inbox counter. The chat copy is
-      // only a fallback for older records and must never resurrect a stale badge.
-      const hasUserUnread=Object.prototype.hasOwnProperty.call(_userUnreadMap,cid);
-      // Only users.{uid}.unread is authoritative. Never fall back to the old
-      // chats.unread mirror, which could mark the sender's own message unread.
-      const sharedUnread=Number((data.unread||{})[CU.uid]||0);
-      const unread=(_overrides[cid]===0)?0:Math.max(Number(_userUnreadMap[cid]||0),sharedUnread);
+      // Use the chat's atomic unread value when available; the profile counter
+      // is only a fallback for legacy conversations. A read timestamp or an
+      // open-chat override prevents delayed snapshots from restoring the badge.
+      const unread=inboxUnreadForChat(
+        cid,data,CU.uid,_userUnreadMap,window._inboxReadAt||{},_overrides
+      );
       // Presence takes priority over the last message, like WhatsApp. It is
       // rendered in the list and the open conversation from the same Firestore
       // chat document, so both surfaces update through the inbox snapshot.
