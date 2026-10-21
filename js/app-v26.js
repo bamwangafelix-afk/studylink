@@ -2027,6 +2027,21 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   // secondary to the shared chat write.
   firestoreRetry(()=>db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid),...readState(cid,0,sentAt)},{merge:true}),'sender read state').catch(()=>{});
 }
+async function writePrivateMessageAndSummary(cid,receiverUid,msgRef,msg,lastMsg,extra={}){
+  if(!cid||!receiverUid||!CU?.uid)return;
+  const sentAt=Number(msg.time)||Date.now();
+  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,...extra};
+  // The message and the shared chat summary must succeed together. If only the
+  // message is written, the receiver's inbox listener has no reliable signal
+  // that a new conversation item exists.
+  await firestoreRetry(()=>{
+    const batch=db.batch();
+    batch.set(msgRef,msg);
+    batch.set(db.collection('chats').doc(cid),chatUpd,{merge:true});
+    return batch.commit();
+  },'private message delivery');
+  firestoreRetry(()=>db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid),...readState(cid,0,sentAt)},{merge:true}),'sender read state').catch(()=>{});
+}
 async function markChatRead(cid){
   if(!cid||!CU?.uid)return;
   if(!window._unreadOverride)window._unreadOverride={};
@@ -2126,7 +2141,7 @@ function openChat(name,uid){
   let _msgLimit=100;
   const _loadMsgs=(lim)=>{
     if(chatUnsub){chatUnsub();chatUnsub=null;}
-    chatUnsub=db.collection('chats').doc(cid).collection('messages').limit(lim).onSnapshot(sn=>{
+    chatUnsub=db.collection('chats').doc(cid).collection('messages').orderBy('time','desc').limit(lim).onSnapshot(sn=>{
       const mb=el('msgB');
       const docs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
         const at=messageMillis(a.createdAt)||messageMillis(a.time)||0;
@@ -2361,21 +2376,13 @@ async function sendMsg(){
   const localMsg={...md,id:msgRef.id};
   insertPendingBubble(localMsg,false);
   try{
-    // Paint the outgoing bubble before any network round-trip.
-    await msgRef.set(md);
+    // Paint the outgoing bubble before any network round-trip, then commit the
+    // message and the conversation summary together for reliable delivery.
+    await writePrivateMessageAndSummary(cid,curChat.uid,msgRef,md,text,{lastMessageId:msgRef.id});
   }catch(e){
     document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();
     showToast('❌ '+e.message);
     return;
-  }
-  try{
-    // Do not leave the conversation summary/unread update as a silent
-    // background promise: the receiver needs this write for inbox sync.
-    await recordPrivateSend(cid,curChat.uid,text,{lastMessageId:msgRef.id});
-  }catch(e){
-    // The message itself is already saved and remains visible; the retried
-    // summary failure is reported instead of making delivery look broken.
-    showToast('⚠️ Message saved; inbox sync will retry.');
   }
   // Message notification goes to Msgs tab only — NOT to alerts
   // unread count handled by setupMsgBL
@@ -5056,7 +5063,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v79.js?v=studylink-pwa-188',location.href).href;
+  const workerUrl=new URL('sw-v80.js?v=studylink-pwa-189',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
