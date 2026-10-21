@@ -2198,8 +2198,26 @@ function openChat(name,uid){
       mb.scrollTop=mb.scrollHeight;
       if(curChat?.uid===uid)void markChatRead(cid,unseen.length>0).catch(()=>{});
     };
+    // Direct server read of the newest messages. Used when the shared chat
+    // document reports a new message that the realtime listeners have not
+    // delivered to the page yet, and when a listener fails.
+    const forceRefresh=async()=>{
+      if(curChat?.uid!==uid)return;
+      try{
+        const [ra,rb]=await Promise.all([
+          messageRef.orderBy('createdAt','desc').limit(lim).get({source:'server'}).catch(()=>null),
+          messageRef.orderBy('time','desc').limit(lim).get({source:'server'}).catch(()=>null)
+        ]);
+        if(curChat?.uid!==uid)return;
+        if(ra){timestampDocs=ra.docs;rememberMessageSnapshot(ra);}
+        if(rb){legacyDocs=rb.docs;rememberMessageSnapshot(rb);}
+        if(ra||rb)renderMessages();
+      }catch(e){}
+    };
+    window._privateMsgRefresh=forceRefresh;
     const handleError=e=>{
       console.warn('Private messages listener; retrying:',e?.code||e?.message||e);
+      void forceRefresh();
       if(chatUnsub){chatUnsub();chatUnsub=null;}
       setTimeout(()=>{if(curChat?.uid===uid)_loadMsgs(lim);},1200);
     };
@@ -2233,8 +2251,14 @@ function openChat(name,uid){
     }
     renderPrivatePresence(merged);
   };
+  let lastChatSig=null;
   const chatPresenceUnsub=db.collection('chats').doc(cid).onSnapshot(sn=>{
     latestChat=sn.data()||{};
+    const chatSig=String(latestChat.lastMessageId||'')+'|'+String(latestChat.lastMessageAt||'')+'|'+String(messageMillis(latestChat.lastTs)||'');
+    if(chatSig!==lastChatSig){
+      lastChatSig=chatSig;
+      if(latestChat.lastSenderUid&&latestChat.lastSenderUid!==CU.uid)void window._privateMsgRefresh?.();
+    }
     curChatReadAt[uid]=latestChat.readAt?.[uid]||0;
     paint();
     refreshPrivateReceipts();
@@ -3471,18 +3495,18 @@ let _cachedInboxDocs=null; // last fetched chat docs
 function inboxUnreadForChat(cid,chatData,viewerUid,userUnreadMap={},userReadAtMap={},overrides={}){
   if(overrides[cid]===0)return 0;
   const data=chatData||{};
-  const lastMessageAt=Number(data.lastMessageAt||0)||messageMillis(data.lastTs)||0;
-  const readAt=Math.max(
-    Number(userReadAtMap[cid]||0),
-    Number((data.readAt||{})[viewerUid]||0)
-  );
-  if(data.lastSenderUid===viewerUid||(readAt>0&&lastMessageAt>0&&readAt>=lastMessageAt))return 0;
+  // A sender's own message is never unread for the sender.
+  if(data.lastSenderUid===viewerUid)return 0;
   const sharedUnread=data.unread||{};
-  // The chat document is updated atomically with a message. The user document
-  // is a fallback for legacy chats whose shared unread entry has not been set.
-  return Object.prototype.hasOwnProperty.call(sharedUnread,viewerUid)
-    ? Number(sharedUnread[viewerUid]||0)
-    : Number(userUnreadMap[cid]||0);
+  // The shared counter is incremented by the sender in the same batch as the
+  // message and reset by the receiver when reading. It is the source of truth,
+  // so the badge no longer depends on comparing clocks of two different devices.
+  if(Object.prototype.hasOwnProperty.call(sharedUnread,viewerUid))return Number(sharedUnread[viewerUid]||0);
+  // Legacy chats without a shared counter: fall back to the old comparison.
+  const lastMessageAt=Number(data.lastMessageAt||0)||messageMillis(data.lastTs)||0;
+  const readAt=Math.max(Number(userReadAtMap[cid]||0),Number((data.readAt||{})[viewerUid]||0));
+  if(readAt>0&&lastMessageAt>0&&readAt>=lastMessageAt)return 0;
+  return Number(userUnreadMap[cid]||0);
 }
 
 function setupInbox(){
