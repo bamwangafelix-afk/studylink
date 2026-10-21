@@ -76,6 +76,8 @@ try{
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
+// Keep locally sent messages visible until a Firestore snapshot confirms their IDs.
+let pendingPrivateMessages={};
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,chatReadHeartbeat=null,curChatReadAt={},curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
 let myPendingJoinGroupIds=new Set();
@@ -2157,6 +2159,11 @@ function openChat(name,uid){
     const renderMessages=()=>{
       const byId=new Map();
       [...timestampDocs,...legacyDocs].forEach(d=>byId.set(d.id,d));
+      const pending=pendingPrivateMessages[cid]||(pendingPrivateMessages[cid]=new Map());
+      pending.forEach((message,id)=>{
+        if(byId.has(id))pending.delete(id);
+        else byId.set(id,{id,data:()=>message,_pending:true});
+      });
       const docs=[...byId.values()].map(d=>({id:d.id,...d.data(),_doc:d})).sort((a,b)=>{
         const delta=messageSortTime(a)-messageSortTime(b);
         return delta||a.id.localeCompare(b.id);
@@ -2402,12 +2409,15 @@ async function sendMsg(){
   replyMsg=null;el('rplybar').style.display='none';
   const msgRef=db.collection('chats').doc(cid).collection('messages').doc();
   const localMsg={...md,id:msgRef.id};
+  if(!pendingPrivateMessages[cid])pendingPrivateMessages[cid]=new Map();
+  pendingPrivateMessages[cid].set(msgRef.id,localMsg);
   insertPendingBubble(localMsg,false);
   try{
     // Paint the outgoing bubble before any network round-trip, then commit the
     // message and the conversation summary together for reliable delivery.
     await writePrivateMessageAndSummary(cid,curChat.uid,msgRef,md,text,{lastMessageId:msgRef.id});
   }catch(e){
+    pendingPrivateMessages[cid]?.delete(msgRef.id);
     document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();
     showToast('❌ '+e.message);
     return;
