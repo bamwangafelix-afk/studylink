@@ -1975,6 +1975,18 @@ function refreshPrivateReceipts(){
 function readState(key,unread,readAt){
   return {unread:{[key]:unread},readAt:{[key]:readAt}};
 }
+async function firestoreRetry(work,label){
+  let lastError=null;
+  for(let attempt=0;attempt<2;attempt++){
+    try{return await work();}
+    catch(error){
+      lastError=error;
+      if(attempt===0)await new Promise(resolve=>setTimeout(resolve,350));
+    }
+  }
+  console.warn(label+' failed:',lastError?.code||lastError?.message||lastError);
+  throw lastError;
+}
 async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Date.now();
@@ -1982,29 +1994,37 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   // A stale/incorrect conversation target must never notify the current user.
   // Still save the chat preview, but do not create an unread counter for self.
   if(receiverUid===CU.uid){
-    await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
+    await firestoreRetry(()=>db.collection('chats').doc(cid).set(chatUpd,{merge:true}),'chat summary');
     const clearSelf=readState(cid,0,sentAt);
-    await db.collection('users').doc(CU.uid).set(clearSelf,{merge:true});
+    await firestoreRetry(()=>db.collection('users').doc(CU.uid).set(clearSelf,{merge:true}),'sender read state');
     return;
   }
   // Keep unread state only on the receiver's user document. The old chat mirror
   // made the sender see their own message as a new message.
-  await db.collection('chats').doc(cid).set(chatUpd,{merge:true});
-  // Do not re-increment after the receiver has already opened the chat.
-  const receiverRef=db.collection('users').doc(receiverUid);
-  await db.runTransaction(async tx=>{
-    const receiverSnap=await tx.get(receiverRef);
-    const receiverData=receiverSnap.data()||{};
-    const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
-    const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
-    if(receiverReadAt<sentAt)receiverUpd.unread={[cid]:firebase.firestore.FieldValue.increment(1)};
-    tx.set(receiverRef,receiverUpd,{merge:true});
-  });
   const senderUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
   // Sending a message also means the sender has the conversation open/read.
   // Explicitly clear any stale unread value left by older releases.
   Object.assign(senderUpd,readState(cid,0,sentAt));
-  await db.collection('users').doc(CU.uid).set(senderUpd,{merge:true});
+  // Keep the three related writes independent but retry each one. This avoids
+  // losing the chat preview when a user-document update briefly fails.
+  const receiverRef=db.collection('users').doc(receiverUid);
+  const writes=await Promise.allSettled([
+    firestoreRetry(()=>db.collection('chats').doc(cid).set(chatUpd,{merge:true}),'chat summary'),
+    firestoreRetry(()=>db.runTransaction(async tx=>{
+      const receiverSnap=await tx.get(receiverRef);
+      const receiverData=receiverSnap.data()||{};
+      const receiverReadAt=Number(receiverData.readAt?.[cid]||0);
+      const receiverUpd={chatIds:firebase.firestore.FieldValue.arrayUnion(cid)};
+      if(receiverReadAt<sentAt)receiverUpd.unread={[cid]:firebase.firestore.FieldValue.increment(1)};
+      tx.set(receiverRef,receiverUpd,{merge:true});
+    }),'receiver unread counter'),
+    firestoreRetry(()=>db.collection('users').doc(CU.uid).set(senderUpd,{merge:true}),'sender read state')
+  ]);
+  const failed=writes.filter(result=>result.status==='rejected');
+  if(failed.length){
+    showToast('⚠️ Message saved with a temporary sync issue. Retrying…');
+    throw failed[0].reason;
+  }
 }
 async function markChatRead(cid){
   if(!cid||!CU?.uid)return;
@@ -3552,6 +3572,7 @@ function setupInbox(){
 function renderInbox(q="",sn=null){
   if(!CU?.uid)return;
   const viewerUid=CU.uid;
+  const chatActivityMillis=data=>Number(data?.lastMessageAt||0)||messageMillis(data?.lastTs)||0;
   const _execRender=async(snapshot)=>{
     if(!CU?.uid||CU.uid!==viewerUid)return;
     const f=el('inboxL');
@@ -3567,15 +3588,15 @@ function renderInbox(q="",sn=null){
       else if(d.id===canonical){seenUid[ouid]=d;}  // canonical always wins
       else if(existing.id!==canonical){
         // neither is canonical — keep the one with more recent lastTs
-        const ta=d.data().lastTs?.seconds||0;
-        const tb=existing.data().lastTs?.seconds||0;
+        const ta=chatActivityMillis(d.data());
+        const tb=chatActivityMillis(existing.data());
         if(ta>tb)seenUid[ouid]=d;
       }
     });
     let entries=Object.values(seenUid);
     entries.sort((a,b)=>{
-      const ta=a.data().lastTs?.seconds||0;
-      const tb=b.data().lastTs?.seconds||0;
+      const ta=chatActivityMillis(a.data());
+      const tb=chatActivityMillis(b.data());
       return tb-ta;
     });
     if(q)entries=entries.filter(d=>{
@@ -5042,7 +5063,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v70.js?v=studylink-pwa-177',location.href).href;
+  const workerUrl=new URL('sw-v74.js?v=studylink-pwa-183',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
