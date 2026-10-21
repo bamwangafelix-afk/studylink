@@ -66,8 +66,16 @@ const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAu
 // transport. Force Firestore onto HTTP long-polling so messages and receipts do not wait for
 // a QUIC channel that is already failing. Local persistence still serves cached data briefly
 // during a real connection drop.
-db.settings({experimentalForceLongPolling:true,useFetchStreams:false,merge:true});
-db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
+try{
+  db.settings({experimentalForceLongPolling:true,useFetchStreams:false,merge:true});
+}catch(e){
+  // A browser that rejects an experimental transport must not prevent Auth and
+  // the login screen from starting. Firestore will use its default transport.
+  console.warn('Firestore long-polling unavailable; using default transport:',e?.message||e);
+}
+try{
+  db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
+}catch(e){console.warn('Firestore persistence setup unavailable:',e?.message||e);}
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
 
 let CU=null,MP=null,myPho='';
@@ -544,7 +552,7 @@ function resetLoggedOutUi(){
 el('ov').style.display='flex';
 let authStateResolved=false;
 const authFallbackTimer=setTimeout(()=>{
-  if(!authStateResolved&&!CU){
+  if(!CU&&!auth.currentUser){
     console.warn('Auth state timeout; showing login fallback.');
     resetLoggedOutUi();
   }
@@ -5063,7 +5071,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v80.js?v=studylink-pwa-189',location.href).href;
+  const workerUrl=new URL('sw-v81.js?v=studylink-pwa-190',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
