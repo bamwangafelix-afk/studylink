@@ -238,32 +238,43 @@ function presenceRef(kind,id){return kind==='group'?db.collection('groups').doc(
 function setPresenceState(kind,id,state,active){
   if(!CU||!id||!state)return Promise.resolve();
   const stamp=firebase.firestore.FieldValue.serverTimestamp();
-  const upd={};upd[`presence.${CU.uid}.${state}`]=!!active;upd[`presence.${CU.uid}.updatedAt`]=stamp;
-  const writes=[presenceRef(kind,id).set(upd,{merge:true})];
+  const upd={};
+  upd[`presence.${CU.uid}.${state}`]=!!active;
+  upd[`presence.${CU.uid}.updatedAt`]=stamp;
+  const writes=[presenceRef(kind,id).update(upd)];
   // Private chats also mirror the sender's state on the sender-owned user
-  // document. This keeps the signal bidirectional even when a chat rule only
-  // permits one participant to update the chat metadata.
+  // document. update() is intentional: unlike set({merge:true}) in the old
+  // release, it treats dotted keys as Firestore field paths.
   if(kind==='private'){
-    const mirror={};mirror[`presenceChats.${id}.${state}`]=!!active;mirror[`presenceChats.${id}.updatedAt`]=stamp;
-    writes.push(db.collection('users').doc(CU.uid).set(mirror,{merge:true}));
+    const mirror={};
+    mirror[`presenceChats.${id}.${state}`]=!!active;
+    mirror[`presenceChats.${id}.updatedAt`]=stamp;
+    writes.push(db.collection('users').doc(CU.uid).update(mirror));
   }
   return Promise.all(writes).catch(e=>console.warn('Presence update failed:',e?.message||e));
 }
 function clearPresenceState(kind,id){
   if(!CU||!id)return Promise.resolve();
   const stamp=firebase.firestore.FieldValue.serverTimestamp();
-  const upd={};upd[`presence.${CU.uid}.typing`]=false;upd[`presence.${CU.uid}.recording`]=false;upd[`presence.${CU.uid}.updatedAt`]=stamp;
-  const writes=[presenceRef(kind,id).set(upd,{merge:true})];
+  const upd={};
+  upd[`presence.${CU.uid}.typing`]=false;
+  upd[`presence.${CU.uid}.recording`]=false;
+  upd[`presence.${CU.uid}.updatedAt`]=stamp;
+  const writes=[presenceRef(kind,id).update(upd)];
   if(kind==='private'){
-    const mirror={};mirror[`presenceChats.${id}.typing`]=false;mirror[`presenceChats.${id}.recording`]=false;mirror[`presenceChats.${id}.updatedAt`]=stamp;
-    writes.push(db.collection('users').doc(CU.uid).set(mirror,{merge:true}));
+    const mirror={};
+    mirror[`presenceChats.${id}.typing`]=false;
+    mirror[`presenceChats.${id}.recording`]=false;
+    mirror[`presenceChats.${id}.updatedAt`]=stamp;
+    writes.push(db.collection('users').doc(CU.uid).update(mirror));
   }
   return Promise.all(writes).catch(e=>console.warn('Presence cleanup failed:',e?.message||e));
 }
 function presenceFor(data,uid){
   const p=data?.presence?.[uid]||{};
-  const legacy=(data?.ty||data?.typing||{})[uid]===true;
-  return {typing:p.typing===true||legacy,recording:p.recording===true};
+  const updated=messageMillis(p.updatedAt);
+  const fresh=updated>0&&Date.now()-updated<7000;
+  return {typing:fresh&&p.typing===true,recording:fresh&&p.recording===true};
 }
 function privatePresenceText(name,data,uid){
   const p=presenceFor(data,uid);
@@ -1000,9 +1011,21 @@ function listenMyGroupMemberships(){
     if(el('Pfind')?.style.display!=='none'&&findTop==='groups')renderFindGroups(el('findGQ')?.value||'');
   },e=>console.warn('group membership listener:',e?.code||e));
 }
+let feedLoadTimer=null;
+function feedLoadingFallback(message){
+  if(cachedPosts.length)return;
+  const feed=el('feed');
+  if(!feed||!String(feed.textContent||'').includes('Loading')&&!String(feed.textContent||'').includes('Chargement'))return;
+  feed.innerHTML=`<p style="text-align:center;color:#888;padding:20px;">${esc(message||'Feed unavailable. Tap Home to retry.')}</p>`;
+}
 function listenPosts(){
-  // Listen to latest 30 posts in real-time; we only render _feedShown of them
+  // Listen to latest 30 posts in real-time; we only render _feedShown of them.
+  // On mobile, a stalled Firestore stream used to leave the initial Loading...
+  // text forever. Show a recoverable state instead of blocking the app shell.
+  clearTimeout(feedLoadTimer);
+  feedLoadTimer=setTimeout(()=>feedLoadingFallback(appLang==='fr'?'Le fil met du temps à charger. Appuyez sur Accueil pour réessayer.':'The feed is taking too long to load. Tap Home to retry.'),12000);
   db.collection('posts').orderBy('createdAt','desc').limit(30).onSnapshot(sn=>{
+    clearTimeout(feedLoadTimer);
     const newPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
     const isHomeVisible=el('Phome')&&el('Phome').style.display!=='none';
     if(isHomeVisible){
@@ -1021,7 +1044,11 @@ function listenPosts(){
       }
       cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     }
-  },e=>console.log(e));
+  },e=>{
+    clearTimeout(feedLoadTimer);
+    console.warn('posts listener:',e?.code||e?.message||e);
+    feedLoadingFallback(appLang==='fr'?'Impossible de charger le fil. Appuyez sur Accueil pour réessayer.':'The feed could not load. Tap Home to retry.');
+  });
 }
 function loadMorePosts(){
   setDataRefresh(true);
@@ -2365,13 +2392,22 @@ async function sendMsg(){
   try{
     // Paint the outgoing bubble before any network round-trip.
     await msgRef.set(md);
-    void recordPrivateSend(cid,curChat.uid,text);
-    // Message notification goes to Msgs tab only — NOT to alerts
-    // unread count handled by setupMsgBL
   }catch(e){
     document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();
     showToast('❌ '+e.message);
+    return;
   }
+  try{
+    // Do not leave the conversation summary/unread update as a silent
+    // background promise: the receiver needs this write for inbox sync.
+    await recordPrivateSend(cid,curChat.uid,text);
+  }catch(e){
+    // The message itself is already saved and remains visible; the retried
+    // summary failure is reported instead of making delivery look broken.
+    showToast('⚠️ Message saved; inbox sync will retry.');
+  }
+  // Message notification goes to Msgs tab only — NOT to alerts
+  // unread count handled by setupMsgBL
 }
 
 // ── GROUP ──
