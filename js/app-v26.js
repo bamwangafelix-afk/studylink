@@ -2050,7 +2050,7 @@ async function writePrivateMessageAndSummary(cid,receiverUid,msgRef,msg,lastMsg,
   },'private message delivery');
   firestoreRetry(()=>db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid),...readState(cid,0,sentAt)},{merge:true}),'sender read state').catch(()=>{});
 }
-async function markChatRead(cid){
+async function markChatRead(cid,force=false){
   if(!cid||!CU?.uid)return;
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
@@ -2059,7 +2059,7 @@ async function markChatRead(cid){
   // Opening a chat clears the UI immediately, but do not send the same pair of
   // read-state writes every few seconds while the conversation remains open.
   // Repeated writes were competing with message delivery on unstable mobile links.
-  if(nowMs-Number(_lastChatReadWrite[cid]||0)<10000)return;
+  if(!force&&nowMs-Number(_lastChatReadWrite[cid]||0)<10000)return;
   _lastChatReadWrite[cid]=nowMs;
   const userUnread=readState(cid,0,nowMs);
   await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
@@ -2116,7 +2116,7 @@ function openChat(name,uid){
   window._unreadOverride[cid]=0;
   const navBadge=el('msgB2');
   if(navBadge){navBadge.textContent='';navBadge.style.display='none';}
-  void markChatRead(cid).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
+  void markChatRead(cid,true).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
   if(chatReadHeartbeat)clearInterval(chatReadHeartbeat);
   chatReadHeartbeat=setInterval(()=>{
     if(curChat?.uid===uid&&document.visibilityState!=='hidden')void markChatRead(cid).catch(()=>{});
@@ -2149,36 +2149,55 @@ function openChat(name,uid){
   let _msgLimit=100;
   const _loadMsgs=(lim)=>{
     if(chatUnsub){chatUnsub();chatUnsub=null;}
-    // Do not order in Firestore: legacy messages may not have `time`, and an
-    // orderBy query silently excludes those documents on a reopened chat.
-    // Read the bounded collection and sort all returned legacy/new messages in
-    // the client so the conversation never opens blank after a refresh.
-    chatUnsub=db.collection('chats').doc(cid).collection('messages').limit(lim).onSnapshot(sn=>{
-      const mb=el('msgB');
-      const docs=sn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>{
-        const at=messageMillis(a.createdAt)||messageMillis(a.time)||0;
-        const bt=messageMillis(b.createdAt)||messageMillis(b.time)||0;
-        return at-bt;
+    const messageRef=db.collection('chats').doc(cid).collection('messages');
+    let timestampDocs=[],legacyDocs=[];
+    const messageSortTime=m=>{
+      const timestamp=messageMillis(m.createdAt)||messageMillis(m.time);
+      if(timestamp)return timestamp;
+      const match=String(m.time||'').match(/^([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?$/);
+      return match?(Number(match[1])*3600000+Number(match[2])*60000+Number(match[3]||0)*1000):0;
+    };
+    const renderMessages=()=>{
+      const byId=new Map();
+      [...timestampDocs,...legacyDocs].forEach(d=>byId.set(d.id,d));
+      const docs=[...byId.values()].map(d=>({id:d.id,...d.data(),_doc:d})).sort((a,b)=>{
+        const delta=messageSortTime(a)-messageSortTime(b);
+        return delta||a.id.localeCompare(b.id);
       });
+      const mb=el('msgB');
       mb.innerHTML='';
       docs.forEach(m=>{
         const bbl=buildBbl(m,false);if(!bbl)return;
         const tmp=document.createElement('div');tmp.innerHTML=bbl;
         const node=tmp.firstElementChild;if(node)mb.appendChild(node);
       });
-      const unseen=sn.docs.filter(d=>{const m=d.data()||{};return m.senderUid!==CU.uid&&!m.seen;});
+      const unseen=docs.filter(m=>m.senderUid!==CU.uid&&!m.seen);
       if(unseen.length){
         const seenBatch=db.batch();
-        unseen.forEach(d=>seenBatch.update(d.ref,{seen:true}));
+        unseen.forEach(m=>seenBatch.update(m._doc.ref,{seen:true}));
         seenBatch.commit().catch(()=>{});
       }
       mb.scrollTop=mb.scrollHeight;
-      if(curChat?.uid===uid)void markChatRead(cid).catch(()=>{});
-    },e=>{
+      if(curChat?.uid===uid)void markChatRead(cid,unseen.length>0).catch(()=>{});
+    };
+    const handleError=e=>{
       console.warn('Private messages listener; retrying:',e?.code||e?.message||e);
       if(chatUnsub){chatUnsub();chatUnsub=null;}
       setTimeout(()=>{if(curChat?.uid===uid)_loadMsgs(lim);},1200);
-    });
+    };
+    const unsubscribers=[];
+    unsubscribers.push(messageRef.orderBy('createdAt','desc').limit(lim).onSnapshot(sn=>{
+      timestampDocs=sn.docs;
+      renderMessages();
+    },handleError));
+    // Older StudyLink messages may have only a display-time field. This
+    // second bounded query keeps those messages visible while the timestamp
+    // query reliably selects the newest messages first.
+    unsubscribers.push(messageRef.orderBy('time','desc').limit(lim).onSnapshot(sn=>{
+      legacyDocs=sn.docs;
+      renderMessages();
+    },handleError));
+    chatUnsub=()=>unsubscribers.forEach(unsubscribe=>unsubscribe());
   };
   window._loadMoreMsgs=()=>{_msgLimit+=100;_loadMsgs(_msgLimit);};
   _loadMsgs(_msgLimit);
@@ -3443,10 +3462,9 @@ function setupInbox(){
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
       _cachedInboxDocs=sn.docs.slice();
-      if(curChat?.uid===viewerUid||curChat?.uid){
+      if(curChat?.uid){
         const openCid=getCID(viewerUid,curChat.uid);
-        const openRead=readState(openCid,0,Date.now());
-        db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
+        window._inboxUnreadMap[openCid]=0;
       }
       // There may be legacy chat documents for the same pair of users. Only
       // the deterministic CID is allowed to contribute to the unread badge.
@@ -3524,10 +3542,7 @@ function setupInbox(){
     if(curChat?.uid){
       const openCid=getCID(viewerUid,curChat.uid);
       window._inboxUnreadMap[openCid]=0;
-      const openRead=readState(openCid,0,Date.now());
-      db.collection('users').doc(viewerUid).set(openRead,{merge:true}).catch(()=>{});
-      const openChatRead=readState(viewerUid,0,Date.now());
-      db.collection('chats').doc(openCid).set(openChatRead,{merge:true}).catch(()=>{});
+      if(window._unreadOverride)window._unreadOverride[openCid]=0;
       const openBadge=el('msgB2');
       if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
     }
@@ -5081,7 +5096,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v82.js?v=studylink-pwa-191',location.href).href;
+  const workerUrl=new URL('sw-v83.js?v=studylink-pwa-192',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
