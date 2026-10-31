@@ -55,7 +55,7 @@ body.dark .sbadge.offline{background:#1a1a1a;}
 body.dark .ni,body.dark .ni.on{color:#fff;}
 body.dark .card b[style*="color:var(--btnB)"],body.dark #pvName{color:#fff!important;}
 body.dark .card p[style*="color:var(--sub)"],body.dark #pvMeta,body.dark #pvMeta2,body.dark #pvBio{color:#fff!important;}
-body.dark #typebar,body.dark #gTypebar,.presence-text{color:#fff!important;}
+body.dark #typebar,body.dark #gTypebar{color:#fff!important;}
 body.dark .chdr button,body.dark #profileView .chdr button{color:#fff!important;}
 body:not(.dark) #profileView .chdr,body:not(.dark) #profileView .chdr button{color:#000!important;}
 body.dark .stab{color:#fff;}
@@ -554,3 +554,45 @@ body.dark .cwin .profile-back-btn{color:#fff!important;}
 .chat-status-dot.online{background:#2ecc71;}
 .chat-status-dot.busy{background:#e74c3c;}
 .chat-status-dot.offline{background:#95a5a6;}
+
+/* --- fixes v27 --- */
+body.dark .inbox-presence{color:#fff!important;}
+body.dark #typebar,body.dark #gTypebar{color:#fff!important;}
+.vload{display:inline-block;width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:vspin .8s linear infinite;flex-shrink:0;}
+.bbl.o .vload{border-color:rgba(33,150,243,.25);border-top-color:#2196f3;}
+@keyframes vspin{to{transform:rotate(360deg);}}
+.dlring{position:relative;width:34px;height:34px;border-radius:50%;border:none;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.2);color:#fff;}
+.bbl.o .dlring{background:#e8f0fb;color:var(--btnB);}
+.dlring-svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);opacity:0;pointer-events:none;}
+.dlring.busy .dlring-svg{opacity:1;}
+.dlring-bg{fill:none;stroke:currentColor;stroke-opacity:.25;stroke-width:2.5;}
+.dlring-fg{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:100.5;stroke-dashoffset:100.5;transition:stroke-dashoffset .2s linear;}
+.msgs-title{font-size:30px;font-weight:800;margin:4px 0 12px;display:flex;align-items:center;gap:8px;}
+.search-wrap{position:relative;margin-bottom:8px;}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--sub);pointer-events:none;}
+.search-wrap input{padding-left:38px;margin:0;}
+
+#typebar,#gTypebar{display:none!important;}
+.chat-sub{font-size:11px;line-height:1.2;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:13px;}
+.chat-sub.on{color:#6ee7a0;}
+.chat-sub.typing{color:#fff;font-style:italic;}
+
+.chat-sub,.chat-sub.on,.chat-sub.off,.chat-sub.typing{color:#fff;}
+
+/* --- v30: dark mode, blue text becomes white --- */
+body.dark .tag{border-color:#fff;color:#fff;}
+body.dark .inbox-presence,body.dark .selbtn.checked,body.dark .voice-float-indicator,body.dark .stPhotoVector,body.dark .profile-back-btn,body.dark .profile-header-title{color:#fff!important;}
+body.dark .receipt,body.dark .receipt span,body.dark [data-vreceipt]{color:#fff!important;}
+body.dark [style*="color:var(--btnB)"]:not([style*="background"]),
+body.dark [style*="color: var(--btnB)"]:not([style*="background"]),
+body.dark [style*="color:#2196f3"]:not([style*="background"]),
+body.dark [style*="color:#1e88e5"]:not([style*="background"]),
+body.dark [style*="color:#1565c0"]:not([style*="background"]),
+body.dark [style*="color:#1a73e8"]:not([style*="background"]),
+body.dark [style*="color:#0A3C6D"]:not([style*="background"]),
+body.dark [style*="color:#0a3c6d"]:not([style*="background"]),
+body.dark [style*="color:#4fc3f7"]:not([style*="background"]){color:#fff!important;}
+body.dark .bbl.o .mabtn.dl,body.dark .bbl.o .dlring{background:rgba(255,255,255,.16);color:#fff;}
+/* light mode keeps the brand blue; the old rule forced white even there */
+.presence-text{color:var(--btnB);}
+body.dark .presence-text{color:#fff!important;}

@@ -74,6 +74,7 @@ try{
   db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
 }catch(e){console.warn('Firestore persistence setup unavailable:',e?.message||e);}
 const voiceStorage=typeof firebase.storage==='function'?firebase.storage():null;
+try{voiceStorage?.setMaxUploadRetryTime(20000);voiceStorage?.setMaxOperationRetryTime(15000);}catch(e){}
 
 let CU=null,MP=null,myPho='';
 // Keep locally sent messages visible until a Firestore snapshot confirms their IDs.
@@ -285,8 +286,9 @@ function presenceFor(data,uid){
 }
 function privatePresenceText(name,data,uid){
   const p=presenceFor(data,uid);
-  if(p.recording)return name+' is recording...';
-  if(p.typing)return name+' is typing...';
+  const who=name?name+' ':'';
+  if(p.recording)return who+t('pres_rec1');
+  if(p.typing)return who+t('pres_typ1');
   return '';
 }
 function groupPresenceText(data){
@@ -295,20 +297,43 @@ function groupPresenceText(data){
   const recording=entries.filter(([,p])=>p.recording===true);
   const typing=recording.length?[]:entries.filter(([,p])=>p.typing===true);
   const active=recording.length?recording:typing;
-  const names=active.map(([uid])=>allUsers.find(u=>u.uid===uid)?.name||'Someone');
-  const verb=recording.length?'is recording...':'is typing...';
-  if(names.length===1)return names[0]+' '+verb;
-  if(names.length===2)return names[0]+' and '+names[1]+' are '+verb.replace(/^is /,'');
-  return names[0]+' and '+(names.length-1)+' others are '+verb.replace(/^is /,'');
+  const names=active.map(([uid])=>allUsers.find(u=>u.uid===uid)?.name||t('pres_someone'));
+  const v1=recording.length?t('pres_rec1'):t('pres_typ1'),vN=recording.length?t('pres_recN'):t('pres_typN');
+  if(names.length===1)return names[0]+' '+v1;
+  if(names.length===2)return names[0]+' '+t('pres_and')+' '+names[1]+' '+vN;
+  return names[0]+' '+t('pres_and')+' '+(names.length-1)+' '+t('pres_others')+' '+vN;
+}
+function updateChatSub(){
+  const sub=el('chatSub');if(!sub||!curChat)return;
+  const typing=window._chatTypingText||'';
+  if(typing){sub.textContent=typing;sub.className='chat-sub typing';return;}
+  const o=window._chatOther||{};
+  const s=getStatusInfo(o.status,o.lastSeen);
+  const on=s.cls==='online';
+  sub.textContent=on?(t('hdr_online')||'Online'):(t('hdr_offline')||'Offline');
+  sub.className='chat-sub '+(on?'on':'off');
 }
 function renderPrivatePresence(data){
-  const bar=el('typebar');if(!bar||!curChat)return;
-  const text=privatePresenceText(curChat.name,data,curChat.uid);bar.textContent=text;bar.style.display=text?'block':'none';
+  if(!curChat)return;
+  window._chatTypingText=privatePresenceText('',data,curChat.uid).trim();
+  updateChatSub();
+}
+if(!window._chatSubTimer)window._chatSubTimer=setInterval(()=>{if(curChat)updateChatSub();},15000);
+function groupSubText(data){
+  if(!data)return '';
+  const members=data.members||[];
+  const online=members.filter(uid=>{const u=allUsers.find(x=>x.uid===uid);return u&&getStatusInfo(u.status,u.lastSeen).cls==='online';}).length;
+  return online+' '+String(t('hdr_online')||'online').toLowerCase();
 }
 function renderGroupPresence(data){
-  const bar=el('gTypebar');if(!bar)return;
-  const text=groupPresenceText(data);bar.textContent=text;bar.style.display=text?'block':'none';
+  const m=el('grpM');if(!m)return;
+  if(data)window._grpData=data;
+  const text=groupPresenceText(window._grpData);
+  m.textContent=text||groupSubText(window._grpData);
+  m.style.fontStyle=text?'italic':'';
+  m.style.color='#fff';m.style.opacity='1';
 }
+if(!window._grpSubTimer)window._grpSubTimer=setInterval(()=>{if(curGrp)renderGroupPresence();},15000);
 async function loadFavs(){
   if(!CU)return;
   try{
@@ -323,35 +348,49 @@ async function saveFavs(){
 }
 
 // ── AUTO PRESENCE ──
+let _presenceBusy=false,_presenceWanted=null,_presenceOfflineTimer=null;
 async function setPresence(status){
   if(!CU)return;
-  const upd={status};
-  if(status==='Offline')upd.lastSeen=firebase.firestore.FieldValue.serverTimestamp();
-  // Update local UI first; the network write should not delay presence indicators.
   MP={...(MP||{}),status};
   const me=allUsers.find(u=>u.uid===CU.uid);
   if(me)me.status=status;
   if(el('Phome')?.style.display!=='none'&&cachedPosts.length)renderHome(cachedPosts,_feedShown);
   if(el('Pmsgs')?.style.display!=='none'&&typeof renderInbox==='function')renderInbox(el('inboxQ')?.value||'');
+  // Writes are serialized and latest-wins: two quick updates (hidden -> Offline,
+  // visible -> Online) could land out of order and leave a connected user stored as Offline.
+  _presenceWanted=status;
+  if(_presenceBusy)return;
+  _presenceBusy=true;
   try{
-    await db.collection('users').doc(CU.uid).update(upd);
-  }catch(e){console.warn('presence update:',e?.message||e);}
+    while(_presenceWanted){
+      const next=_presenceWanted;_presenceWanted=null;
+      const upd={status:next,lastSeen:firebase.firestore.FieldValue.serverTimestamp()};
+      try{await db.collection('users').doc(CU.uid).update(upd);}
+      catch(e){console.warn('presence update:',e?.message||e);}
+    }
+  }finally{_presenceBusy=false;}
 }
 function setupPresence(){
+  if(window._presenceReady)return;window._presenceReady=true;
   setPresence('Online');
-  // Heartbeat every 15 seconds for faster online detection
-  setInterval(()=>{if(CU&&document.visibilityState!=='hidden')setPresence('Online');},15000);
+  // Heartbeat refreshes status + lastSeen so other users can tell a live session
+  // from one that closed without a chance to write "Offline".
+  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},20000);
   document.addEventListener('visibilitychange',()=>{
-    setPresence(document.visibilityState==='hidden'?'Offline':'Online');
-  });
-  window.addEventListener('beforeunload',e=>{
-    setPresence('Offline');
-  });
-  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){
+      clearTimeout(_presenceOfflineTimer);_presenceOfflineTimer=null;
+      setPresence('Online');
+    }else{
+      // Do not flip to Offline for a short app switch / notification shade.
+      clearTimeout(_presenceOfflineTimer);
+      _presenceOfflineTimer=setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},45000);
+    }
     if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
   });
-  window.addEventListener('focus',()=>setPresence('Online'));
-  window.addEventListener('blur',()=>setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},3000));
+  window.addEventListener('pagehide',()=>{if(CU)setPresence('Offline');});
+  window.addEventListener('pageshow',()=>{setPresence('Online');});
+  window.addEventListener('online',()=>setPresence('Online'));
+  window.addEventListener('focus',()=>{clearTimeout(_presenceOfflineTimer);setPresence('Online');});
 }
 
 async function keepVoiceScreenOn(){
@@ -927,6 +966,7 @@ async function savePro(){
 function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
+    if(curGrp)renderGroupPresence();
     renderStatusBar();
     // Only re-render Find if it's currently visible
     if(el('Pfind')&&el('Pfind').style.display!=='none'){
@@ -1149,8 +1189,11 @@ function fmtLastSeen(lastSeen){
   return t('time_active_week_ago');
 }
 function getStatusInfo(status,lastSeen){
-  if(status==='Online')return{cls:'online',label:t('status_online')};
-  if(status==='Busy')return{cls:'busy',label:t('status_busy')};
+  // A pending serverTimestamp is null locally: treat it as fresh.
+  const _ls=lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;
+  const _stale=_ls>0&&Date.now()-_ls>90000;
+  // The "Busy" status no longer exists: old stored values count as online.
+  if((status==='Online'||status==='Busy')&&!_stale)return{cls:'online',label:t('status_online')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
 }
 function renderHome(posts,limit){
@@ -1999,7 +2042,7 @@ function refreshPrivateReceipts(){
   if(!curChat)return;
   document.querySelectorAll('#msgB .bw.s').forEach(bw=>{
     const id=bw.dataset.id;
-    const receipt=bw.querySelector('.receipt,[data-vreceipt]');
+    const receipt=bw.querySelector('.receipt[data-rkind="text"]');
     if(!receipt)return;
     const read=messageWasReadByOther({id,senderUid:CU.uid,time:bw.dataset.time});
     if(read){receipt.innerHTML='✓✓ '+t('msg_seen');receipt.style.color='#4fc3f7';}
@@ -2101,6 +2144,7 @@ function openChat(name,uid){
   const st=getStatusInfo(other?.status,other?.lastSeen);
   const chatStEl=el('chatSt');
   if(chatStEl){chatStEl.className=`chat-status-dot ${st.cls}`;chatStEl.title=st.label;chatStEl.textContent='';}
+  window._chatTypingText='';window._chatOther={status:other?.status,lastSeen:other?.lastSeen};updateChatSub();
   const chatAvEl=el('chatAv');
   if(chatAvEl)chatAvEl.innerHTML=other?.photo?`<img src="${other.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((name||'?')[0]||'?').toUpperCase();
   const chatHdrInfoEl=el('chatHdrInfo');
@@ -2135,6 +2179,7 @@ function openChat(name,uid){
     const s=getStatusInfo(snap.data()?.status,snap.data()?.lastSeen);
     const chatStEl=el('chatSt');
     if(chatStEl){chatStEl.className=`chat-status-dot ${s.cls}`;chatStEl.title=s.label;chatStEl.textContent='';}
+    window._chatOther={status:snap.data()?.status,lastSeen:snap.data()?.lastSeen};updateChatSub();
   });
 
   // Init chat doc + clear unread in Firestore
@@ -2202,7 +2247,7 @@ function openChat(name,uid){
       const visibleSnapshotDocs=new Map();
       [...legacyDocs,...timestampDocs].forEach(d=>visibleSnapshotDocs.set(d.id,d));
       const unseen=[...visibleSnapshotDocs.values()].map(d=>({id:d.id,...d.data(),_doc:d}))
-        .filter(m=>m.senderUid!==CU.uid&&!m.seen);
+        .filter(m=>m.senderUid!==CU.uid&&!m.seen&&(m.type||'text')==='text');
       if(unseen.length){
         const seenBatch=db.batch();
         unseen.forEach(m=>seenBatch.update(m._doc.ref,{seen:true}));
@@ -2526,7 +2571,7 @@ async function openGroup(postId,name){
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
     if(grpPresenceUnsub){grpPresenceUnsub();grpPresenceUnsub=null;}
-    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;const c=(data.members||[]).length;el('grpM').textContent=c+' '+(c!==1?t('group_members'):t('group_member'));renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
+    grpPresenceUnsub=gref.onSnapshot(gs2=>{const data=gs2.data()||groupData;renderGroupPresence(data);},e=>console.warn('Group presence unavailable:',e?.message||e));
     // Use the real server timestamp, not the legacy display-hour field.
     grpUnsub=db.collection('groups').doc(postId).collection('messages').orderBy('createdAt','asc').limitToLast(50).onSnapshot(sn=>{
       const mb=el('grpB');
@@ -2654,6 +2699,147 @@ async function execDelMsgs(scope,isGrp){
   if(failed.length)showToast('❌ Could not delete '+failed.length+' message(s): '+failed[0]);
   else showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
+// ── FILE DOWNLOAD / OPEN ──
+const _dlBlobs=Object.create(null);
+function _dlDone(id){try{return localStorage.getItem('sl_dl_'+id)==='1';}catch(e){return false;}}
+const DL_ARROW='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>';
+function docActions(m,self){
+  const id=m.id,openBtn=`<button class="mabtn op" onclick="openDoc('${id}')">${t('file_open')||'Ouvrir'}</button>`;
+  // Sender: only "Open". Receiver: download arrow -> progress ring -> "Open".
+  if(self)return `<div class="mar">${openBtn}</div>`;
+  if(_dlDone(id)||_dlBlobs[id])return `<div class="mar" id="dlbox_${id}">${openBtn}</div>`;
+  return `<div class="mar" id="dlbox_${id}"><button class="dlring" id="dlbtn_${id}" onclick="downloadDoc('${id}')" aria-label="Télécharger">${DL_ARROW}<svg class="dlring-svg" viewBox="0 0 36 36"><circle class="dlring-bg" cx="18" cy="18" r="16"/><circle class="dlring-fg" id="dlfg_${id}" cx="18" cy="18" r="16"/></svg></button></div>`;
+}
+function _msgFileInfo(id){
+  const bw=document.querySelector(`.bw[data-id="${id}"]`);
+  const box=bw?.querySelector('[data-file-url]');
+  return {url:box?.dataset.fileUrl||'',name:box?.dataset.fileName||'file'};
+}
+function markMsgOpened(id){
+  if(!id||!CU||!curChat)return;
+  const bw=document.querySelector(`.bw[data-id="${id}"]`);
+  if(!bw||bw.classList.contains('s')||bw.dataset.opened==='1')return;
+  bw.dataset.opened='1';
+  db.collection('chats').doc(getCID(CU.uid,curChat.uid)).collection('messages').doc(id)
+    .update({seen:true,openedAt:Date.now()}).catch(()=>{});
+}
+function _setRing(id,p){
+  const fg=el('dlfg_'+id);if(!fg)return;
+  const C=2*Math.PI*16;fg.style.strokeDasharray=C;
+  fg.style.strokeDashoffset=C*(1-Math.max(0,Math.min(1,p)));
+}
+function _dlFinished(id){
+  try{localStorage.setItem('sl_dl_'+id,'1');}catch(e){}
+  const box=el('dlbox_'+id);
+  if(box)box.innerHTML=`<button class="mabtn op" onclick="openDoc('${id}')">${t('file_open')||'Ouvrir'}</button>`;
+}
+async function downloadDoc(id){
+  const {url,name}=_msgFileInfo(id);if(!url)return;
+  const btn=el('dlbtn_'+id);if(!btn||btn.classList.contains('busy'))return;
+  btn.classList.add('busy');_setRing(id,0.05);
+  try{
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const total=Number(r.headers.get('content-length'))||0;
+    const reader=r.body&&r.body.getReader?r.body.getReader():null;
+    let blob;
+    if(reader){
+      const chunks=[];let got=0;
+      for(;;){const {done,value}=await reader.read();if(done)break;chunks.push(value);got+=value.length;_setRing(id,total?got/total:Math.min(.9,got/5e6));}
+      blob=new Blob(chunks,{type:r.headers.get('content-type')||'application/octet-stream'});
+    }else blob=await r.blob();
+    _dlBlobs[id]=blob;
+    const href=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=href;a.download=name;document.body.appendChild(a);a.click();
+    setTimeout(()=>{a.remove();URL.revokeObjectURL(href);},1500);
+    _setRing(id,1);setTimeout(()=>_dlFinished(id),250);
+  }catch(e){
+    // CORS / network: fall back to the browser's own download, still showing the ring.
+    console.warn('download via fetch failed:',e?.message||e);
+    _setRing(id,1);dlM(url,name);setTimeout(()=>_dlFinished(id),900);
+  }
+}
+function openDoc(id){
+  const {url}=_msgFileInfo(id);if(!url)return;
+  markMsgOpened(id);
+  const blob=_dlBlobs[id];
+  if(blob){window.open(URL.createObjectURL(blob),'_blank');return;}
+  openM(url,'doc',id);
+}
+
+// ── DIRECT MEDIA SEND ──
+// Nothing is written to Firestore until the file is uploaded, so nobody ever
+// sees an empty "sending" bubble. The sender gets an immediate local bubble
+// built from the real file (playable / viewable), replaced by the final message.
+let _storageDownUntil=0;
+async function storageUploadSafe(file,folder){
+  if(Date.now()<_storageDownUntil)return null;
+  const r=await uploadToFirebaseStorage(file,folder);
+  if(!r?.url)_storageDownUntil=Date.now()+5*60*1000; // skip a broken Storage for 5 min
+  return r;
+}
+async function uploadFileSmart(kind,file){
+  if(kind==='voice'){
+    const url=await uploadCloud(file,'audio',true);
+    if(url)return {url,storage:'cloudinary'};
+    if(Date.now()>=_storageDownUntil){
+      try{const u=await uploadVoiceToFirebase(file);if(u)return {url:u,storage:'firebase-storage'};}
+      catch(e){_storageDownUntil=Date.now()+5*60*1000;console.warn('voice storage fallback:',e?.message||e);}
+    }
+    const inline=await readVoiceAsDataUrl(file);
+    return inline?{url:inline,storage:'firestore-inline'}:null;
+  }
+  if(kind==='audio'){
+    const url=await uploadCloud(file,'audio',true);
+    if(url)return {url,storage:'cloudinary'};
+    const s=await storageUploadSafe(file,'audio');
+    return s?.url?s:null;
+  }
+  if(kind==='image'){
+    const url=await uploadCloud(file,'image',true);
+    return url?{url,storage:'cloudinary'}:null;
+  }
+  const primary=await storageUploadSafe(file,kind==='doc'?'documents':'videos');
+  if(primary?.url)return primary;
+  const alt=await uploadCloud(file,kind==='doc'?'doc':'video',true);
+  return alt?{url:alt,storage:'cloudinary'}:null;
+}
+async function sendMediaDirect(o){
+  const {dest,kind,file}=o;
+  const isG=dest==='g';
+  if(!CU||(isG&&!curGrp)||(!isG&&!curChat))return false;
+  const cid=isG?null:getCID(CU.uid,curChat.uid),toUid=isG?null:curChat.uid;
+  const col=isG?db.collection('groups').doc(curGrp.id).collection('messages'):db.collection('chats').doc(cid).collection('messages');
+  const msgRef=col.doc();
+  const blobUrl=URL.createObjectURL(o.previewFile||file);
+  const fields={type:kind,...(o.fields||{})};
+  const who={senderUid:CU.uid,senderName:MP?.name||(isG?'Me':''),seen:false,...(isG?{senderPhoto:myPho||''}:{})};
+  const local={...who,...fields,time:messageTime(),data:blobUrl,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp(),id:msgRef.id};
+  if(!isG){(pendingPrivateMessages[cid]||(pendingPrivateMessages[cid]=new Map())).set(msgRef.id,local);}
+  insertPendingBubble(local,isG);
+  const dropLocal=()=>{
+    if(!isG)pendingPrivateMessages[cid]?.delete(msgRef.id);
+    document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();
+  };
+  try{
+    const up=o.uploadFile?await o.uploadFile:file;
+    const result=await uploadFileSmart(kind,up);
+    if(!result?.url){
+      console.warn('Upload failed:',[uploadToFirebaseStorage.lastError,uploadCloud.lastError].filter(Boolean).join(' · '));
+      dropLocal();showToast('❌ Échec de l’envoi. Vérifiez votre connexion et réessayez.');return false;
+    }
+    const final={...who,...fields,time:messageTime(),data:result.url,status:'sent',storage:result.storage,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+    if(isG)await msgRef.set(final);
+    else await writePrivateMessageAndSummary(cid,toUid,msgRef,final,o.lastLabel,{lastMessageId:msgRef.id,...(o.summaryExtra||{})});
+    refreshPendingBubble({...final,id:msgRef.id},isG);
+    setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
+    return true;
+  }catch(e){
+    console.warn('sendMediaDirect:',e?.message||e);
+    dropLocal();showToast('❌ Échec de l’envoi. Réessayez.');return false;
+  }
+}
+
 const pendingMedia={};
 function insertPendingBubble(m,isGrp){
   const box=el(isGrp?'grpB':'msgB');
@@ -2680,8 +2866,11 @@ function buildBbl(m,isGrp){
   const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
   const wasRead=!!m.seen||messageWasReadByOther(m);
-  const receipt=self&&type==='text'?`<div class="receipt">${wasRead?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
-  const mediaReceipt=self?`<div class="receipt">${wasRead?'✓✓ '+t('msg_seen'):'✓ Sent'}</div>`:'';
+  // Sent = a single check. Double check + Seen only once the receiver opened it:
+  // text -> when the chat is opened; media/files -> when the receiver opens/plays it.
+  const receipt=self&&type==='text'?`<div class="receipt" data-rkind="text">${wasRead?'✓✓ '+t('msg_seen'):'✓'}</div>`:'';
+  const _opened=!!(m.seen||m.openedAt||m.voicePlayed);
+  const mediaReceipt=self?`<div class="receipt" data-rkind="media">${_opened?'<span style="color:#4fc3f7;">✓✓ '+t('msg_seen')+'</span>':'✓'}</div>`:'';
   const rc=m.reactions||{},ec={};
   Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
   const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
@@ -2709,12 +2898,12 @@ function buildBbl(m,isGrp){
   }
   else if(type==='image'){
     if(!m.data){inner=pendingSrc?`${nameTag}${rq}<img src="${pendingSrc}" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;opacity:.82;">${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','image')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','img.jpg')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
+    else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image','${m.id}')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;">${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='video'){
-    if(m.status==='failed'){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);text-align:center;min-width:180px;color:#e74c3c;font-size:11px;">Video upload failed</div>${rcHtml}`;}
+    if(m.status==='failed'){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);text-align:center;min-width:180px;color:#e74c3c;font-size:11px;">${t('video_failed')}</div>${rcHtml}`;}
     else if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','video.mp4')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
+    else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" onplay="markMsgOpened('${m.id}')" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='audio'){
     // Uploaded audio files use the same custom player as recorded voice notes.
@@ -2725,8 +2914,8 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
     const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     const audioDur=m.dur||'0:00';
-    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;">♫</div><div style="flex:1;"><div style="font-size:11px;color:transparent;">&nbsp;</div><div style="font-size:11px;opacity:.75;">${audioDur}</div></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">♫</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">Audio</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div><div class="mar"><button class="mabtn dl" onclick="dlM('${m.data}','audio.mp3')">⬇</button></div>${rcHtml}${mediaReceipt}`;}
+    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;"><span class="vload"></span></div><div style="flex:1;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;opacity:.85;">${audioDur}</span></div></div>${rcHtml}`;}
+    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">♫</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">${t('audio_label')}</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${mediaReceipt}`;}
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -2747,7 +2936,6 @@ function buildBbl(m,isGrp){
     let voiceReceipt='';
     if(self){
       if(m.voicePlayed){voiceReceipt=`<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;}
-      else if(wasRead){voiceReceipt='<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.9);margin-left:4px;">✓✓</span>';}
       else{voiceReceipt='<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
     }
     const durLabel=m.dur||'0:00';
@@ -2757,13 +2945,12 @@ function buildBbl(m,isGrp){
     if(m.status==='failed'){
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
         <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
-        <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">Échec de l’envoi vocal</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">Vérifiez la connexion puis réessayez.</div></div>
+        <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')}</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">${t('voice_failed_hint')}</div></div>
       </div>${rcHtml}`;
     }else if(!m.data){
       // Still sending — show progress + "Sending" + timer
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <div style="flex:1;"><div class="vprog" style="height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin-bottom:5px;"><div style="width:0%;height:100%;background:rgba(255,255,255,.7);border-radius:2px;"></div></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;opacity:.7;color:transparent;">&nbsp;</span><span class="vdur">${durLabel}</span></div></div>
+        <div style="flex:1;display:flex;align-items:center;gap:10px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
       </div>${rcHtml}`;
     }else{
       inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
@@ -2774,7 +2961,7 @@ function buildBbl(m,isGrp){
             <div style="position:absolute;left:0;top:0;width:0%;height:100%;background:${isGrp?'rgba(230,126,34,.24)':'rgba(33,150,243,.2)'};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
-            <span style="font-size:10px;color:${self?'rgba(255,255,255,.82)':vAccent};font-weight:600;">Voice message</span>
+            <span style="font-size:10px;color:${self?'rgba(255,255,255,.82)':vAccent};font-weight:600;">${t('voice_message')}</span>
             <div style="display:flex;align-items:center;gap:4px;"><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>${voiceReceipt}</div>
           </div>
         </div>
@@ -2784,8 +2971,9 @@ function buildBbl(m,isGrp){
   else if(type==='doc'){
     const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';
     if(!m.data)inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${rcHtml}`;
-    else inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div>${self?`<span class="receipt">${m.seen?'✓✓ '+t('msg_seen'):'✓'}</span>`:''}</div><div class="mar"><button class="mabtn op" onclick="openM('${m.data}','doc')">👁</button><button class="mabtn dl" onclick="dlM('${m.data}','${e2(m.name||'file')}')">⬇</button></div>${rcHtml}`;
+    else inner=`${nameTag}${rq}<div class="dbub" data-file-url="${esc(m.data)}" data-file-name="${esc(m.name||'file')}"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${docActions(m,self)}${rcHtml}${mediaReceipt}`;
   }
+  if((type==='voice'||type==='audio')&&voicePlayer&&String(voicePlayerId)===String(m.id))setTimeout(restoreVoiceUI,0);
   return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${displayMessageTime(m.time)}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
@@ -2812,7 +3000,20 @@ async function toggleReact(id,emoji,dest){
   rc[CU.uid]=ur.includes(emoji)?ur.filter(e=>e!==emoji):[...ur,emoji];
   await ref.update({reactions:rc});
 }
-function openM(src,type){const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}const docUrl=encodeURIComponent(src);const body=type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:type==='audio'?`<div style="color:#fff;text-align:center;padding:40px;"><h2>Music</h2><audio src="${src}" controls autoplay style="width:min(90vw,420px);"></audio></div>`:`<iframe src="https://docs.google.com/gview?embedded=1&url=${docUrl}" style="width:100vw;height:calc(100vh - 56px);border:none;background:#fff;"></iframe><a href="${src}" target="_blank" rel="noopener" download style="position:fixed;bottom:10px;right:10px;padding:12px 18px;background:var(--btnB);color:#fff;border-radius:22px;text-decoration:none;font-weight:bold;">Download</a>`;w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${body}</body></html>`);w.document.close();}
+function openM(src,type,msgId){
+  if(msgId)markMsgOpened(msgId);
+  if(type==='doc'){
+    // Open the file directly. The old Google Docs viewer re-fetched the URL from
+    // Google's servers, giving a blank "HTTP ERROR 401" page whenever the host
+    // refuses anonymous delivery (e.g. PDFs on Cloudinary).
+    const w=window.open(src,'_blank','noopener');
+    if(!w)location.href=src;
+    return;
+  }
+  const w=window.open('','_blank');if(!w){showToast('⚠️ Allow popups');return;}
+  const body=type==='image'?`<img src="${src}" style="max-width:100%;max-height:100vh;object-fit:contain;">`:type==='video'?`<video src="${src}" controls autoplay style="max-width:100%;max-height:90vh;"></video>`:`<div style="color:#fff;text-align:center;padding:40px;"><h2>Music</h2><audio src="${src}" controls autoplay style="width:min(90vw,420px);"></audio></div>`;
+  w.document.write(`<!DOCTYPE html><html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;">${body}</body></html>`);w.document.close();
+}
 function dlM(src,fname){if(!src)return;const a=document.createElement('a');a.href=src;a.download=fname||'file';a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();setTimeout(()=>document.body.removeChild(a),300);}
 
 async function markVoicePlayed(msgId,senderUid){
@@ -2827,18 +3028,7 @@ async function markVoicePlayed(msgId,senderUid){
     const realSenderUid=senderUid||data.senderUid;
     if(!realSenderUid||realSenderUid===CU.uid)return; // don't notify self
     await msgRef.update({voicePlayed:true});
-    // Show 🎧 blue ✓✓ heard badge on the message receipt
-    const vbub=document.getElementById('vp_'+msgId);
-    if(vbub){
-      // Remove old receipt spans and update
-      const oldReceipt=vbub.parentElement?.querySelector('span[data-vreceipt]');
-      if(oldReceipt)oldReceipt.remove();
-      const heardSpan=document.createElement('span');
-      heardSpan.setAttribute('data-vreceipt','1');
-      heardSpan.style.cssText='font-size:11px;color:#4fc3f7;margin-left:4px;font-weight:bold;';
-      heardSpan.textContent='✓✓';
-      vbub.appendChild(heardSpan);
-    }
+    msgRef.update({seen:true,openedAt:Date.now()}).catch(()=>{});
     // Notify sender via alerts
     db.collection('notifications').add({toUid:realSenderUid,icon:'🎧',title:'Voice note heard',body:(MP?.name||'Someone')+' played your voice note',read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
   }catch(e){console.log('markVoicePlayed:',e);}
@@ -2933,52 +3123,10 @@ async function handleF(e,dest){
   if(fType==='video'&&file.size>200*1024*1024){showToast('⚠️ Video too large. Max 200MB.');return;}
   if(fType==='audio'&&file.size>50*1024*1024){showToast('⚠️ Audio too large. Max 50MB.');return;}
   if(fType==='doc'&&file.size>200*1024*1024){showToast('⚠️ Document too large. Max 200MB.');return;}
-  const t=messageTime();
   const ext=file.name.split('.').pop().toLowerCase();
-  const localType=fType==='video'?'video':fType==='audio'?'audio':'doc';
-  const rtype=fType==='video'?'video':fType==='audio'?'video':fType==='doc'?'raw':'auto';
-  const _typeLabel=fType==='video'?'__video__':fType==='audio'?'__audio__':'__doc__:'+file.name;
-  // ✅ INSTANT: Build message with sending status immediately
-  let m={senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
-  if(fType==='video')m={...m,type:'video',data:''};
-  else if(fType==='audio')m={...m,type:'audio',data:''};
-  else m={...m,type:'doc',data:'',name:file.name,ext};
-  try{
-    let msgRef;
-    if(dest==='g'&&curGrp){
-      msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
-      pendingMedia[msgRef.id]=URL.createObjectURL(file);
-      insertPendingBubble({...m,id:msgRef.id},true);
-      await msgRef.set({...m,senderPhoto:myPho||''});
-    }else if(dest==='p'&&curChat){
-      const cid=getCID(CU.uid,curChat.uid);
-      msgRef=db.collection('chats').doc(cid).collection('messages').doc();
-      pendingMedia[msgRef.id]=URL.createObjectURL(file);
-      insertPendingBubble({...m,id:msgRef.id},false);
-      await msgRef.set(m);
-      await recordPrivateSend(cid,curChat.uid,_typeLabel);
-    }
-    // ✅ INSTANT LOCAL PREVIEW: show the selected media in the bubble immediately
-    if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
-    // ✅ BACKGROUND: Upload file without blocking UI
-    if(msgRef){
-      const uploadPromise=(async()=>{
-        if(fType==='doc'||fType==='video'){
-          const primary=fType==='doc'?await uploadDocument(file):await uploadToFirebaseStorage(file,'videos');
-          if(primary?.url)return primary;
-          const alt=await uploadCloud(file,fType==='doc'?'doc':'video',true);
-          return alt?{url:alt,storage:'cloudinary'}:null;
-        }
-        return uploadCloud(file,localType);
-      })();
-      uploadPromise.then(result=>{
-        const url=typeof result==='string'?result:result?.url;
-        if(url){msgRef.update({data:url,status:'sent',...((fType==='doc'||fType==='video')?{storage:result?.storage||'firebase-storage'}:{})});}
-        else{msgRef.update({status:'failed'});showToast('❌ Upload failed: '+([uploadToFirebaseStorage.lastError,uploadCloud.lastError].filter(Boolean).join(' · ')||'unknown error'));}
-        if(pendingMedia[msgRef.id]){URL.revokeObjectURL(pendingMedia[msgRef.id]);delete pendingMedia[msgRef.id];}
-      }).catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
-    }
-  }catch(ex){showToast('❌ '+ex.message);}
+  if(fType==='video')void sendMediaDirect({dest,kind:'video',file,lastLabel:'__video__'});
+  else if(fType==='audio')void sendMediaDirect({dest,kind:'audio',file,lastLabel:'__audio__'});
+  else void sendMediaDirect({dest,kind:'doc',file,fields:{name:file.name,ext},lastLabel:'__doc__:'+file.name});
 }
 let _previewFile=null,_previewDest=null;
 // Compress image client-side to avoid 10MB limit — max 1000px, quality 0.7
@@ -3015,33 +3163,10 @@ function showImgPreview(file,dest){
 }
 async function sendPreviewImg(){
   const modal=el('imgPreviewModal');if(modal)modal.remove();
-  if(!_previewFile)return;
-  // ✅ INSTANT: Show image message immediately with sending status
-  const fileToSendPromise=compressImage(_previewFile).catch(()=>_previewFile);
-  const t=messageTime();
-  const m={type:'image',data:'',senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()};
-  try{
-    if(_previewDest==='g'&&curGrp){
-      const ref=db.collection('groups').doc(curGrp.id).collection('messages').doc();
-      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
-      insertPendingBubble({...m,id:ref.id},true);
-      await ref.set({...m,senderPhoto:myPho||''});
-      refreshPendingBubble({...m,id:ref.id},true);
-      // ✅ BACKGROUND UPLOAD
-      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
-    }else if(_previewDest==='p'&&curChat){
-      const cid=getCID(CU.uid,curChat.uid);
-      const ref=db.collection('chats').doc(cid).collection('messages').doc();
-      pendingMedia[ref.id]=URL.createObjectURL(_previewFile);
-      insertPendingBubble({...m,id:ref.id},false);
-      await ref.set(m);
-      refreshPendingBubble({...m,id:ref.id},false);
-      // ✅ BACKGROUND UPLOAD
-      fileToSendPromise.then(fileToSend=>uploadCloud(fileToSend,'image')).then(url=>{if(url)ref.update({data:url,status:'sent'});if(pendingMedia[ref.id]){URL.revokeObjectURL(pendingMedia[ref.id]);delete pendingMedia[ref.id];}});
-      await recordPrivateSend(cid,curChat.uid,'__photo__');
-    }
-  }catch(ex){showToast('❌ '+ex.message);}
+  const file=_previewFile,dest=_previewDest;
   _previewFile=null;_previewDest=null;
+  if(!file)return;
+  void sendMediaDirect({dest,kind:'image',file,uploadFile:compressImage(file).catch(()=>file),lastLabel:'__photo__'});
 }
 function cancelPreview(){const m=el('imgPreviewModal');if(m)m.remove();_previewFile=null;_previewDest=null;}
 
@@ -3177,48 +3302,8 @@ async function stopAndSendVoice(){
   const mm=Math.floor(dur/60),ss=dur%60;
   const cid=getCID(CU.uid,chat.uid);
   const t=messageTime();
-  let msgRef=null,uploadCommitted=false;
-  try{
-    msgRef=await db.collection('chats').doc(cid).collection('messages').add({
-      type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
-      senderUid:CU.uid,senderName:MP?.name||'',time:t,seen:false,
-      status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    let url=await uploadCloud(file,'audio');
-    let voiceFallbackError='';
-    if(!url){
-      try{
-        const storageUrl=await uploadVoiceToFirebase(file);
-        if(storageUrl){
-          await msgRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
-          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
-        }
-      }catch(storageErr){
-        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
-        console.warn('Firebase voice fallback failed:',storageErr);
-      }
-    }
-    if(!url){
-      // Keep very short voice notes usable even if both remote upload paths fail.
-      const inlineUrl=await readVoiceAsDataUrl(file);
-      if(inlineUrl){
-        try{await msgRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){voiceFallbackError=fallbackErr?.message||'Inline voice fallback failed';console.warn('Inline voice fallback failed:',fallbackErr);}
-      }
-    }
-    if(!url){
-      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
-      await msgRef.update({status:'failed',error:failure}).catch(()=>{});
-      vSending=false;
-      showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
-      return;
-    }
-    if(!uploadCommitted){await msgRef.update({data:url,status:'sent'});uploadCommitted=true;}
-    await recordPrivateSend(cid,chat.uid,'__voice__',{lastVoiceDur:mm+':'+(ss<10?'0':'')+ss});
-  }catch(err){
-    console.error('Voice send error:',err);
-    if(msgRef&&!uploadCommitted)await msgRef.update({status:'failed',error:err?.message||'Voice send failed'}).catch(()=>{});
-    showToast('⚠️ Envoi vocal impossible. Réessayez.');
-  }
+  const durLabel=mm+':'+(ss<10?'0':'')+ss;
+  await sendMediaDirect({dest:'p',kind:'voice',file,fields:{dur:durLabel},lastLabel:'__voice__',summaryExtra:{lastVoiceDur:durLabel}});
   vSending=false;
 }
 function cancelVoice(){
@@ -3309,46 +3394,7 @@ async function stopAndSendGVoice(){
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
   const t=messageTime();
-  let gvRef=null,uploadCommitted=false;
-  try{
-    gvRef=await db.collection('groups').doc(group.id).collection('messages').add({
-      type:'voice',data:'',dur:mm+':'+(ss<10?'0':'')+ss,
-      senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',
-      time:t,status:'sending',createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    let url=await uploadCloud(file,'audio');
-    let voiceFallbackError='';
-    if(!url){
-      try{
-        const storageUrl=await uploadVoiceToFirebase(file);
-        if(storageUrl){
-          await gvRef.update({data:storageUrl,status:'sent',storage:'firebase-storage'});
-          url=storageUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');
-        }
-      }catch(storageErr){
-        voiceFallbackError=storageErr?.message||'Firebase Storage upload failed';
-        console.warn('Firebase group voice fallback failed:',storageErr);
-      }
-    }
-    if(!url){
-      const inlineUrl=await readVoiceAsDataUrl(file);
-      if(inlineUrl){
-        try{await gvRef.update({data:inlineUrl,status:'sent',storage:'firestore-inline'});url=inlineUrl;uploadCommitted=true;showToast('✅ Vocal envoyé');}catch(fallbackErr){voiceFallbackError=fallbackErr?.message||'Inline voice fallback failed';console.warn('Group inline voice fallback failed:',fallbackErr);}
-      }
-    }
-    if(!url){
-      const failure=[uploadCloud.lastError,voiceFallbackError].filter(Boolean).join(' · ')||'Audio upload failed';
-      await gvRef.update({status:'failed',error:failure}).catch(()=>{});
-      gVoiceSending=false;
-      showToast('⚠️ L’audio n’a pas pu être envoyé. Réessayez.');
-      return;
-    }
-    if(!uploadCommitted){await gvRef.update({data:url,status:'sent'});uploadCommitted=true;}
-  }catch(err){
-    console.error('Group voice send error:',err);
-    if(gvRef&&!uploadCommitted)await gvRef.update({status:'failed',error:err?.message||'Group voice send failed'}).catch(()=>{});
-    showToast('⚠️ Envoi vocal impossible. Réessayez.');
-  }
+  await sendMediaDirect({dest:'g',kind:'voice',file,fields:{dur:mm+':'+(ss<10?'0':'')+ss}});
   gVoiceSending=false;
 }
 function cancelGVoice(){
@@ -3433,6 +3479,11 @@ function cancelGVoiceReady(){}
 const VOICE_PLAY_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>';
 const VOICE_PAUSE_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
 function setVoiceButtonIcon(btn,playing){if(btn)btn.innerHTML=playing?VOICE_PAUSE_ICON:VOICE_PLAY_ICON;}
+function restoreVoiceUI(){
+  const p=voicePlayer,id=voicePlayerId;if(!p||id==null)return;
+  setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),!p.paused&&!p.ended);
+  const f=el('vfill_'+id);if(f&&Number.isFinite(p.duration)&&p.duration>0)f.style.width=(p.currentTime/p.duration*100)+'%';
+}
 function resetVoicePlayer(){
   const player=voicePlayer,oldId=voicePlayerId;
   voicePlayerToken++;
@@ -3467,7 +3518,7 @@ function toggleVP(id,src){
       a.onended=()=>{if(token!==voicePlayerToken)return;a.currentTime=0;const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(currentButton(),false);};
       a.onpause=()=>{if(token===voicePlayerToken&&!a.ended)setVoiceButtonIcon(currentButton(),false);};
       a.onerror=()=>{if(token!==voicePlayerToken)return;resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');};
-      a.onplay=()=>{if(token!==voicePlayerToken)return;if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
+      a.onplay=()=>{if(token!==voicePlayerToken)return;setVoiceButtonIcon(currentButton(),true);if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
     }
     const player=voicePlayer,playPromise=player?.play();
     setVoiceButtonIcon(btn,true);
@@ -4106,7 +4157,7 @@ const I18N={
     home_feed_title:'Fil communautaire',loading:'Chargement...',home_no_posts:'Aucune publication pour l’instant. Sois le premier ! 🎓',
     home_join_group:'Rejoindre le groupe',home_message:'Message',home_load_more:'Voir plus',
     badge_needs_help:'Besoin d’aide',badge_can_help:'Peut aider',
-    status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
+    hdr_online:'En ligne',hdr_offline:'Hors ligne',pres_typ1:'écrit...',pres_typN:'écrivent...',pres_rec1:'enregistre...',pres_recN:'enregistrent...',pres_and:'et',pres_others:'autres',pres_someone:'Quelqu’un',voice_message:'Message vocal',audio_label:'Audio',voice_failed_title:'Échec de l’envoi vocal',voice_failed_hint:'Vérifiez la connexion puis réessayez.',video_failed:'Échec de l’envoi de la vidéo',status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
     find_title:'Recherche & Match',find_search_ph:'Rechercher un nom, une filière, un cours, une université ou un pays',
     find_tab_all:'Tous',find_tab_match:'Match',find_tab_favs:'Favoris',
     find_loading:'Chargement des étudiants...',find_no_results:'Aucun étudiant trouvé.',
@@ -4180,7 +4231,7 @@ const I18N={
     post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',post_group_name_required:'❌ Le nom du groupe est requis',post_group_photo_label:'Photo du groupe (facultatif) :',post_group_desc_label:'Description du groupe :',post_group_desc_ph:'De quoi parle ce groupe ?',
     post_tags_label:'Matières :',group_course_subject_label:'Cours / Matière du groupe (facultatif) :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
     post_submit:'Publier sur le fil',
-    msgs_title:'Messages',msgs_search_ph:'🔍 Rechercher une conversation...',msgs_no_convos:'Aucune conversation pour l’instant.',
+    msgs_title:'Messages',msgs_search_ph:'Rechercher une conversation...',file_open:'Ouvrir',msgs_no_convos:'Aucune conversation pour l’instant.',
     me_title:'Mon profil',me_account:'Compte',me_disconnect:'Se déconnecter',me_edit_profile:'Modifier le profil',
     me_full_name_ph:'Nom complet',me_bio_ph:'Bio / À propos de toi...',me_select_country:'Choisir un pays',
     me_university_ph:'Université / École',me_course_ph:'Filière / Matière principale',me_year_ph:'Année d’étude',
@@ -4225,7 +4276,7 @@ const I18N={
     home_feed_title:'Community Feed',loading:'Loading...',home_no_posts:'No posts yet. Be the first to post! 🎓',
     home_join_group:'Join Group',home_message:'Message',home_load_more:'Load more',
     badge_needs_help:'Needs Help',badge_can_help:'Can Help',
-    status_online:'🟢 Online',status_busy:'🔴 Busy',
+    hdr_online:'Online',hdr_offline:'Offline',pres_typ1:'is typing...',pres_typN:'are typing...',pres_rec1:'is recording...',pres_recN:'are recording...',pres_and:'and',pres_others:'others',pres_someone:'Someone',voice_message:'Voice message',audio_label:'Audio',voice_failed_title:'Voice message failed to send',voice_failed_hint:'Check your connection and try again.',video_failed:'Video upload failed',status_online:'🟢 Online',status_busy:'🔴 Busy',
     find_title:'Find & Match',find_search_ph:'Search name, major, course, university or country',
     find_tab_all:'All',find_tab_match:'Match',find_tab_favs:'Favs',
     find_loading:'Loading students...',find_no_results:'No students found.',
@@ -4299,7 +4350,7 @@ const I18N={
     post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',post_group_name_required:'❌ Enter a group name',post_group_photo_label:'Group Photo (optional):',post_group_desc_label:'Group Description:',post_group_desc_ph:'What is this group about?',
     post_tags_label:'Subject Tags:',group_course_subject_label:'Group Course / Subject (optional):',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
     post_submit:'Post to Feed',
-    msgs_title:'Messages',msgs_search_ph:'🔍 Search conversations...',msgs_no_convos:'No conversations yet.',
+    msgs_title:'Messages',msgs_search_ph:'Search conversations...',file_open:'Open',msgs_no_convos:'No conversations yet.',
     me_title:'My Profile',me_account:'Account',me_disconnect:'Log out',me_edit_profile:'Edit Profile',
     me_full_name_ph:'Full Name',me_bio_ph:'Bio / About you...',me_select_country:'Select Country',
     me_university_ph:'University / School',me_course_ph:'Course / Major',me_year_ph:'Year of Study',
@@ -4357,6 +4408,8 @@ function toggleLang(){
   appLang=appLang==='fr'?'en':'fr';
   localStorage.setItem('appLang',appLang);
   applyTranslations();
+  if(typeof updateChatSub==='function'&&curChat)updateChatSub();
+  if(typeof renderGroupPresence==='function'&&curGrp)renderGroupPresence();
   renderStatusBar();
   if(typeof updatePC==='function'&&MP)updatePC();
   if(typeof renderHome==='function'&&Array.isArray(cachedPosts)&&cachedPosts.length&&el('Phome')?.style.display!=='none')renderHome(cachedPosts,_feedShown);
@@ -5080,7 +5133,32 @@ function toggleDark(){dark=!dark;document.body.classList.toggle('dark',dark);}
 const TOAST_PAIRS=[
   ['❌ Statut expiré','❌ Status expired'],['Profil','Profile'],['Profil introuvable','Profile not found'],['Groupe introuvable','Group not found'],['Tu ne peux pas répondre à ton propre statut',"You can't reply to your own status"],['Tu ne peux pas te répondre à toi-même',"You can't reply to yourself"],['Transféré depuis un autre statut','Forwarded from another status'],['Rien à enregistrer, statut texte seul','Nothing to save, text-only status'],['📷 Photo prête','📷 Photo ready'],['📁 Fichier partagé !','📁 File shared!'],['✅ Vocal envoyé','✅ Voice sent'],['❌ Impossible de copier','❌ Unable to copy'],['Partage non supporté sur cet appareil','Sharing is not supported on this device'],['❌ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.','❌ Unable to play this audio. The file is unavailable or the network was interrupted.'],['⚠️ Cet audio est indisponible.','⚠️ This audio is unavailable.'],['⚠️ Lecture impossible. Appuyez de nouveau sur lecture.','⚠️ Playback failed. Press play again.'],['⚠️ Lecture audio interrompue.','⚠️ Audio playback interrupted.'],['⚠️ Rien n’a été enregistré.','⚠️ Nothing was recorded.'],['⚠️ L’audio n’a pas pu être envoyé. Réessayez.','⚠️ The audio could not be sent. Try again.'],['⚠️ Envoi vocal impossible. Réessayez.','⚠️ Voice message could not be sent. Try again.'],['🎙️ Erreur du microphone. Réessayez.','🎙️ Microphone error. Try again.'],['🎙️ Microphone non supporté. Utilisez Chrome.','🎙️ Microphone not supported. Use Chrome.'],['⚠️ Vidéo trop volumineuse. Maximum 200 Mo.','⚠️ Video too large. Maximum 200 MB.'],['⚠️ Audio trop volumineux. Maximum 50 Mo.','⚠️ Audio too large. Maximum 50 MB.'],['⚠️ Document trop volumineux. Maximum 50 Mo.','⚠️ Document too large. Maximum 50 MB.'],['✅ Fil actualisé','✅ Feed refreshed'],['✅ Toutes les publications sont chargées','✅ All posts loaded'],['📢 Publication publiée !','📢 Post published!'],['❌ Veuillez coller un lien d’abord','❌ Please paste a link first'],['❌ Veuillez coller un lien valide','❌ Please paste a valid link'],['🚩 Signalement envoyé. Merci.','🚩 Report submitted. Thank you.'],['❌ Impossible d’envoyer le signalement','❌ Could not submit report'],['⚙️ Ouvrez les Paramètres de votre appareil pour modifier la langue, l’heure et les autres préférences.','⚙️ Open your device Settings app to change language, time, and other preferences.']
 ];
+const TOAST_PAIRS_EXTRA=[['🎙️ Android a interrompu le microphone. Vérifiez Chrome puis réessayez.','🎙️ Android interrupted the microphone. Check Chrome and try again.'],['📧 Email de réinitialisation envoyé !','📧 Reset email sent!'],['❌ Impossible de se déconnecter. Réessayez.','❌ Unable to disconnect. Please try again.'],['❌ Déconnectez-vous puis reconnectez-vous d’abord','❌ Sign out and back in first'],['📢 Publié !','📢 Posted!'],['❌ Complétez d’abord votre profil','❌ Complete your profile first'],['📋 Copié, prêt à partager','📋 Copied, ready to share'],['⏳ Finalisation du vocal en cours…','⏳ Finishing the voice message…'],['Tu ne peux pas répondre à ton propre statut','You can’t reply to your own status'],['Tu ne peux pas te répondre à toi-même','You can’t reply to yourself'],['🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.','🎙️ Microphone blocked. Tap the lock icon in Chrome, choose Allow, then come back here.'],['⭐ Ajouté aux favoris !','⭐ Favourited!'],['💔 Retiré des favoris','💔 Removed'],['❌ Utilisateur introuvable. Essayez depuis l’onglet Trouver.','❌ User not found. Try from Find tab.'],['❌ Vous ne pouvez pas vous écrire à vous-même','❌ Cannot message yourself'],['❌ Échec de l’envoi. Vérifiez votre connexion et réessayez.','❌ Sending failed. Check your connection and try again.'],['❌ Échec de l’envoi. Réessayez.','❌ Sending failed. Try again.'],['⚠️ Autorisez les pop-ups','⚠️ Allow popups'],['⚠️ Vidéo trop volumineuse. Max 200 Mo.','⚠️ Video too large. Max 200MB.'],['⚠️ Audio trop volumineux. Max 50 Mo.','⚠️ Audio too large. Max 50MB.'],['⚠️ Document trop volumineux. Max 200 Mo.','⚠️ Document too large. Max 200MB.'],['⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.','⚠️ Unable to play this audio. The file is unavailable or the network was interrupted.'],['Supprimé pour tous','Deleted for everyone'],['Supprimé pour vous','Deleted for you']];
+// Messages that end with a dynamic part (error text, counts).
+const TOAST_PREFIXES=[
+  ['❌ Échec de l’envoi : ','❌ Upload failed: '],
+  ['❌ Erreur de messagerie : ','❌ Inbox error: '],
+  ['❌ Erreur de messagerie : ','❌ setupInbox failed: '],
+  ['Erreur: ','Error: '],
+  ['Erreur : ','Error: '],
+  ['⚠️ Statut non synchronisé: ','⚠️ Status not synced: '],
+  ['❌ Impossible d’effacer les notifications','❌ Could not clear notifications']
+];
 function localizeToastMessage(msg){
+  const raw=String(msg??'');
+  const pair=TOAST_PAIRS.concat(TOAST_PAIRS_EXTRA).find(([fr,en])=>raw===fr||raw===en);
+  if(pair)return appLang==='en'?pair[1]:pair[0];
+  for(const [fr,en] of TOAST_PREFIXES){
+    if(raw.startsWith(en))return appLang==='en'?raw:fr+raw.slice(en.length);
+    if(raw.startsWith(fr))return appLang==='en'?en+raw.slice(fr.length):raw;
+  }
+  let m=raw.match(/^❌ Could not delete (\d+) message\(s\): (.*)$/);
+  if(m)return appLang==='en'?raw:'❌ Impossible de supprimer '+m[1]+' message(s) : '+m[2];
+  m=raw.match(/^💬 (\d+) unread messages?$/);
+  if(m)return appLang==='en'?raw:'💬 '+m[1]+' message'+(m[1]>1?'s':'')+' non lu'+(m[1]>1?'s':'');
+  return raw;
+}
+function localizeToastMessage_old(msg){
   const raw=String(msg??'');
   const pair=TOAST_PAIRS.find(([fr,en])=>raw===fr||raw===en);
   return pair?(appLang==='en'?pair[1]:pair[0]):raw;

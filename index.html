@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-195">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-199">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
@@ -215,8 +215,8 @@
 
 <!-- MESSAGES -->
 <div id="Pmsgs" class="page">
-  <h3 style="margin-bottom:10px;"><span data-i18n="msgs_title">Messages</span> 💬</h3>
-  <input id="inboxQ" placeholder="🔍 Search conversations..." data-i18n-ph="msgs_search_ph" oninput="renderInbox(this.value)" style="margin-bottom:8px;">
+  <h3 class="msgs-title"><span data-i18n="msgs_title">Messages</span> <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></h3>
+  <div class="search-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="inboxQ" placeholder="Search conversations..." data-i18n-ph="msgs_search_ph" oninput="renderInbox(this.value)"></div>
   <div class="card" style="padding:0;overflow:hidden;" id="inboxL">
     <p style="text-align:center;color:#888;padding:20px;" data-i18n="msgs_no_convos">No conversations yet.</p>
   </div>
@@ -556,8 +556,9 @@
         <div id="chatAv" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;font-size:13px;color:#0A3C6D;"></div>
         <div id="chatSt" class="chat-status-dot" title=""></div>
       </div>
-      <div style="display:flex;align-items:center;text-align:left;min-width:0;">
+      <div style="display:flex;flex-direction:column;justify-content:center;text-align:left;min-width:0;">
         <b id="chatT" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></b>
+        <span id="chatSub" class="chat-sub"></span>
       </div>
     </div>
     <button onclick="toggleCS()" style="color:#fff;background:none;border:none;cursor:pointer;">
@@ -825,5 +826,5 @@
   </div>
 </div>
 
-<script defer src="js/app-v26.js?v=studylink-pwa-195"></script></body>
+<script defer src="js/app-v26.js?v=studylink-pwa-199"></script></body>
 </html>
