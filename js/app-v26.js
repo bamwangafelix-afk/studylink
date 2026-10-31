@@ -66,7 +66,7 @@ const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAu
 // only on networks where its auto-detection finds that long-polling is needed.
 // Forcing long-polling on every device adds avoidable delay to live message updates.
 try{
-  db.settings({experimentalAutoDetectLongPolling:true,merge:true});
+  db.settings({experimentalForceLongPolling:true,merge:true});
 }catch(e){
   console.warn('Firestore transport auto-detection unavailable; using SDK defaults:',e?.message||e);
 }
@@ -416,7 +416,7 @@ async function getVoiceStream(){
 // These values match the user's Cloudinary dashboard.
 const CLOUD='dmhbui3wf';
 const PRESET='StudyLink';
-async function uploadCloud(file,type){
+async function uploadCloud(file,type,silent=false){
   uploadCloud.lastError='';
   if(type==='image'){
     try{file=await compressImg(file);}catch(e){}
@@ -428,12 +428,14 @@ async function uploadCloud(file,type){
     : (type==='audio'||type==='voice')
       ? ['auto','video']
       : type==='doc'
-        ? []
+        ? ['raw','auto']
         : ['image','auto'];
   let lastError='Upload failed';
   // Keep a mobile upload from leaving the bubble pending indefinitely.
   // Each request gets up to 15 seconds, with a 45-second total ceiling across fallbacks.
-  const deadline=Date.now()+45000;
+  // Big files need more than a fixed 15 s: allow roughly 15 KB/s, between 30 s and 10 min per request.
+  const perRequest=Math.max(30000,Math.min(600000,Math.ceil((file?.size||0)/15000)*1000));
+  const deadline=Date.now()+perRequest*2.5;
   for(const resourceType of endpoints){
     if(Date.now()>=deadline)break;
     for(let attempt=0;attempt<2;attempt++){
@@ -441,7 +443,7 @@ async function uploadCloud(file,type){
       if(remaining<=0)break;
       const fd=new FormData();fd.append('file',file);fd.append('upload_preset',PRESET);
       const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),Math.min(15000,remaining));
+      const timer=setTimeout(()=>controller.abort(),Math.min(perRequest,remaining));
       try{
         const r=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/${resourceType}/upload`,{method:'POST',body:fd,signal:controller.signal});
         const raw=await r.text();
@@ -458,7 +460,7 @@ async function uploadCloud(file,type){
   }
   uploadCloud.lastError=lastError;
   console.error('Cloudinary upload error:',lastError);
-  if(type!=='audio'&&type!=='voice')showToast('❌ Upload failed: '+lastError);
+  if(type!=='audio'&&type!=='voice'&&!silent)showToast('❌ Upload failed: '+lastError);
   return null;
 }
 function voiceFileFromChunks(chunks){
@@ -485,7 +487,8 @@ async function uploadVoiceToFirebase(file){
   return ref.getDownloadURL();
 }
 async function uploadToFirebaseStorage(file,folder){
-  if(!voiceStorage||!CU||!file)return null;
+  uploadToFirebaseStorage.lastError='';
+  if(!voiceStorage||!CU||!file){uploadToFirebaseStorage.lastError='Firebase Storage is not available';return null;}
   try{
     const ext=(file.name||'media.bin').split('.').pop()||'bin';
     const key=`${folder}/${CU.uid}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -2061,12 +2064,15 @@ async function markChatRead(cid,force=false){
   if(!force&&nowMs-Number(_lastChatReadWrite[cid]||0)<10000)return;
   _lastChatReadWrite[cid]=nowMs;
   const userUnread=readState(cid,0,nowMs);
-  await db.collection('users').doc(CU.uid).set(userUnread,{merge:true});
-  // Clear the legacy unread mirror too. Older StudyLink builds read this
-  // field from the shared chat document, which could make Salva's chat appear
-  // unread again after the user document had already been cleared.
+  // The shared chat counter drives the badge, so it must be cleared even if the
+  // user document write fails. Both writes are independent.
   const chatRead=readState(CU.uid,0,nowMs);
-  db.collection('chats').doc(cid).set(chatRead,{merge:true}).catch(()=>{});
+  const results=await Promise.allSettled([
+    db.collection('chats').doc(cid).set(chatRead,{merge:true}),
+    db.collection('users').doc(CU.uid).set(userUnread,{merge:true})
+  ]);
+  if(results[0].status==='rejected')_lastChatReadWrite[cid]=0; // retry on the next heartbeat
+  if(results.every(r=>r.status==='rejected'))throw results[0].reason;
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
 }
@@ -2157,7 +2163,13 @@ function openChat(name,uid){
       sn.docs.forEach(d=>messageDocsById.set(d.id,d));
       try{
         sn.docChanges().forEach(change=>{
-          if(change.type==='removed'&&!change.doc.exists)messageDocsById.delete(change.doc.id);
+          if(change.type!=='removed')return;
+          // A removed change also happens when a message simply leaves the limited
+          // window, so confirm on the server that it was really deleted.
+          const id=change.doc.id;
+          change.doc.ref.get({source:'server'}).then(snap=>{
+            if(!snap.exists)window._privateMsgForget?.(id);
+          }).catch(()=>{});
         });
       }catch(e){}
     };
@@ -2182,6 +2194,7 @@ function openChat(name,uid){
       const mb=el('msgB');
       mb.innerHTML='';
       docs.forEach(m=>{
+        if(m.senderUid!==CU.uid&&(m.status==='sending'||m.status==='failed'))return;
         const bbl=buildBbl(m,false);if(!bbl)return;
         const tmp=document.createElement('div');tmp.innerHTML=bbl;
         const node=tmp.firstElementChild;if(node)mb.appendChild(node);
@@ -2215,6 +2228,12 @@ function openChat(name,uid){
       }catch(e){}
     };
     window._privateMsgRefresh=forceRefresh;
+    window._privateMsgForget=id=>{
+      messageDocsById.delete(id);
+      timestampDocs=timestampDocs.filter(d=>d.id!==id);
+      legacyDocs=legacyDocs.filter(d=>d.id!==id);
+      renderMessages();
+    };
     const handleError=e=>{
       console.warn('Private messages listener; retrying:',e?.code||e?.message||e);
       void forceRefresh();
@@ -2616,19 +2635,24 @@ async function execDelMsgs(scope,isGrp){
       if(bw)bw.remove();
     });
   }
+  const failed=[];
   for(const id of ids){
     try{
       let ref;
       if(!isGrp&&curChat)ref=db.collection('chats').doc(getCID(CU.uid,curChat.uid)).collection('messages').doc(id);
       else if(isGrp&&curGrp)ref=db.collection('groups').doc(curGrp.id).collection('messages').doc(id);
       if(ref){
-        if(scope==='everyone')await ref.delete();
-        else await ref.update({['deletedFor.'+CU.uid]:true});
+        if(scope==='everyone'){
+          await ref.delete();
+          document.querySelector(`.bw[data-id="${id}"]`)?.remove();
+          if(!isGrp)window._privateMsgForget?.(id);
+        }else await ref.update({['deletedFor.'+CU.uid]:true});
       }
-    }catch(e){console.log(e);}
+    }catch(e){console.log(e);failed.push(e?.code||e?.message||'error');}
   }
   clearSelection();
-  showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
+  if(failed.length)showToast('❌ Could not delete '+failed.length+' message(s): '+failed[0]);
+  else showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
 const pendingMedia={};
 function insertPendingBubble(m,isGrp){
@@ -2938,11 +2962,19 @@ async function handleF(e,dest){
     if(msgRef&&(fType==='image'||fType==='video'||fType==='audio')){refreshPendingBubble({...m,id:msgRef.id},!!curGrp);}
     // ✅ BACKGROUND: Upload file without blocking UI
     if(msgRef){
-      const uploadPromise=fType==='doc'?uploadDocument(file):fType==='video'?uploadToFirebaseStorage(file,'videos'):uploadCloud(file,localType);
+      const uploadPromise=(async()=>{
+        if(fType==='doc'||fType==='video'){
+          const primary=fType==='doc'?await uploadDocument(file):await uploadToFirebaseStorage(file,'videos');
+          if(primary?.url)return primary;
+          const alt=await uploadCloud(file,fType==='doc'?'doc':'video',true);
+          return alt?{url:alt,storage:'cloudinary'}:null;
+        }
+        return uploadCloud(file,localType);
+      })();
       uploadPromise.then(result=>{
         const url=typeof result==='string'?result:result?.url;
         if(url){msgRef.update({data:url,status:'sent',...((fType==='doc'||fType==='video')?{storage:result?.storage||'firebase-storage'}:{})});}
-        else{msgRef.update({status:'failed'});}
+        else{msgRef.update({status:'failed'});showToast('❌ Upload failed: '+([uploadToFirebaseStorage.lastError,uploadCloud.lastError].filter(Boolean).join(' · ')||'unknown error'));}
         if(pendingMedia[msgRef.id]){URL.revokeObjectURL(pendingMedia[msgRef.id]);delete pendingMedia[msgRef.id];}
       }).catch(ex=>{msgRef.update({status:'failed'});showToast('❌ '+ex.message);});
     }
@@ -4056,11 +4088,15 @@ function inviteActionCardHtml(n){
 function markN(id){db.collection('notifications').doc(id).update({read:true}).catch(()=>{});}
 function clearNotifs(){
   const updateKinds=new Set(['studyInvite','groupInvite','groupJoinRequest','groupJoinStatus']);
-  db.collection('notifications').where('toUid','==',CU.uid).get().then(sn=>{
-    const b=db.batch();
-    sn.docs.forEach(d=>{if(!updateKinds.has(d.data().kind))b.delete(d.ref);});
-    return b.commit();
-  }).then(()=>showToast(typeof appLang!=='undefined'&&appLang==='fr'?'Notifications effacées.':'Notifications cleared.')).catch(()=>showToast('❌ Could not clear notifications'));
+  db.collection('notifications').where('toUid','==',CU.uid).get().then(async sn=>{
+    // Only invitations/requests still waiting for an answer are protected.
+    const toDelete=sn.docs.filter(d=>{const n=d.data();return !(updateKinds.has(n.kind)&&n.state==='pending');});
+    for(let i=0;i<toDelete.length;i+=400){
+      const b=db.batch();
+      toDelete.slice(i,i+400).forEach(d=>b.delete(d.ref));
+      await b.commit();
+    }
+  }).then(()=>showToast(typeof appLang!=='undefined'&&appLang==='fr'?'Notifications effacées.':'Notifications cleared.')).catch(e=>showToast('❌ Could not clear notifications'+(e?.code?' ('+e.code+')':'')));
 }
 
 // ── I18N (merged from user branch) ──
