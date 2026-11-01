@@ -1019,6 +1019,16 @@ async function savePro(){
 function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
+    // Measure how far this device's clock is from the server's, using our own
+    // heartbeat (lastSeen is written by the server). Without this, a device whose
+    // clock runs a few minutes ahead sees every online user as offline.
+    try{
+      const mine=sn.docs.find(d=>d.id===CU?.uid);
+      if(mine&&!mine.metadata.hasPendingWrites&&!mine.metadata.fromCache){
+        const ls=mine.data().lastSeen,ms=ls?.toDate?ls.toDate().getTime():0;
+        if(ms){const sample=Date.now()-ms;window._clockSkewMs=(window._clockSkewMs===undefined)?sample:Math.min(window._clockSkewMs,sample);}
+      }
+    }catch(e){}
     if(curGrp)renderGroupPresence();
     renderStatusBar();
     // Only re-render Find if it's currently visible
@@ -1257,7 +1267,7 @@ function fmtLastSeen(lastSeen){
 function getStatusInfo(status,lastSeen){
   // A pending serverTimestamp is null locally: treat it as fresh.
   const _ls=lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;
-  const _stale=_ls>0&&Date.now()-_ls>150000;
+  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>150000;
   // The "Busy" status no longer exists: old stored values count as online.
   if((status==='Online'||status==='Busy')&&!_stale)return{cls:'online',label:t('status_online')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
@@ -1297,7 +1307,7 @@ function renderHome(posts,limit){
               ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>${t('group_request_sent_btn')}</button>`
               :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">${ic('handshake')} ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">${ic('chat')} ${t('home_message')}</button>`}
-        ${isOwn&&!isG?`<div class="pm-wrap"><button class="btn gm-gray" style="width:46px;margin:0;padding:9px 0;display:flex;align-items:center;justify-content:center;" onclick="togglePostMenu('${p.id}',event)" aria-label="Options"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button><div class="pm" id="pm_${p.id}"><button onclick="delPost('${p.id}')">${aT('Delete','Supprimer')}</button></div></div>`:''}
+        ${isOwn&&!isG?`<div class="pm-wrap"><button class="btn gm-gray" style="width:46px;margin:6px 0 0;padding:9px 0;display:flex;align-items:center;justify-content:center;" onclick="togglePostMenu('${p.id}',event)" aria-label="Options"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button><div class="pm" id="pm_${p.id}"><button onclick="delPost('${p.id}')">${aT('Delete','Supprimer')}</button></div></div>`:''}
       </div>
       ${isG&&p.groupPhoto?`<div style="position:absolute;bottom:-6px;right:-6px;width:30px;height:30px;border-radius:50%;overflow:hidden;border:2px solid var(--card,#fff);box-shadow:0 1px 4px rgba(0,0,0,.3);"><img src="${p.groupPhoto}" style="width:100%;height:100%;object-fit:cover;"></div>`:''}
     </div>`;
