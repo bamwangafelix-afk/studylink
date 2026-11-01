@@ -68,7 +68,11 @@ const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAu
 // To go back to auto-detection for a test: localStorage.slAutoLP='1' then reload.
 try{
   let autoLP=false;try{autoLP=localStorage.getItem('slAutoLP')==='1';}catch(e){}
-  db.settings(autoLP?{experimentalAutoDetectLongPolling:true,merge:true}:{experimentalForceLongPolling:true,merge:true});
+  // Both flags are set explicitly: this SDK version enables auto-detection by default, and
+  // Firestore refuses to combine it with forced long-polling ("cannot be used together").
+  db.settings(autoLP
+    ?{experimentalForceLongPolling:false,experimentalAutoDetectLongPolling:true,merge:true}
+    :{experimentalForceLongPolling:true,experimentalAutoDetectLongPolling:false,merge:true});
 }catch(e){
   console.warn('Firestore transport setting unavailable; using SDK defaults:',e?.message||e);
 }
