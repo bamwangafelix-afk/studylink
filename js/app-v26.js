@@ -874,7 +874,7 @@ function openProfile(uid,profileData=null){
   el('pvAvatar').className=`profile-view-avatar ${profileRingClass}`.trim();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
-  el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
+  el('pvMeta').innerHTML=`${getFlag(u.country||'')} ${esc(u.country||'—')} | ${esc(u.uni||'—')}`;
   el('pvMeta2').textContent=`${u.course||'—'} ${u.year?'('+u.year+')':''}`;
   el('pvBio').textContent=u.bio||'';
   el('pvBio').style.display=u.bio?'block':'none';
@@ -908,9 +908,19 @@ function openProfile(uid,profileData=null){
   el('profileView').scrollTop=0;
 }
 function closeProfileView(preserveHistory=false){el('profileView').style.display='none';if(!preserveHistory)consumeModalState();}
+const _flagNeedsImg=/Windows/i.test(navigator.userAgent||'');
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
-  return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
+  const emoji=idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
+  // Windows does not draw flag emoji (it shows letters like "RW"): use a small flag image there.
+  if(_flagNeedsImg){
+    const cps=[...emoji].map(c=>c.codePointAt(0));
+    if(cps.length===2&&cps.every(c=>c>=0x1F1E6&&c<=0x1F1FF)){
+      const code=cps.map(c=>String.fromCharCode(c-0x1F1E6+97)).join('');
+      return '<img src="https://flagcdn.com/w40/'+code+'.png" alt="'+code.toUpperCase()+'" loading="lazy" style="width:18px;height:13px;object-fit:cover;border-radius:2px;vertical-align:-2px;">';
+    }
+  }
+  return emoji;
 }
 function bothIntentIcon(){return `<svg class="intent-vector intent-vector-both" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="display:block;flex:0 0 16px;fill:currentColor;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`;}
 function getIntentBadge(intent){
@@ -1220,7 +1230,7 @@ function renderHome(posts,limit){
       <div style="display:flex;gap:10px;margin-bottom:8px;">
         <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${p.uid||''}')"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">${ic('house','1em')} ${esc(p.groupName||'')}</span>`:''}
+          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">${p.groupPhoto?`<img src="${p.groupPhoto}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`:ic('house','1em')} ${esc(p.groupName||'')}</span>`:''}
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | ${ic('landmark')} ${du.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${ic('book')} ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
           ${isG?`<div style="margin-top:2px;">${groupRuleBadgesHtml(p)}</div>`:''}
@@ -1860,7 +1870,7 @@ function groupCardHtml(g,isMine){
   else if(isPending)actionLabel=howCanJoin==='request'?t('group_request_sent_btn'):t('pending');
   else if(howCanJoin==='request')actionLabel=t('group_request_to_join');
   return `<div class="card">
-    <b style="color:var(--btnB);font-size:14px;">${ic('house','1.15em','#e67e22')} ${esc(g.name||'Group')}</b>
+    <b style="color:var(--btnB);font-size:14px;">${g.photo?`<img src="${g.photo}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;">`:ic('house','1.15em','#e67e22')} ${esc(g.name||'Group')}</b>
     <div style="margin-top:4px;">${groupRuleBadgesHtml(g)}</div>
     <p style="font-size:13px;margin:6px 0;">${esc(desc)}</p>
     <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
@@ -4462,7 +4472,7 @@ async function openManageGroup(postId,highlightUid=''){
   const viewerIsOwner=isGroupOwner(g,CU.uid);
   const viewerIsAdmin=isGroupAdmin(g,CU.uid);
   const viewerCanDecide=canInviteToGroup(g,CU.uid);
-  el('gmTitle').innerHTML=ic('house','1em','#e67e22')+' '+esc(g.name||'');
+  el('gmTitle').innerHTML=(g.photo?'<img src="'+g.photo+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;">':ic('house','1em','#e67e22'))+' '+esc(g.name||'');
   const pendingIds=g.pendingRequests||[];
   const memberIds=g.members||[];
   const ownerIds=memberIds.filter(uid=>isGroupOwner(g,uid));
@@ -4505,17 +4515,7 @@ async function openManageGroup(postId,highlightUid=''){
     const u=allUsers.find(x=>x.uid===uid);
     const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
     const uOwner=isGroupOwner(g,uid),uAdmin=!uOwner&&(g.admins||[]).includes(uid);
-    let mgmt='';
-    if(viewerIsOwner&&!uOwner){
-      mgmt+=uAdmin
-        ?`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',false)">${t('group_remove_admin')}</button>`
-        :`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',true)">${t('group_make_admin')}</button>`;
-    }
-    if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
-      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
-      const blocked=(g.blockedUsers||[]).includes(uid);
-      mgmt+=`<button class="btn warn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="${blocked?`unblockGroupMember('${uid}')`:`blockGroupMember('${uid}')`}">${blocked?t('group_unblock_member'):t('group_block_member')}</button>`;
-    }
+    const mgmt='';
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
       <div onclick="openProfile('${uid}')" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
       <span onclick="openProfile('${uid}')" style="font-size:13px;flex:1;cursor:pointer;">${esc(u?.name||'Utilisateur')}</span>
@@ -4528,10 +4528,15 @@ async function openManageGroup(postId,highlightUid=''){
     <div style="width:42px;height:42px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;">${acceptedAv}</div>
     <div style="min-width:0;"><div style="font-size:10.5px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.03em;">${appLang==='fr'?'Membre accepté':'Accepted member'}</div><b style="font-size:14px;color:#fff;">${esc(cleanDisplayName(acceptedUser.name||'Member'))}</b></div>
   </div>`:'';
-  el('gmMembers').innerHTML=acceptedHighlight+[
+  window._gmCtx={g,viewerIsOwner,viewerIsAdmin};
+  const gmActions=viewerIsAdmin?`<div style="display:flex;gap:8px;margin:16px 0 0;">`
+    +(viewerIsOwner?`<button class="btn" style="flex:1;width:auto;margin:0;padding:12px 6px;font-size:13px;" onclick="openMemberPicker('admin')">${t('group_make_admin')}</button>`:'')
+    +`<button class="btn gm-gray" style="flex:1;width:auto;margin:0;padding:12px 6px;font-size:13px;" onclick="openMemberPicker('remove')">${t('group_remove_member')}</button>`
+    +`<button class="btn gm-gray" style="flex:1;width:auto;margin:0;padding:12px 6px;font-size:13px;" onclick="openMemberPicker('block')">${t('group_block_member')}</button></div>`:'';
+  el('gmMembers').innerHTML=acceptedHighlight+gmActions+[
     ownerIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('crown','1em','#e67e22')} ${t('role_owner')} (${ownerIds.length})</p>${ownerIds.map(rowHtml).join('')}`:'',
     adminIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('shield','1em')} ${t('role_admin')} (${adminIds.length})</p>${adminIds.map(rowHtml).join('')}`:'',
-    regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🙂 ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
+    regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('user','1em')} ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
   ].join('');
   el('gmInviteBtn').style.display=canInviteToGroup(g,CU.uid)?'block':'none';
   el('gmEditBtn').style.display=viewerIsOwner?'block':'none';
@@ -4577,6 +4582,43 @@ async function saveGroupInfo(){
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
+}
+function closeMemberPicker(){document.getElementById('gmPicker')?.remove();}
+function openMemberPicker(kind){
+  const c=window._gmCtx;if(!c||!CU)return;
+  const {g,viewerIsOwner,viewerIsAdmin}=c;
+  closeMemberPicker();
+  let ids=(g.members||[]).filter(uid=>!isGroupOwner(g,uid)&&uid!==CU.uid);
+  // A non-owner admin cannot act on other admins.
+  if(kind!=='admin')ids=ids.filter(uid=>!(viewerIsAdmin&&!viewerIsOwner&&(g.admins||[]).includes(uid)));
+  const title=kind==='admin'?t('group_make_admin'):kind==='remove'?t('group_remove_member'):t('group_block_member');
+  const rows=ids.map(uid=>{
+    const u=allUsers.find(x=>x.uid===uid)||{};
+    const av=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
+    const isAdm=(g.admins||[]).includes(uid),isBlk=(g.blockedUsers||[]).includes(uid);
+    const hint=kind==='admin'?(isAdm?t('group_remove_admin'):''):kind==='block'?(isBlk?t('group_unblock_member'):''):'';
+    return `<div onclick="memberPickerPick('${kind}','${uid}')" style="display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--brd);cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:50%;background:#dbe2f0;color:#0A3C6D;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
+      <span style="flex:1;font-size:14px;">${esc(u.name||'Utilisateur')}</span>
+      ${hint?`<span style="font-size:11px;color:var(--sub);">${esc(hint)}</span>`:''}
+    </div>`;
+  }).join('');
+  const box=document.createElement('div');
+  box.id='gmPicker';
+  box.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  box.onclick=e=>{if(e.target===box)closeMemberPicker();};
+  box.innerHTML=`<div style="background:var(--card,#fff);color:var(--txt,#111);border-radius:14px;width:100%;max-width:420px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd);"><b style="font-size:15px;">${esc(title)}</b>
+      <button onclick="closeMemberPicker()" style="background:none;border:none;color:inherit;cursor:pointer;padding:2px;" aria-label="Close"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div style="overflow-y:auto;padding:4px 14px 10px;">${rows||`<p style="color:var(--sub);font-size:13px;padding:16px 4px;">—</p>`}</div></div>`;
+  document.body.appendChild(box);
+}
+function memberPickerPick(kind,uid){
+  const c=window._gmCtx;closeMemberPicker();if(!c)return;
+  const g=c.g;
+  if(kind==='admin')toggleGroupAdmin(uid,!(g.admins||[]).includes(uid));
+  else if(kind==='remove')removeGroupMember(uid);
+  else (g.blockedUsers||[]).includes(uid)?unblockGroupMember(uid):blockGroupMember(uid);
 }
 async function toggleGroupAdmin(uid,makeAdmin){
   if(!curManageGroupId)return;
@@ -4926,7 +4968,7 @@ function renderInviteSearch(q){
     const isMember=curInviteMembers.includes(u.uid);
     const elig=curInviteGroup?groupInviteEligibility(curInviteGroup,u):{eligible:true,reason:null};
     const state=isMember?'member':(curInviteStateMap[u.uid]==='pending'?'pending':(!elig.eligible?'ineligible':'invite'));
-    const btn=state==='member'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" disabled>✅ ${t('group_member_check')}</button>`
+    const btn=state==='member'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" disabled>${t('group_member_check')}</button>`
       :state==='pending'?`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" disabled>${t('pending')}</button>`
       :state==='ineligible'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;opacity:.5;cursor:not-allowed;" disabled>${t('group_invite_to_join')}</button>`
       :`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button>`;

@@ -599,3 +599,10 @@ body.dark .presence-text{color:#fff!important;}
 
 .vic{flex-shrink:0;vertical-align:-.2em;display:inline-block;}
 .btn .vic{margin-right:2px;}
+
+/* --- v32: outline buttons (white fill, colored border + text) --- */
+.btn.o,.btn.grp-open{background:#fff!important;color:#e67e22!important;border:2px solid #e67e22!important;padding:9px;}
+.btn.o:disabled,.btn.grp-open:disabled{opacity:.55;}
+.btn.r{background:#fff;color:#e74c3c;border:2px solid #e74c3c;padding:9px;}
+#disconnectBtn{background:#fff!important;color:#e67e22!important;border:2px solid #e67e22!important;padding:9px;}
+.btn.gm-gray{background:#fff!important;color:#6B7280!important;border:2px solid #6B7280!important;}
