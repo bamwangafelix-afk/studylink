@@ -745,7 +745,7 @@ async function completeProfile(){
 }
 async function doLogin(){
   const e=v('lE'),p=v('lP');
-  if(!e||!p){el('lErr').textContent='Fill all fields';return;}
+  if(!e||!p){el('lErr').textContent=aT('Fill all fields','Remplissez tous les champs');return;}
   el('lErr').textContent='';
   const btn=document.querySelector('#loginF .abtn');
   if(btn){btn.disabled=true;btn.textContent='Logging in...';}
@@ -757,21 +757,38 @@ async function doLogin(){
     if(btn){btn.disabled=false;btn.textContent='🔐 Login';}
   }
 }
-async function doGoogle(){
-  const btn=document.querySelector('#loginF .abtn.g')||document.querySelector('#regF .abtn.g');
-  try{
-    const r=await auth.signInWithPopup(GP);const u=r.user;
-    const sn=await db.collection('users').doc(u.uid).get();
-    if(!sn.exists){
-      await db.collection('users').doc(u.uid).set({name:u.displayName||'User',email:u.email||'',country:'',uni:'',course:'',year:'',langs:[],bio:'',skills:[],status:'Online',photo:u.photoURL||'',uid:u.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      notifyAllExcept(u.uid,'🎓','New Member!',`${u.displayName||'Someone'} just joined StudyLink!`);
-    }
-  }catch(err){showToast('❌ '+err.message);}
+let _googleBusy=false;
+async function ensureGoogleUserDoc(u){
+  const sn=await db.collection('users').doc(u.uid).get();
+  if(!sn.exists){
+    await db.collection('users').doc(u.uid).set({name:u.displayName||'User',email:u.email||'',country:'',uni:'',course:'',year:'',langs:[],bio:'',skills:[],status:'Online',photo:u.photoURL||'',uid:u.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    notifyAllExcept(u.uid,'🎓','New Member!',`${u.displayName||'Someone'} just joined StudyLink!`);
+  }
 }
+async function doGoogle(){
+  // A second tap while a popup is open is what produced "cancelled-popup-request".
+  if(_googleBusy)return;
+  _googleBusy=true;
+  const btns=document.querySelectorAll('.abtn.g');
+  btns.forEach(b=>b.disabled=true);
+  try{
+    const r=await auth.signInWithPopup(GP);
+    await ensureGoogleUserDoc(r.user);
+  }catch(err){
+    const c=err&&err.code;
+    if(c==='auth/cancelled-popup-request'||c==='auth/popup-closed-by-user'){/* user closed it or tapped twice: nothing to show */}
+    else if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'){
+      try{await auth.signInWithRedirect(GP);return;}catch(e2){showToast('❌ '+fErr(e2&&e2.code));}
+    }else showToast('❌ '+fErr(c));
+  }finally{
+    _googleBusy=false;btns.forEach(b=>b.disabled=false);
+  }
+}
+try{auth.getRedirectResult().then(r=>{if(r&&r.user)return ensureGoogleUserDoc(r.user);}).catch(e=>{if(e&&e.code&&e.code!=='auth/no-auth-event')showToast('❌ '+fErr(e.code));});}catch(e){}
 async function doReg(){
   const name=v('rN'),email=v('rE'),pass=v('rP');
-  if(!name||!email||!pass){el('rErr').textContent='Fill all fields';return;}
-  if(pass.length<6){el('rErr').textContent='Min 6 chars';return;}
+  if(!name||!email||!pass){el('rErr').textContent=aT('Fill all fields','Remplissez tous les champs');return;}
+  if(pass.length<6){el('rErr').textContent=fErr('auth/weak-password');return;}
   el('rErr').textContent='';
   const btn=document.querySelector('#regF .abtn');
   if(btn){btn.disabled=true;btn.textContent='Creating...';}
@@ -780,11 +797,11 @@ async function doReg(){
     CU=c.user;
     await db.collection('users').doc(c.user.uid).set({name,email,country:'',uni:'',course:'',year:'',langs:[],bio:'',skills:[],tags:[],intent:'both',status:'Online',photo:'',uid:c.user.uid,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     notifyAllExcept(c.user.uid,'🎓','New Member!',`${name} just joined StudyLink!`);
-    if(btn){btn.disabled=false;btn.textContent='✅ Create Account';}
+    if(btn){btn.disabled=false;btn.textContent='Create Account';}
     showStep2();
   }catch(err){
     el('rErr').textContent=fErr(err.code);
-    if(btn){btn.disabled=false;btn.textContent='✅ Create Account';}
+    if(btn){btn.disabled=false;btn.textContent='Create Account';}
   }
 }
 async function doReset(){
@@ -806,7 +823,28 @@ async function notifyAllExcept(senderUid,icon,title,body,extra={}){
     await b.commit();
   }catch(e){console.log(e);}
 }
-function fErr(c){const m={'auth/user-not-found':'No account found','auth/wrong-password':'Wrong password','auth/invalid-credential':'Wrong email or password','auth/email-already-in-use':'Email already registered','auth/weak-password':'Min 6 chars','auth/invalid-email':'Invalid email','auth/popup-closed-by-user':'Popup closed'};return m[c]||'Error: '+c;}
+function aT(en,fr){return appLang==='fr'?fr:en;}
+function fErr(c){
+  const bad=aT('Incorrect email or password. If you signed up with Google, use “Continue with Google”.','Email ou mot de passe incorrect. Si vous avez créé votre compte avec Google, utilisez « Continuer avec Google ».');
+  const m={
+    'auth/invalid-login-credentials':bad,
+    'auth/invalid-credential':bad,
+    'auth/wrong-password':bad,
+    'auth/user-not-found':aT('No account found with this email.','Aucun compte trouvé avec cet email.'),
+    'auth/invalid-email':aT('Invalid email address.','Adresse email invalide.'),
+    'auth/missing-password':aT('Enter your password.','Entrez votre mot de passe.'),
+    'auth/email-already-in-use':aT('This email is already registered.','Cet email est déjà utilisé.'),
+    'auth/weak-password':aT('Password must have at least 6 characters.','Le mot de passe doit contenir au moins 6 caractères.'),
+    'auth/too-many-requests':aT('Too many attempts. Try again in a few minutes.','Trop de tentatives. Réessayez dans quelques minutes.'),
+    'auth/network-request-failed':aT('No internet connection. Check your network and try again.','Pas de connexion internet. Vérifiez votre réseau et réessayez.'),
+    'auth/user-disabled':aT('This account has been disabled.','Ce compte a été désactivé.'),
+    'auth/popup-blocked':aT('The Google window was blocked. Allow pop-ups and try again.','La fenêtre Google a été bloquée. Autorisez les pop-ups et réessayez.'),
+    'auth/account-exists-with-different-credential':aT('An account already exists with this email. Sign in with your password.','Un compte existe déjà avec cet email. Connectez-vous avec votre mot de passe.'),
+    'auth/unauthorized-domain':aT('This website is not authorized for Google sign-in.','Ce site n’est pas autorisé pour la connexion Google.'),
+    'auth/operation-not-allowed':aT('This sign-in method is not enabled.','Cette méthode de connexion n’est pas activée.')
+  };
+  return m[c]||aT('Something went wrong. Please try again.','Une erreur est survenue. Réessayez.');
+}
 async function doOut(){
   if(signOutInProgress)return;
   if(!window.confirm('Disconnect?'))return;
@@ -874,7 +912,7 @@ function openProfile(uid,profileData=null){
   el('pvAvatar').className=`profile-view-avatar ${profileRingClass}`.trim();
   el('pvAvatar').innerHTML=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
   el('pvName').textContent=u.name||'Utilisateur';
-  el('pvMeta').textContent=`${getFlag(u.country||'')} ${u.country||'—'} | ${u.uni||'—'}`;
+  el('pvMeta').innerHTML=`${getFlag(u.country||'')} ${esc(u.country||'—')} | ${esc(u.uni||'—')}`;
   el('pvMeta2').textContent=`${u.course||'—'} ${u.year?'('+u.year+')':''}`;
   el('pvBio').textContent=u.bio||'';
   el('pvBio').style.display=u.bio?'block':'none';
@@ -908,9 +946,19 @@ function openProfile(uid,profileData=null){
   el('profileView').scrollTop=0;
 }
 function closeProfileView(preserveHistory=false){el('profileView').style.display='none';if(!preserveHistory)consumeModalState();}
+const _flagNeedsImg=/Windows/i.test(navigator.userAgent||'');
 function getFlag(country){
   const idx=COUNTRIES.indexOf(country);
-  return idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
+  const emoji=idx>=0&&FLAGS[idx]?FLAGS[idx]:'🌍';
+  // Windows does not draw flag emoji (it shows letters like "RW"): use a small flag image there.
+  if(_flagNeedsImg){
+    const cps=[...emoji].map(c=>c.codePointAt(0));
+    if(cps.length===2&&cps.every(c=>c>=0x1F1E6&&c<=0x1F1FF)){
+      const code=cps.map(c=>String.fromCharCode(c-0x1F1E6+97)).join('');
+      return '<img src="https://flagcdn.com/w40/'+code+'.png" alt="'+code.toUpperCase()+'" loading="lazy" style="width:18px;height:13px;object-fit:cover;border-radius:2px;vertical-align:-2px;">';
+    }
+  }
+  return emoji;
 }
 function bothIntentIcon(){return `<svg class="intent-vector intent-vector-both" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" style="display:block;flex:0 0 16px;fill:currentColor;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`;}
 function getIntentBadge(intent){
@@ -1118,7 +1166,7 @@ function loadMorePosts(){
       .then(sn=>{
         const more=sn.docs.map(d=>({id:d.id,...d.data()}));
         if(more.length){cachedPosts=[...cachedPosts,...more];renderHome(cachedPosts,_feedShown);}
-        else{showToast('✅ All posts loaded');}
+        else{showToast('All posts loaded');}
       }).catch(()=>{}).finally(()=>setTimeout(()=>setDataRefresh(false),260));
   }else{
     setTimeout(()=>setDataRefresh(false),260);
@@ -1220,7 +1268,7 @@ function renderHome(posts,limit){
       <div style="display:flex;gap:10px;margin-bottom:8px;">
         <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${p.uid||''}')"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">${ic('house','1em')} ${esc(p.groupName||'')}</span>`:''}
+          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">${p.groupPhoto?`<img src="${p.groupPhoto}" style="width:20px;height:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">`:ic('house','1em')} ${esc(p.groupName||'')}</span>`:''}
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | ${ic('landmark')} ${du.uni||'—'}</p>
           <p style="font-size:11px;color:var(--sub);margin:2px 0;">${ic('book')} ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
           ${isG?`<div style="margin-top:2px;">${groupRuleBadgesHtml(p)}</div>`:''}
@@ -1860,7 +1908,7 @@ function groupCardHtml(g,isMine){
   else if(isPending)actionLabel=howCanJoin==='request'?t('group_request_sent_btn'):t('pending');
   else if(howCanJoin==='request')actionLabel=t('group_request_to_join');
   return `<div class="card">
-    <b style="color:var(--btnB);font-size:14px;">${ic('house','1.15em','#e67e22')} ${esc(g.name||'Group')}</b>
+    <b style="color:var(--btnB);font-size:14px;">${g.photo?`<img src="${g.photo}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;">`:ic('house','1.15em','#e67e22')} ${esc(g.name||'Group')}</b>
     <div style="margin-top:4px;">${groupRuleBadgesHtml(g)}</div>
     <p style="font-size:13px;margin:6px 0;">${esc(desc)}</p>
     <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
@@ -4183,16 +4231,16 @@ const I18N={
     group_exit:'Quitter le groupe',group_confirm_exit:'Quitter ce groupe ?',group_exited:'Vous avez quitté le groupe',
     group_who_can_invite:'Qui peut inviter ?',group_invite_owner_only:'Propriétaire uniquement',group_invite_admins_only:'Admins uniquement',group_invite_owner_admins:'Propriétaire/Admins',group_member_check:'Membre',
     post_group_settings_hint:'Tu pourras modifier ces règles à tout moment après la création, dans Paramètres du groupe.',
-    group_admin_added:'✅ Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',group_created_by:'Créé par',group_created_on:'Créé le',group_edit_info:'Modifier les infos du groupe',
-    group_resources:'Ressources',group_resources_error:'Impossible de charger les ressources.',group_resource_title_ph:'Titre (ex. Notes chapitre 1)',group_resource_link_ph:'Lien (facultatif, ex. Google Drive)',group_resource_file_label:'Document ou fichier (facultatif)',group_resource_file:'Document',group_resource_title_required:'❌ Le titre est requis',group_resource_link_or_file:'Ajoute un lien ou un document.',group_resource_invalid_link:'Le lien doit commencer par http:// ou https://',group_resource_upload_failed:'Échec du téléversement du document.',group_resource_add:'Ajouter une ressource',group_resources_empty:'Aucune ressource pour l’instant.',group_resource_added:'✅ Ressource ajoutée',
+    group_admin_added:'Nommé admin',group_admin_removed:'Admin retiré',group_not_authorized:'❌ Tu n’es pas autorisé à faire ça',group_created_by:'Créé par',group_created_on:'Créé le',group_edit_info:'Modifier les infos du groupe',
+    group_resources:'Ressources',group_resources_error:'Impossible de charger les ressources.',group_resource_title_ph:'Titre (ex. Notes chapitre 1)',group_resource_link_ph:'Lien (facultatif, ex. Google Drive)',group_resource_file_label:'Document ou fichier (facultatif)',group_resource_file:'Document',group_resource_title_required:'❌ Le titre est requis',group_resource_link_or_file:'Ajoute un lien ou un document.',group_resource_invalid_link:'Le lien doit commencer par http:// ou https://',group_resource_upload_failed:'Échec du téléversement du document.',group_resource_add:'Ajouter une ressource',group_resources_empty:'Aucune ressource pour l’instant.',group_resource_added:'Ressource ajoutée',
     group_search:'Rechercher',group_search_ph:'Rechercher dans les messages...',
     group_notifications:'Notifications',group_mute:'Couper les notifications',group_unmute:'Réactiver les notifications',group_muted:'🔕 Groupe en sourdine',group_unmuted:'🔔 Notifications réactivées',
     group_share_invite:'Partager / Inviter',group_link_copied:'🔗 Lien copié',
-    group_report:'Signaler le groupe',group_report_prompt:'Pourquoi signales-tu ce groupe ?',group_report_sent:'✅ Signalement envoyé',
+    group_report:'Signaler le groupe',group_report_prompt:'Pourquoi signales-tu ce groupe ?',group_report_sent:'Signalement envoyé',
     group_leave:'Quitter le groupe',
     group_invite_not_eligible_title:'⚠️ Invitation non envoyée',group_invite_reason_country_short:'Autre pays',group_invite_reason_university_short:'Autre université',group_invite_reason_major_short:'Cours différent',group_invite_reason_country_msg:'Tu ne peux inviter que des étudiants de ton pays.',group_invite_reason_university_msg:'Tu ne peux inviter que des étudiants de ton université.',group_invite_reason_major_msg:'Tu ne peux inviter que des étudiants de ton cours/filière.',group_view_only:'Lecture seule',
     group_settings:'Paramètres du groupe',group_info:'Infos du groupe',group_settings_readonly:'Seul le propriétaire peut modifier ces paramètres.',
-    group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer',group_settings_saved:'✅ Paramètres enregistrés',
+    group_who_can_be_invited:'Qui peut être invité ?',group_save_settings:'Enregistrer',group_settings_saved:'Paramètres enregistrés',
     group_delete:'Supprimer le groupe',group_confirm_delete:'Supprimer définitivement ce groupe ? Cette action est irréversible.',
     group_deleted:'Groupe supprimé',
     group_still_pending:'Ta demande est toujours en attente',group_request_sent:'Demande envoyée. En attente d’approbation.',
@@ -4206,7 +4254,7 @@ const I18N={
     group_refused_generic:'❌ Tu n’es pas éligible pour rejoindre ce groupe',
     notif_join_request_title:'Nouvelle demande',notif_join_request_body:'veut rejoindre',
     group_loading:'Chargement...',group_no_pending:'Aucune demande en attente',
-    accept:'Accepter',decline:'Refuser',group_member_added:'✅ Membre ajouté',
+    accept:'Accepter',decline:'Refuser',group_member_added:'Membre ajouté',
     group_request_declined:'Demande refusée',group_pending_requests:'Demandes en attente',
     group_members_label:'Membres',group_invite_members:'Inviter des membres',group_invite:'Inviter',
     group_already_member:'Déjà membre',group_invite_sent:'Invitation envoyée à {name}',
@@ -4225,9 +4273,9 @@ const I18N={
     invite_again:'Inviter à nouveau',study_together_label:'Vous étudiez ensemble',group_invite_to_join:'Inviter à rejoindre',
     invite_course_label:'Cours (optionnel)',invite_type_label:'Type d’étude',
     invite_message_label:'Message (optionnel)',invite_message_ph:'Étudions ensemble...',
-    invite_send:'Envoyer l’invitation',invite_sent:'✅ Invitation envoyée',
+    invite_send:'Envoyer l’invitation',invite_sent:'Invitation envoyée',
     invite_already_pending:'Une invitation est déjà en attente',invite_not_found:'Invitation introuvable',
-    invite_accepted:'✅ Invitation acceptée',invite_declined:'Invitation refusée',
+    invite_accepted:'Invitation acceptée',invite_declined:'Invitation refusée',
     notif_study_invite_title:'Invitation à étudier',
     notif_study_accepted_title:'Invitation acceptée',notif_study_accepted_body:'a accepté ton invitation à étudier',
     notif_study_declined_title:'Invitation refusée',notif_study_declined_body:'a refusé ton invitation à étudier',
@@ -4244,7 +4292,7 @@ const I18N={
     me_skills_label:'Compétences',me_skills_ph:'ex. Python, Maths...',
     me_here_to_label:'Je suis ici pour :',me_get_help:'Besoin d’aide',me_give_help:'Apporter de l’aide',me_both:'Les deux',
     me_save:'Enregistrer',me_cancel:'Annuler',me_app_settings:'Paramètres de l’app',
-    me_toast_name_required:'❌ Le nom est requis',me_toast_saved:'✅ Enregistré !',
+    me_toast_name_required:'❌ Le nom est requis',me_toast_saved:'Enregistré !',
     profile_title:'Profil',
     chat_search_ph:'Rechercher des messages...',chat_msg_ph:'Message...',
     chat_voice_hint:'Maintenez · glissez ↑ pour verrouiller · touchez le micro pour envoyer',
@@ -4268,7 +4316,7 @@ const I18N={
     st_menu_seenby:'Vu par',st_menu_share:'Partager',st_menu_save:'Enregistrer',st_menu_delete:'Supprimer',
     st_menu_forward:'Transférer',st_menu_message:'Message',st_menu_viewprofile:'Voir profil',st_menu_notif:'Notifications',
     st_menu_hide:'Masquer',st_menu_report:'Signaler',st_seen_none:"Vu par personne pour l'instant",st_seen_count:'Vu par',
-    st_toast_published:'✅ Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
+    st_toast_published:'Statut publié',st_toast_expired:'❌ Statut expiré',st_toast_deleted:'Statut supprimé',
     st_toast_notif_on:'Notifications activées',st_toast_hidden:'Masqué',st_toast_reported:'Signalement envoyé',
     st_toast_choose_category:'❌ Choisis une catégorie',st_toast_write_message:'❌ Écris un message',st_preview_empty:'Choisis une catégorie, ou ajoute une photo, pour voir l’aperçu',st_preview_photo:'Photo',st_toast_photo_uploading:'❌ Photo en cours d’envoi, patiente',
     st_toast_complete_profile:'❌ Complète d’abord ton profil',st_toast_no_self_reply:'Tu ne peux pas te répondre à toi-même',st_toast_msg_sent:'Message envoyé',st_toast_audio_sent:'Vocal envoyé',
@@ -4302,16 +4350,16 @@ const I18N={
     group_exit:'Exit Group',group_confirm_exit:'Leave this group?',group_exited:'You left the group',
     group_who_can_invite:'Who can invite?',group_invite_owner_only:'Owner only',group_invite_admins_only:'Admins only',group_invite_owner_admins:'Owner/Admins',group_member_check:'Member',
     post_group_settings_hint:'You can change these anytime after creating the group, in Group Settings.',
-    group_admin_added:'✅ Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',group_created_by:'Created by',group_created_on:'Created on',group_edit_info:'Edit Group Information',
-    group_resources:'Resources',group_resources_error:'Could not load resources.',group_resource_title_ph:'Title (e.g. Chapter 1 notes)',group_resource_link_ph:'Link (optional, e.g. Google Drive URL)',group_resource_file_label:'Document or file (optional)',group_resource_file:'Document',group_resource_title_required:'❌ A title is required',group_resource_link_or_file:'Add a link or upload a document.',group_resource_invalid_link:'The link must begin with http:// or https://',group_resource_upload_failed:'Document upload failed.',group_resource_add:'Add Resource',group_resources_empty:'No resources yet.',group_resource_added:'✅ Resource added',
+    group_admin_added:'Made admin',group_admin_removed:'Admin removed',group_not_authorized:'❌ You’re not authorized to do that',group_created_by:'Created by',group_created_on:'Created on',group_edit_info:'Edit Group Information',
+    group_resources:'Resources',group_resources_error:'Could not load resources.',group_resource_title_ph:'Title (e.g. Chapter 1 notes)',group_resource_link_ph:'Link (optional, e.g. Google Drive URL)',group_resource_file_label:'Document or file (optional)',group_resource_file:'Document',group_resource_title_required:'❌ A title is required',group_resource_link_or_file:'Add a link or upload a document.',group_resource_invalid_link:'The link must begin with http:// or https://',group_resource_upload_failed:'Document upload failed.',group_resource_add:'Add Resource',group_resources_empty:'No resources yet.',group_resource_added:'Resource added',
     group_search:'Search',group_search_ph:'Search messages...',
     group_notifications:'Notifications',group_mute:'Mute notifications',group_unmute:'Unmute notifications',group_muted:'🔕 Group muted',group_unmuted:'🔔 Notifications unmuted',
     group_share_invite:'Share / Invite',group_link_copied:'🔗 Link copied',
-    group_report:'Report Group',group_report_prompt:'Why are you reporting this group?',group_report_sent:'✅ Report sent',
+    group_report:'Report Group',group_report_prompt:'Why are you reporting this group?',group_report_sent:'Report sent',
     group_leave:'Leave Group',
     group_invite_not_eligible_title:'⚠️ Invitation not sent',group_invite_reason_country_short:'Other country',group_invite_reason_university_short:'Other university',group_invite_reason_major_short:'Different course',group_invite_reason_country_msg:'You can only invite students from your country.',group_invite_reason_university_msg:'You can only invite students from your university.',group_invite_reason_major_msg:'You can only invite students from your course/major.',group_view_only:'View only',
     group_settings:'Group Settings',group_info:'Group Info',group_settings_readonly:'Only the group owner can change these settings.',
-    group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_settings_saved:'✅ Settings saved',
+    group_who_can_be_invited:'Who can be invited?',group_save_settings:'Save Settings',group_settings_saved:'Settings saved',
     group_delete:'Delete Group',group_confirm_delete:'Permanently delete this group? This cannot be undone.',
     group_deleted:'Group deleted',
     group_still_pending:'Your request is still pending',group_request_sent:'Join request sent. Waiting for approval.',
@@ -4325,7 +4373,7 @@ const I18N={
     group_refused_generic:'❌ You’re not eligible to join this group',
     notif_join_request_title:'New request',notif_join_request_body:'wants to join',
     group_loading:'Loading...',group_no_pending:'No pending requests',
-    accept:'Accept',decline:'Decline',group_member_added:'✅ Member added',
+    accept:'Accept',decline:'Decline',group_member_added:'Member added',
     group_request_declined:'Request declined',group_pending_requests:'Pending Requests',
     group_members_label:'Members',group_invite_members:'Invite Members',group_invite:'Invite',
     group_already_member:'Already a member',group_invite_sent:'Invite sent to {name}',
@@ -4344,9 +4392,9 @@ const I18N={
     invite_again:'Invite Again',study_together_label:'Study Together',group_invite_to_join:'Invite to Join',
     invite_course_label:'Course (optional)',invite_type_label:'Study Type',
     invite_message_label:'Message (optional)',invite_message_ph:'Let’s study together...',
-    invite_send:'Send Invitation',invite_sent:'✅ Invitation sent',
+    invite_send:'Send Invitation',invite_sent:'Invitation sent',
     invite_already_pending:'An invitation is already pending',invite_not_found:'Invitation not found',
-    invite_accepted:'✅ Invitation accepted',invite_declined:'Invitation declined',
+    invite_accepted:'Invitation accepted',invite_declined:'Invitation declined',
     notif_study_invite_title:'Study Invitation',
     notif_study_accepted_title:'Invitation Accepted',notif_study_accepted_body:'accepted your study invitation',
     notif_study_declined_title:'Invitation Declined',notif_study_declined_body:'declined your study invitation',
@@ -4363,7 +4411,7 @@ const I18N={
     me_skills_label:'Skills',me_skills_ph:'e.g. Python, Math...',
     me_here_to_label:'I am here to:',me_get_help:'Get Help',me_give_help:'Give Help',me_both:'Both',
     me_save:'Save',me_cancel:'Cancel',me_app_settings:'App Settings',
-    me_toast_name_required:'❌ Name required',me_toast_saved:'✅ Saved!',
+    me_toast_name_required:'❌ Name required',me_toast_saved:'Saved!',
     profile_title:'Profile',
     chat_search_ph:'Search messages...',chat_msg_ph:'Message...',
     chat_voice_hint:'Hold · slide up to lock · tap mic to send',
@@ -4385,7 +4433,7 @@ const I18N={
     st_cat_pause:'Break',st_cat_objectif:'Goal reached',st_menu_seenby:'Seen by',st_menu_share:'Share',st_menu_save:'Save',
     st_menu_delete:'Delete',st_menu_forward:'Forward',st_menu_message:'Message',st_menu_viewprofile:'View profile',
     st_menu_notif:'Notifications',st_menu_hide:'Hide',st_menu_report:'Report',st_seen_none:'No views yet',st_seen_count:'Seen by',
-    st_toast_published:'✅ Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
+    st_toast_published:'Status posted',st_toast_expired:'❌ Status expired',st_toast_deleted:'Status deleted',
     st_toast_notif_on:'Notifications turned on',st_toast_hidden:'Hidden',st_toast_reported:'Report sent',
     st_toast_choose_category:'❌ Choose a category',st_toast_write_message:'❌ Write a message',st_preview_empty:'Choose a category, or add a photo, to see the preview',st_preview_photo:'Photo',st_toast_photo_uploading:'❌ Photo uploading, please wait',
     st_toast_complete_profile:'❌ Complete your profile first',st_toast_no_self_reply:"You can't reply to yourself",st_toast_msg_sent:'Message sent',st_toast_audio_sent:'Voice sent',
@@ -4462,7 +4510,7 @@ async function openManageGroup(postId,highlightUid=''){
   const viewerIsOwner=isGroupOwner(g,CU.uid);
   const viewerIsAdmin=isGroupAdmin(g,CU.uid);
   const viewerCanDecide=canInviteToGroup(g,CU.uid);
-  el('gmTitle').innerHTML=ic('house','1em','#e67e22')+' '+esc(g.name||'');
+  el('gmTitle').innerHTML=(g.photo?'<img src="'+g.photo+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;vertical-align:middle;">':ic('house','1em','#e67e22'))+' '+esc(g.name||'');
   const pendingIds=g.pendingRequests||[];
   const memberIds=g.members||[];
   const ownerIds=memberIds.filter(uid=>isGroupOwner(g,uid));
@@ -4505,17 +4553,7 @@ async function openManageGroup(postId,highlightUid=''){
     const u=allUsers.find(x=>x.uid===uid);
     const av=u?.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u?.name||'?')[0]||'?').toUpperCase();
     const uOwner=isGroupOwner(g,uid),uAdmin=!uOwner&&(g.admins||[]).includes(uid);
-    let mgmt='';
-    if(viewerIsOwner&&!uOwner){
-      mgmt+=uAdmin
-        ?`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',false)">${t('group_remove_admin')}</button>`
-        :`<button class="btn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="toggleGroupAdmin('${uid}',true)">${t('group_make_admin')}</button>`;
-    }
-    if(viewerIsAdmin&&!uOwner&&!(viewerIsAdmin&&!viewerIsOwner&&uAdmin)){
-      mgmt+=`<button class="btn r" style="width:auto;padding:6px 10px;font-size:11px;" onclick="removeGroupMember('${uid}')">${t('group_remove_member')}</button>`;
-      const blocked=(g.blockedUsers||[]).includes(uid);
-      mgmt+=`<button class="btn warn" style="width:auto;padding:6px 10px;font-size:11px;" onclick="${blocked?`unblockGroupMember('${uid}')`:`blockGroupMember('${uid}')`}">${blocked?t('group_unblock_member'):t('group_block_member')}</button>`;
-    }
+    const mgmt='';
     return `<div class="card" style="display:flex;align-items:center;gap:10px;padding:10px;flex-wrap:wrap;">
       <div onclick="openProfile('${uid}')" style="width:34px;height:34px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;cursor:pointer;">${av}</div>
       <span onclick="openProfile('${uid}')" style="font-size:13px;flex:1;cursor:pointer;">${esc(u?.name||'Utilisateur')}</span>
@@ -4528,10 +4566,15 @@ async function openManageGroup(postId,highlightUid=''){
     <div style="width:42px;height:42px;border-radius:50%;background:#dbe2f0;display:flex;align-items:center;justify-content:center;font-weight:800;overflow:hidden;flex-shrink:0;">${acceptedAv}</div>
     <div style="min-width:0;"><div style="font-size:10.5px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.03em;">${appLang==='fr'?'Membre accepté':'Accepted member'}</div><b style="font-size:14px;color:#fff;">${esc(cleanDisplayName(acceptedUser.name||'Member'))}</b></div>
   </div>`:'';
-  el('gmMembers').innerHTML=acceptedHighlight+[
+  window._gmCtx={g,viewerIsOwner,viewerIsAdmin};
+  const gmActions=viewerIsAdmin?`<div style="display:flex;gap:8px;margin:16px 0 0;">`
+    +(viewerIsOwner?`<button class="btn" style="flex:1;width:auto;margin:0;padding:12px 6px;font-size:13px;" onclick="openMemberPicker('admin')">${t('group_make_admin')}</button>`:'')
+    +`<button class="btn gm-gray" style="flex:1;width:auto;margin:0;padding:12px 6px;font-size:13px;" onclick="openMemberPicker('remove')">${t('group_remove_member')}</button>`
+    +`<button class="btn gm-gray" style="flex:1;width:auto;margin:0;padding:12px 6px;font-size:13px;" onclick="openMemberPicker('block')">${t('group_block_member')}</button></div>`:'';
+  el('gmMembers').innerHTML=acceptedHighlight+gmActions+[
     ownerIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('crown','1em','#e67e22')} ${t('role_owner')} (${ownerIds.length})</p>${ownerIds.map(rowHtml).join('')}`:'',
     adminIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('shield','1em')} ${t('role_admin')} (${adminIds.length})</p>${adminIds.map(rowHtml).join('')}`:'',
-    regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🙂 ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
+    regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('user','1em')} ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
   ].join('');
   el('gmInviteBtn').style.display=canInviteToGroup(g,CU.uid)?'block':'none';
   el('gmEditBtn').style.display=viewerIsOwner?'block':'none';
@@ -4577,6 +4620,43 @@ async function saveGroupInfo(){
     openManageGroup(curManageGroupId);
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
+}
+function closeMemberPicker(){document.getElementById('gmPicker')?.remove();}
+function openMemberPicker(kind){
+  const c=window._gmCtx;if(!c||!CU)return;
+  const {g,viewerIsOwner,viewerIsAdmin}=c;
+  closeMemberPicker();
+  let ids=(g.members||[]).filter(uid=>!isGroupOwner(g,uid)&&uid!==CU.uid);
+  // A non-owner admin cannot act on other admins.
+  if(kind!=='admin')ids=ids.filter(uid=>!(viewerIsAdmin&&!viewerIsOwner&&(g.admins||[]).includes(uid)));
+  const title=kind==='admin'?t('group_make_admin'):kind==='remove'?t('group_remove_member'):t('group_block_member');
+  const rows=ids.map(uid=>{
+    const u=allUsers.find(x=>x.uid===uid)||{};
+    const av=u.photo?`<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover;">`:esc((u.name||'?')[0]||'?').toUpperCase();
+    const isAdm=(g.admins||[]).includes(uid),isBlk=(g.blockedUsers||[]).includes(uid);
+    const hint=kind==='admin'?(isAdm?t('group_remove_admin'):''):kind==='block'?(isBlk?t('group_unblock_member'):''):'';
+    return `<div onclick="memberPickerPick('${kind}','${uid}')" style="display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--brd);cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:50%;background:#dbe2f0;color:#0A3C6D;display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0;">${av}</div>
+      <span style="flex:1;font-size:14px;">${esc(u.name||'Utilisateur')}</span>
+      ${hint?`<span style="font-size:11px;color:var(--sub);">${esc(hint)}</span>`:''}
+    </div>`;
+  }).join('');
+  const box=document.createElement('div');
+  box.id='gmPicker';
+  box.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  box.onclick=e=>{if(e.target===box)closeMemberPicker();};
+  box.innerHTML=`<div style="background:var(--card,#fff);color:var(--txt,#111);border-radius:14px;width:100%;max-width:420px;max-height:75vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--brd);"><b style="font-size:15px;">${esc(title)}</b>
+      <button onclick="closeMemberPicker()" style="background:none;border:none;color:inherit;cursor:pointer;padding:2px;" aria-label="Close"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div style="overflow-y:auto;padding:4px 14px 10px;">${rows||`<p style="color:var(--sub);font-size:13px;padding:16px 4px;">—</p>`}</div></div>`;
+  document.body.appendChild(box);
+}
+function memberPickerPick(kind,uid){
+  const c=window._gmCtx;closeMemberPicker();if(!c)return;
+  const g=c.g;
+  if(kind==='admin')toggleGroupAdmin(uid,!(g.admins||[]).includes(uid));
+  else if(kind==='remove')removeGroupMember(uid);
+  else (g.blockedUsers||[]).includes(uid)?unblockGroupMember(uid):blockGroupMember(uid);
 }
 async function toggleGroupAdmin(uid,makeAdmin){
   if(!curManageGroupId)return;
@@ -4926,7 +5006,7 @@ function renderInviteSearch(q){
     const isMember=curInviteMembers.includes(u.uid);
     const elig=curInviteGroup?groupInviteEligibility(curInviteGroup,u):{eligible:true,reason:null};
     const state=isMember?'member':(curInviteStateMap[u.uid]==='pending'?'pending':(!elig.eligible?'ineligible':'invite'));
-    const btn=state==='member'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" disabled>✅ ${t('group_member_check')}</button>`
+    const btn=state==='member'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;" disabled>${t('group_member_check')}</button>`
       :state==='pending'?`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" disabled>${t('pending')}</button>`
       :state==='ineligible'?`<button class="btn" style="width:auto;padding:8px 12px;font-size:12px;opacity:.5;cursor:not-allowed;" disabled>${t('group_invite_to_join')}</button>`
       :`<button class="btn inv" id="inviteBtn_${u.uid}" style="width:auto;padding:8px 12px;font-size:12px;" onclick="sendGroupInvite('${u.uid}','${e2(u.name||'')}')">${t('group_invite_to_join')}</button>`;
@@ -5136,7 +5216,7 @@ function openPhoneSettings(){
 }
 function toggleDark(){dark=!dark;document.body.classList.toggle('dark',dark);}
 const TOAST_PAIRS=[
-  ['❌ Statut expiré','❌ Status expired'],['Profil','Profile'],['Profil introuvable','Profile not found'],['Groupe introuvable','Group not found'],['Tu ne peux pas répondre à ton propre statut',"You can't reply to your own status"],['Tu ne peux pas te répondre à toi-même',"You can't reply to yourself"],['Transféré depuis un autre statut','Forwarded from another status'],['Rien à enregistrer, statut texte seul','Nothing to save, text-only status'],['📷 Photo prête','📷 Photo ready'],['📁 Fichier partagé !','📁 File shared!'],['✅ Vocal envoyé','✅ Voice sent'],['❌ Impossible de copier','❌ Unable to copy'],['Partage non supporté sur cet appareil','Sharing is not supported on this device'],['❌ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.','❌ Unable to play this audio. The file is unavailable or the network was interrupted.'],['⚠️ Cet audio est indisponible.','⚠️ This audio is unavailable.'],['⚠️ Lecture impossible. Appuyez de nouveau sur lecture.','⚠️ Playback failed. Press play again.'],['⚠️ Lecture audio interrompue.','⚠️ Audio playback interrupted.'],['⚠️ Rien n’a été enregistré.','⚠️ Nothing was recorded.'],['⚠️ L’audio n’a pas pu être envoyé. Réessayez.','⚠️ The audio could not be sent. Try again.'],['⚠️ Envoi vocal impossible. Réessayez.','⚠️ Voice message could not be sent. Try again.'],['🎙️ Erreur du microphone. Réessayez.','🎙️ Microphone error. Try again.'],['🎙️ Microphone non supporté. Utilisez Chrome.','🎙️ Microphone not supported. Use Chrome.'],['⚠️ Vidéo trop volumineuse. Maximum 200 Mo.','⚠️ Video too large. Maximum 200 MB.'],['⚠️ Audio trop volumineux. Maximum 50 Mo.','⚠️ Audio too large. Maximum 50 MB.'],['⚠️ Document trop volumineux. Maximum 50 Mo.','⚠️ Document too large. Maximum 50 MB.'],['✅ Fil actualisé','✅ Feed refreshed'],['✅ Toutes les publications sont chargées','✅ All posts loaded'],['📢 Publication publiée !','📢 Post published!'],['❌ Veuillez coller un lien d’abord','❌ Please paste a link first'],['❌ Veuillez coller un lien valide','❌ Please paste a valid link'],['🚩 Signalement envoyé. Merci.','🚩 Report submitted. Thank you.'],['❌ Impossible d’envoyer le signalement','❌ Could not submit report'],['⚙️ Ouvrez les Paramètres de votre appareil pour modifier la langue, l’heure et les autres préférences.','⚙️ Open your device Settings app to change language, time, and other preferences.']
+  ['❌ Statut expiré','❌ Status expired'],['Profil','Profile'],['Profil introuvable','Profile not found'],['Groupe introuvable','Group not found'],['Tu ne peux pas répondre à ton propre statut',"You can't reply to your own status"],['Tu ne peux pas te répondre à toi-même',"You can't reply to yourself"],['Transféré depuis un autre statut','Forwarded from another status'],['Rien à enregistrer, statut texte seul','Nothing to save, text-only status'],['📷 Photo prête','📷 Photo ready'],['📁 Fichier partagé !','📁 File shared!'],['Vocal envoyé','Voice sent'],['❌ Impossible de copier','❌ Unable to copy'],['Partage non supporté sur cet appareil','Sharing is not supported on this device'],['❌ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.','❌ Unable to play this audio. The file is unavailable or the network was interrupted.'],['⚠️ Cet audio est indisponible.','⚠️ This audio is unavailable.'],['⚠️ Lecture impossible. Appuyez de nouveau sur lecture.','⚠️ Playback failed. Press play again.'],['⚠️ Lecture audio interrompue.','⚠️ Audio playback interrupted.'],['⚠️ Rien n’a été enregistré.','⚠️ Nothing was recorded.'],['⚠️ L’audio n’a pas pu être envoyé. Réessayez.','⚠️ The audio could not be sent. Try again.'],['⚠️ Envoi vocal impossible. Réessayez.','⚠️ Voice message could not be sent. Try again.'],['🎙️ Erreur du microphone. Réessayez.','🎙️ Microphone error. Try again.'],['🎙️ Microphone non supporté. Utilisez Chrome.','🎙️ Microphone not supported. Use Chrome.'],['⚠️ Vidéo trop volumineuse. Maximum 200 Mo.','⚠️ Video too large. Maximum 200 MB.'],['⚠️ Audio trop volumineux. Maximum 50 Mo.','⚠️ Audio too large. Maximum 50 MB.'],['⚠️ Document trop volumineux. Maximum 50 Mo.','⚠️ Document too large. Maximum 50 MB.'],['Fil actualisé','Feed refreshed'],['Toutes les publications sont chargées','All posts loaded'],['📢 Publication publiée !','📢 Post published!'],['❌ Veuillez coller un lien d’abord','❌ Please paste a link first'],['❌ Veuillez coller un lien valide','❌ Please paste a valid link'],['🚩 Signalement envoyé. Merci.','🚩 Report submitted. Thank you.'],['❌ Impossible d’envoyer le signalement','❌ Could not submit report'],['⚙️ Ouvrez les Paramètres de votre appareil pour modifier la langue, l’heure et les autres préférences.','⚙️ Open your device Settings app to change language, time, and other preferences.']
 ];
 const TOAST_PAIRS_EXTRA=[['🎙️ Android a interrompu le microphone. Vérifiez Chrome puis réessayez.','🎙️ Android interrupted the microphone. Check Chrome and try again.'],['📧 Email de réinitialisation envoyé !','📧 Reset email sent!'],['❌ Impossible de se déconnecter. Réessayez.','❌ Unable to disconnect. Please try again.'],['❌ Déconnectez-vous puis reconnectez-vous d’abord','❌ Sign out and back in first'],['📢 Publié !','📢 Posted!'],['❌ Complétez d’abord votre profil','❌ Complete your profile first'],['📋 Copié, prêt à partager','📋 Copied, ready to share'],['⏳ Finalisation du vocal en cours…','⏳ Finishing the voice message…'],['Tu ne peux pas répondre à ton propre statut','You can’t reply to your own status'],['Tu ne peux pas te répondre à toi-même','You can’t reply to yourself'],['🎙️ Microphone bloqué. Ouvrez le cadenas de Chrome, choisissez Autoriser, puis revenez ici.','🎙️ Microphone blocked. Tap the lock icon in Chrome, choose Allow, then come back here.'],['⭐ Ajouté aux favoris !','⭐ Favourited!'],['💔 Retiré des favoris','💔 Removed'],['❌ Utilisateur introuvable. Essayez depuis l’onglet Trouver.','❌ User not found. Try from Find tab.'],['❌ Vous ne pouvez pas vous écrire à vous-même','❌ Cannot message yourself'],['❌ Échec de l’envoi. Vérifiez votre connexion et réessayez.','❌ Sending failed. Check your connection and try again.'],['❌ Échec de l’envoi. Réessayez.','❌ Sending failed. Try again.'],['⚠️ Autorisez les pop-ups','⚠️ Allow popups'],['⚠️ Vidéo trop volumineuse. Max 200 Mo.','⚠️ Video too large. Max 200MB.'],['⚠️ Audio trop volumineux. Max 50 Mo.','⚠️ Audio too large. Max 50MB.'],['⚠️ Document trop volumineux. Max 200 Mo.','⚠️ Document too large. Max 200MB.'],['⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.','⚠️ Unable to play this audio. The file is unavailable or the network was interrupted.'],['Supprimé pour tous','Deleted for everyone'],['Supprimé pour vous','Deleted for you']];
 // Messages that end with a dynamic part (error text, counts).
@@ -5171,7 +5251,7 @@ function localizeToastMessage_old(msg){
 function showToast(msg,color){
   const t=el('toast');
   // Keep the toast wording, but remove the error-cross decoration everywhere.
-  t.textContent=localizeToastMessage(msg).replace(/^\s*❌\s*/,'');
+  t.textContent=localizeToastMessage(msg).replace(/^\s*❌\s*/,'').replace(/✅\s*/g,'');
   const statusOpen=el('statusView')?.style.display!=='none'&&el('statusView')?.style.display;
   const themedColor=color||(statusOpen?viewingCategoryColor():null);
   t.style.background=themedColor||'';
@@ -5240,7 +5320,7 @@ function tab(id){
       cachedPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
       _feedShown=10;
       renderHome(cachedPosts,_feedShown);
-      showToast('✅ Feed refreshed');
+      showToast('Feed refreshed');
     }).catch(()=>{}).finally(()=>setTimeout(()=>setDataRefresh(false),260));
   }
   if(id==='find'){
