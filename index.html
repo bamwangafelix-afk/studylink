@@ -17,7 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-storage-compat.min.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-199">
+<link rel="stylesheet" href="css/styles.css?v=studylink-pwa-200">
 </head>
 <body>
 <div class="ov" id="ov"><div class="spin"></div></div>
@@ -177,7 +177,7 @@
       <input id="gName" placeholder="e.g. Python Coders..." data-i18n-ph="post_group_name_ph">
       <label style="font-size:13px;font-weight:bold;margin-top:8px;display:block;" data-i18n="post_group_photo_label">Group Photo (optional):</label>
       <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
-        <div id="gPhotoPreview" style="width:52px;height:52px;border-radius:12px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px;">🏷️</div>
+        <div id="gPhotoPreview" style="width:52px;height:52px;border-radius:12px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px;"><svg class="vic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px;color:#e67e22"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></div>
         <input type="file" id="gPhotoFile" accept="image/*" onchange="previewGroupPhoto(this)" style="font-size:12px;">
       </div>
       <label style="font-size:13px;font-weight:bold;margin-top:8px;display:block;" data-i18n="group_who_can_join">Who can join?</label>
@@ -429,7 +429,7 @@
     <input id="giName">
     <label style="font-size:13px;font-weight:bold;margin-top:10px;display:block;" data-i18n="post_group_photo_label">Group Photo (optional):</label>
     <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
-      <div id="giPhotoPreview" style="width:52px;height:52px;border-radius:12px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px;">🏷️</div>
+      <div id="giPhotoPreview" style="width:52px;height:52px;border-radius:12px;background:#dbe2f0;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:20px;"><svg class="vic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:22px;height:22px;color:#e67e22"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></div>
       <input type="file" id="giPhotoFile" accept="image/*" onchange="previewEditGroupPhoto(this)" style="font-size:12px;">
     </div>
     <label style="font-size:13px;font-weight:bold;margin-top:10px;display:block;" data-i18n="post_group_desc_label">Group Description:</label>
@@ -671,8 +671,8 @@
 <div class="cwin" id="groupW">
   <div class="chdr" style="background:#e67e22;">
     <button onclick="closeGroup()" style="color:#fff;background:none;border:none;font-size:22px;cursor:pointer;">←</button>
-    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;" onclick="curGrp&&openManageGroup(curGrp.id)">
-      <div id="grpAv" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:15px;">🏫</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;flex:1;" onclick="curGrp&&openManageGroup(curGrp.id)">
+      <div id="grpAv" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;font-size:15px;color:#fff;"><svg class="vic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg></div>
       <div style="text-align:left;">
         <b id="grpT"></b>
         <div id="grpM" style="font-size:10px;opacity:.85;"></div>
@@ -826,5 +826,5 @@
   </div>
 </div>
 
-<script defer src="js/app-v26.js?v=studylink-pwa-199"></script></body>
+<script defer src="js/app-v26.js?v=studylink-pwa-200"></script></body>
 </html>

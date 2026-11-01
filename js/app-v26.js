@@ -78,6 +78,11 @@ try{voiceStorage?.setMaxUploadRetryTime(20000);voiceStorage?.setMaxOperationRetr
 
 let CU=null,MP=null,myPho='';
 // Keep locally sent messages visible until a Firestore snapshot confirms their IDs.
+const VIC={"calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "users": "<path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M23 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/>", "user": "<path d=\"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/>", "crown": "<path d=\"M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z\"/><path d=\"M5 21h14\"/>", "shield": "<path d=\"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z\"/>", "bell": "<path d=\"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9\"/><path d=\"M13.73 21a2 2 0 0 1-3.46 0\"/>", "bell-off": "<path d=\"M13.73 21a2 2 0 0 1-3.46 0\"/><path d=\"M18.63 13A17.89 17.89 0 0 1 18 8\"/><path d=\"M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14\"/><path d=\"M18 8a6 6 0 0 0-9.33-5\"/><path d=\"m2 2 20 20\"/>", "house": "<path d=\"M3 10.5 12 3l9 7.5\"/><path d=\"M5 9.5V21h14V9.5\"/><path d=\"M10 21v-6h4v6\"/>", "lock": "<rect x=\"3\" y=\"11\" width=\"18\" height=\"11\" rx=\"2\"/><path d=\"M7 11V7a5 5 0 0 1 10 0v4\"/>", "book": "<path d=\"M4 19.5A2.5 2.5 0 0 1 6.5 17H20\"/><path d=\"M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\"/>", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M2 12h20\"/><path d=\"M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\"/>", "landmark": "<path d=\"M3 22h18\"/><path d=\"M6 18v-7M10 18v-7M14 18v-7M18 18v-7\"/><path d=\"M12 2 20 7H4z\"/>", "cap": "<path d=\"M22 10 12 5 2 10l10 5 10-5z\"/><path d=\"M6 12v5c3 3 9 3 12 0v-5\"/>", "pin": "<path d=\"M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/>", "handshake": "<path d=\"m11 17 2 2a1 1 0 1 0 3-3\"/><path d=\"m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4\"/><path d=\"m21 3 1 11h-2\"/><path d=\"M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3\"/><path d=\"M3 4h8\"/>", "chat": "<path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/>"};
+function ic(n,size,color){
+  const s=size||'1.15em';
+  return '<svg class="vic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:'+s+';height:'+s+(color?';color:'+color:'')+'">'+(VIC[n]||'')+'</svg>';
+}
 let pendingPrivateMessages={};
 let selTags=[],ftab='all',dark=false,favs=new Set();
 let curChat=null,chatUnsub=null,chatReadHeartbeat=null,curChatReadAt={},curGrp=null,grpUnsub=null,grpPresenceUnsub=null,allUsers=[];
@@ -127,9 +132,9 @@ function inviteBtnHtml(uid,name){
   const records=myStudyInviteMap[uid]||[];
   const pending=[...new Set(records.filter(inv=>inv.state==='pending').map(inv=>inv.course).filter(Boolean))];
   const more=`<button class="btn inv" style="flex:1;min-width:0;width:auto;margin-top:0;" onclick="openStudyInvite('${uid}','${e2(name||'')}')">${t('invite_another_course')}</button>`;
-  if(st==='message')return`<div style="display:flex;gap:6px;margin-top:6px;"><button class="btn" style="flex:1;min-width:0;width:auto;margin-top:0;" onclick="openChat('${e2(name||'')}','${uid}')">💬 ${t('home_message')}</button>${more}</div>`;
+  if(st==='message')return`<div style="display:flex;gap:6px;margin-top:6px;"><button class="btn" style="flex:1;min-width:0;width:auto;margin-top:0;" onclick="openChat('${e2(name||'')}','${uid}')">${ic('chat')} ${t('home_message')}</button>${more}</div>`;
   if(st==='sent')return`<div style="display:flex;gap:6px;margin-top:6px;"><button class="btn inv" style="flex:1;min-width:0;width:auto;margin-top:0;opacity:.6;" disabled>⏳ ${t('invite_sent_btn')}${pending.length?` — ${pending.map(esc).join(', ')}`:''}</button>${more}</div>`;
-  return`<button class="btn inv" onclick="openStudyInvite('${uid}','${e2(name||'')}')">🤝 ${t('invite_to_study')}</button>`;
+  return`<button class="btn inv" onclick="openStudyInvite('${uid}','${e2(name||'')}')">${ic('handshake')} ${t('invite_to_study')}</button>`;
 }
 function refreshInviteButtons(){
   if(el('Pfind')?.style.display!=='none'&&findTop==='students')renderFind(el('findQ')?.value||'');
@@ -893,7 +898,7 @@ function openProfile(uid,profileData=null){
           const b=await db.collection('studyInvites').where('status','==','accepted').where('fromUid','==',uid).where('toUid','==',CU.uid).get();
           const courses=[...new Set([...a.docs,...b.docs].map(d=>d.data().course).filter(Boolean))];
           if(!courses.length)return;
-          stEl.innerHTML=`<div style="font-size:11.5px;color:#7b2ff7;font-weight:700;margin-bottom:6px;">${t('study_together_label')}</div>`+courses.map(c=>`<span class="tbadge" style="background:#f2e6ff;color:#6b21c9;">📚 ${esc(c)}</span>`).join('');
+          stEl.innerHTML=`<div style="font-size:11.5px;color:#7b2ff7;font-weight:700;margin-bottom:6px;">${t('study_together_label')}</div>`+courses.map(c=>`<span class="tbadge" style="background:#f2e6ff;color:#6b21c9;">${ic('book','1em')} ${esc(c)}</span>`).join('');
         }).catch(()=>{});
     }
   }
@@ -920,7 +925,7 @@ function updatePC(){
   el('pcDot').className='odot online';
   el('pcName').textContent=MP.name||'';
   el('pcBio').textContent=MP.bio||'';
-  el('pcInfo').textContent=getFlag(MP.country||'')+' '+(MP.country||'—')+' | 🏛️ '+(MP.uni||'—')+' | 📖 '+(MP.course||'—');
+  el('pcInfo').innerHTML=getFlag(MP.country||'')+' '+(MP.country||'—')+' | '+ic('landmark')+' '+esc(MP.uni||'—')+' | '+ic('book')+' '+esc(MP.course||'—');
   // Intent badge — add after pcInfo
   let ib=el('pcIntent');
   if(!ib){ib=document.createElement('div');ib.id='pcIntent';el('pcardEl').querySelector('div:last-child').appendChild(ib);}
@@ -1168,7 +1173,7 @@ async function addPost(){
     // only send to ALERTS (not messages)
     notifyAllExcept(CU.uid,'📢','📢 New Post by '+MP.name,text.substring(0,60),{kind:'post',postId:ref.id,groupName:gname,courseSubject});
     selTags=[];renderSubjectPicker('post');
-    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gDesc').value='';gPhotoDataUrl=null;el('gPhotoPreview').innerHTML='🏷️';if(el('gPhotoFile'))el('gPhotoFile').value='';if(el('gWhoCanJoin'))el('gWhoCanJoin').value='anyone';if(el('gHowCanJoin'))el('gHowCanJoin').value='direct';
+    el('pText').value='';el('pType').value='Individual';toggleGN('Individual');if(el('pVisibility'))el('pVisibility').value='anyone';el('gName').value='';el('gDesc').value='';gPhotoDataUrl=null;el('gPhotoPreview').innerHTML=ic('house','22px','#e67e22');if(el('gPhotoFile'))el('gPhotoFile').value='';if(el('gWhoCanJoin'))el('gWhoCanJoin').value='anyone';if(el('gHowCanJoin'))el('gHowCanJoin').value='direct';
     showToast('📢 Posted!');tab('home');
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
@@ -1215,9 +1220,9 @@ function renderHome(posts,limit){
       <div style="display:flex;gap:10px;margin-bottom:8px;">
         <div class="av-wrap" style="width:54px;height:54px;cursor:pointer;" onclick="openProfile('${p.uid||''}')"><div class="avatar ${statusRingOutlineClass(p.uid)}" style="width:54px;height:54px;">${av}</div><div class="odot ${st.cls}"></div></div>
         <div style="flex:1;overflow:hidden;">
-          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">🏫 ${esc(p.groupName||'')}</span>`:''}
-          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | 🏛️ ${du.uni||'—'}</p>
-          <p style="font-size:11px;color:var(--sub);margin:2px 0;">📖 ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
+          <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${p.uid||''}')">${esc(du.name||'?')}</b>${isG?` <span style="color:#F39C12;font-size:12px;">${ic('house','1em')} ${esc(p.groupName||'')}</span>`:''}
+          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${getFlag(du.country||'')} ${du.country||'—'} | ${ic('landmark')} ${du.uni||'—'}</p>
+          <p style="font-size:11px;color:var(--sub);margin:2px 0;">${ic('book')} ${du.course||'—'} ${du.year?'('+du.year+')':''}</p>
           ${isG?`<div style="margin-top:2px;">${groupRuleBadgesHtml(p)}</div>`:''}
           ${getIntentBadge(intent)}
         </div>
@@ -1229,8 +1234,8 @@ function renderHome(posts,limit){
               ?`<button class="btn grp-open" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">${t('group_open')}</button>`
               :myPendingJoinGroupIds.has(p.id)
               ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>${t('group_request_sent_btn')}</button>`
-              :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">🤝 ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
-              `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">💬 ${t('home_message')}</button>`}
+              :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">${ic('handshake')} ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
+              `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">${ic('chat')} ${t('home_message')}</button>`}
         ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
       </div>
       ${isG&&p.groupPhoto?`<div style="position:absolute;bottom:-6px;right:-6px;width:30px;height:30px;border-radius:50%;overflow:hidden;border:2px solid var(--card,#fff);box-shadow:0 1px 4px rgba(0,0,0,.3);"><img src="${p.groupPhoto}" style="width:100%;height:100%;object-fit:cover;"></div>`:''}
@@ -1827,7 +1832,7 @@ async function renderFindGroups(q=""){
   }
   f.innerHTML=html;
 }
-const RULE_ICONS={anyone:'🟢',country:'🌍',university:'🎓',major:'📚'};
+const RULE_ICONS={anyone:'globe',country:'pin',university:'cap',major:'book'};
 function normalizeGroupRules(g){
   // Backward compatibility: legacy groups only had a single `accessRule` field.
   if(g.whoCanJoin!==undefined)return{whoCanJoin:g.whoCanJoin,howCanJoin:g.howCanJoin||'direct'};
@@ -1839,8 +1844,8 @@ function accessRuleLabel(rule){
 }
 function groupRuleBadgesHtml(g){
   const{whoCanJoin,howCanJoin}=normalizeGroupRules(g);
-  let html=`<span class="ruleBadge">${RULE_ICONS[whoCanJoin]||'🟢'} ${accessRuleLabel(whoCanJoin)}</span>`;
-  if(howCanJoin==='request')html+=`<span class="ruleBadge">🔒 ${t('rule_request')}</span>`;
+  let html=`<span class="ruleBadge">${ic(RULE_ICONS[whoCanJoin]||'globe')} ${accessRuleLabel(whoCanJoin)}</span>`;
+  if(howCanJoin==='request')html+=`<span class="ruleBadge">${ic('lock')} ${t('rule_request')}</span>`;
   return html;
 }
 function groupCardHtml(g,isMine){
@@ -1855,7 +1860,7 @@ function groupCardHtml(g,isMine){
   else if(isPending)actionLabel=howCanJoin==='request'?t('group_request_sent_btn'):t('pending');
   else if(howCanJoin==='request')actionLabel=t('group_request_to_join');
   return `<div class="card">
-    <b style="color:var(--btnB);font-size:14px;">🏫 ${esc(g.name||'Group')}</b>
+    <b style="color:var(--btnB);font-size:14px;">${ic('house','1.15em','#e67e22')} ${esc(g.name||'Group')}</b>
     <div style="margin-top:4px;">${groupRuleBadgesHtml(g)}</div>
     <p style="font-size:13px;margin:6px 0;">${esc(desc)}</p>
     <button class="btn ${isMember||isMine?'grp-open':actionCls}" style="width:100%;" ${isPending&&!isMine?'disabled':''} onclick="${isMine?`openManageGroup('${g.id}')`:`handleGroupAccess('${g.id}','${e2(g.name||'Group')}')`}">${actionLabel}</button>
@@ -2007,8 +2012,8 @@ function renderFind(q=""){
         <div style="flex:1;overflow:hidden;">
           <b style="color:var(--btnB);font-size:14px;cursor:pointer;" onclick="openProfile('${u.uid}')">${esc(u.name||'?')}${isSelf?` <span style="font-size:10px;background:#27ae60;color:#fff;padding:1px 5px;border-radius:6px;">${t('find_you_badge')}</span>`:''}</b>
           ${u.bio?`<p style="font-size:11px;font-style:italic;color:var(--sub);margin:1px 0;">${esc(u.bio)}</p>`:''}
-          <p style="font-size:11px;color:var(--sub);margin:1px 0;">${getFlag(u.country||'')} ${u.country||'—'} | 🏛️ ${u.uni||'—'}</p>
-          <p style="font-size:11px;color:var(--sub);margin:1px 0;">📖 ${u.course||'—'} ${u.year?'('+u.year+')':''}</p>
+          <p style="font-size:11px;color:var(--sub);margin:1px 0;">${getFlag(u.country||'')} ${u.country||'—'} | ${ic('landmark')} ${u.uni||'—'}</p>
+          <p style="font-size:11px;color:var(--sub);margin:1px 0;">${ic('book')} ${u.course||'—'} ${u.year?'('+u.year+')':''}</p>
           ${getIntentBadge(u.intent||'')}
         </div>
       </div>
@@ -2553,20 +2558,20 @@ async function openGroup(postId,name){
     if(el('gcmInviteBtn'))el('gcmInviteBtn').style.display=groupInviteAllowed?'block':'none';
     pushModalState();
     el('grpT').textContent=curGrp.name;el('groupW').style.display='flex';
-    el('grpAv').innerHTML=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:'🏫';
+    el('grpAv').innerHTML=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:ic('house','1em');
     const owner=allUsers.find(u=>u.uid===curGrp.ownerUid);
-    el('grpOwnerLine').innerHTML=owner?`👑 ${esc(owner.name||'')}`:'';
+    el('grpOwnerLine').innerHTML=owner?`${ic('crown','1em')} ${esc(owner.name||'')}`:'';
     // Fresh chat shell each time — a group opened before could otherwise leave its
     // messages and welcome card behind when a different group is opened next.
     const createdDate=groupData.createdAt?.toDate?groupData.createdAt.toDate():null;
     const createdStr=createdDate?createdDate.toLocaleDateString(appLang==='fr'?'fr-FR':'en-US',{year:'numeric',month:'long',day:'numeric'}):'';
-    const introPhoto=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:'🏫';
+    const introPhoto=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:ic('house','1em');
     el('grpB').innerHTML=`<div class="card" style="text-align:center;margin:10px auto;max-width:320px;">
-      <div style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:#e67e22;display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 12px;">${introPhoto}</div>
+      <div style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:#e67e22;display:flex;align-items:center;justify-content:center;font-size:38px;color:#fff;margin:0 auto 12px;">${introPhoto}</div>
       <b style="font-size:16px;display:block;">${esc(curGrp.name)}</b>
       ${groupData.description?`<p style="font-size:13px;color:var(--sub);margin-top:8px;">${esc(groupData.description)}</p>`:''}
-      ${owner?`<p style="font-size:12px;color:var(--sub);margin-top:8px;cursor:pointer;" onclick="openProfile('${owner.uid}')">👑 ${t('group_created_by')}: <b style="color:var(--txt);">${esc(owner.name||'')}</b></p>`:''}
-      ${createdStr?`<p style="font-size:11px;color:var(--sub);margin-top:4px;">📅 ${createdStr}</p>`:''}
+      ${owner?`<p style="font-size:12px;color:var(--sub);margin-top:8px;cursor:pointer;" onclick="openProfile('${owner.uid}')">${ic('crown','1em','#e67e22')} ${t('group_created_by')}: <b style="color:var(--txt);">${esc(owner.name||'')}</b></p>`:''}
+      ${createdStr?`<p style="font-size:11px;color:var(--sub);margin-top:4px;">${ic('calendar','1em')} ${createdStr}</p>`:''}
     </div>`;
     setTimeout(()=>setupVoiceSwipe('gSendB',startGVoice,stopAndSendGVoice,cancelGVoice),100);
     if(grpUnsub){grpUnsub();grpUnsub=null;}
@@ -3811,7 +3816,7 @@ function renderInbox(q="",sn=null){
       // Presence takes priority over the last message, like WhatsApp. It is
       // rendered in the list and the open conversation from the same Firestore
       // chat document, so both surfaces update through the inbox snapshot.
-      const _presenceText=privatePresenceText(o.name||'User',data,ouid);
+      const _presenceText=privatePresenceText('',data,ouid).trim();
       // Render lastMsg with SVG icon for media types
       const _rawMsg=data.lastMsg||'';
       let _msgHtml;
@@ -3836,7 +3841,7 @@ function renderInbox(q="",sn=null){
         </div>
         <div style="flex:1;min-width:0;">
           <b style="font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${unread>0?'color:var(--btnB);':''}">${esc(o.name||'User')}</b>
-          ${o.uni?`<p style="font-size:10px;color:var(--sub);margin:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🏛️ ${esc(o.uni)}</p>`:''}
+          ${o.uni?`<p style="font-size:10px;color:var(--sub);margin:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ic('landmark')} ${esc(o.uni)}</p>`:''}
           <p class="inbox-presence" style="font-size:11px;color:${_presenceText?'var(--btnB)':(unread>0?'var(--txt)':'var(--sub)')};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${_presenceText||unread>0?'font-weight:bold;':''};display:flex;align-items:center;">${esc(_presenceText||'')||_msgHtml}</p>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
@@ -4457,7 +4462,7 @@ async function openManageGroup(postId,highlightUid=''){
   const viewerIsOwner=isGroupOwner(g,CU.uid);
   const viewerIsAdmin=isGroupAdmin(g,CU.uid);
   const viewerCanDecide=canInviteToGroup(g,CU.uid);
-  el('gmTitle').textContent='🏫 '+(g.name||'');
+  el('gmTitle').innerHTML=ic('house','1em','#e67e22')+' '+esc(g.name||'');
   const pendingIds=g.pendingRequests||[];
   const memberIds=g.members||[];
   const ownerIds=memberIds.filter(uid=>isGroupOwner(g,uid));
@@ -4472,8 +4477,8 @@ async function openManageGroup(postId,highlightUid=''){
       <div style="width:16px;height:16px;border-radius:50%;background:#dbe2f0;overflow:hidden;flex-shrink:0;font-size:9px;display:flex;align-items:center;justify-content:center;">${creatorAv}</div>
       <span style="font-size:12px;color:var(--sub);">${t('group_created_by')}: <b style="color:var(--txt);">${esc(creator.name||'—')}</b></span>
     </div>
-    <p style="font-size:12px;color:var(--sub);margin:2px 0;">📅 ${t('group_created_on')}: ${createdStr}</p>
-    <p style="font-size:12px;color:var(--sub);margin:6px 0 0;">👥 ${t('group_members_label')}: <b style="color:var(--txt);">${memberIds.length}</b> · 👑 ${t('role_owner')}: <b style="color:var(--txt);">${ownerIds.length}</b> · 🛡️ ${t('role_admin')}: <b style="color:var(--txt);">${adminIds.length}</b> · 🙂 ${t('role_member')}: <b style="color:var(--txt);">${regularIds.length}</b></p>
+    <p style="font-size:12px;color:var(--sub);margin:2px 0;">${ic('calendar','1em')} ${t('group_created_on')}: ${createdStr}</p>
+    <p style="font-size:12px;color:var(--sub);margin:6px 0 0;">${ic('users','1em')} ${t('group_members_label')}: <b style="color:var(--txt);">${memberIds.length}</b> · ${ic('crown','1em','#e67e22')} ${t('role_owner')}: <b style="color:var(--txt);">${ownerIds.length}</b> · ${ic('shield','1em')} ${t('role_admin')}: <b style="color:var(--txt);">${adminIds.length}</b> · ${ic('user','1em')} ${t('role_member')}: <b style="color:var(--txt);">${regularIds.length}</b></p>
     ${g.description?`<p style="font-size:13px;margin-top:10px;">${esc(g.description)}</p>`:''}
   `;
   const pendingSection=el('gmPending').closest?el('gmPending').parentElement:null;
@@ -4524,8 +4529,8 @@ async function openManageGroup(postId,highlightUid=''){
     <div style="min-width:0;"><div style="font-size:10.5px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.03em;">${appLang==='fr'?'Membre accepté':'Accepted member'}</div><b style="font-size:14px;color:#fff;">${esc(cleanDisplayName(acceptedUser.name||'Member'))}</b></div>
   </div>`:'';
   el('gmMembers').innerHTML=acceptedHighlight+[
-    ownerIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">👑 ${t('role_owner')} (${ownerIds.length})</p>${ownerIds.map(rowHtml).join('')}`:'',
-    adminIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🛡️ ${t('role_admin')} (${adminIds.length})</p>${adminIds.map(rowHtml).join('')}`:'',
+    ownerIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('crown','1em','#e67e22')} ${t('role_owner')} (${ownerIds.length})</p>${ownerIds.map(rowHtml).join('')}`:'',
+    adminIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">${ic('shield','1em')} ${t('role_admin')} (${adminIds.length})</p>${adminIds.map(rowHtml).join('')}`:'',
     regularIds.length?`<p style="font-weight:bold;font-size:13px;margin:18px 0 8px;">🙂 ${t('role_member')} (${regularIds.length})</p>${regularIds.map(rowHtml).join('')}`:''
   ].join('');
   el('gmInviteBtn').style.display=canInviteToGroup(g,CU.uid)?'block':'none';
@@ -4539,7 +4544,7 @@ function openEditGroupInfo(){
     const g=gs.data()||{};
     el('giName').value=g.name||'';
     el('giDesc').value=g.description||'';
-    el('giPhotoPreview').innerHTML=g.photo?`<img src="${g.photo}" style="width:100%;height:100%;object-fit:cover;">`:'🏷️';
+    el('giPhotoPreview').innerHTML=g.photo?`<img src="${g.photo}" style="width:100%;height:100%;object-fit:cover;">`:ic('house','22px','#e67e22');
     giPhotoDataUrl=null;
     el('groupEditInfoView').style.display='flex';
     pushModalState();
@@ -4638,7 +4643,7 @@ function toggleGroupChatMenu(){
     if(curGrp&&CU){
       db.collection('users').doc(CU.uid).get().then(us=>{
         const muted=((us.data()||{}).mutedGroups||[]).includes(curGrp.id);
-        el('gcmMuteBtn').textContent=muted?('🔔 '+t('group_unmute')):('🔕 '+t('group_mute'));
+        el('gcmMuteBtn').innerHTML=muted?(ic('bell','1.1em')+' '+t('group_unmute')):(ic('bell-off','1.1em')+' '+t('group_mute'));
       }).catch(()=>{});
     }
   }
