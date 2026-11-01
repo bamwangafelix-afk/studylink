@@ -62,13 +62,15 @@ window.addEventListener('error',e=>{
 
 firebase.initializeApp({apiKey:"AIzaSyBQXvheNG_6r5NYjwru_0l_EUsKYrT4w1g",authDomain:"studylink-e1803.firebaseapp.com",projectId:"studylink-e1803",storageBucket:"studylink-e1803.firebasestorage.app",messagingSenderId:"51988890739",appId:"1:51988890739:web:fa5b3486e7a32c3fe95606"});
 const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAuthProvider();
-// Let Firestore choose its normal real-time transport and fall back to long-polling
-// only on networks where its auto-detection finds that long-polling is needed.
-// Forcing long-polling on every device adds avoidable delay to live message updates.
+// Long-polling is forced: on the networks StudyLink is used on, Firestore's automatic
+// transport detection leaves real-time listeners stalled ("client is offline", late or
+// missing messages). Forced long-polling was tested and delivers messages reliably.
+// To go back to auto-detection for a test: localStorage.slAutoLP='1' then reload.
 try{
-  db.settings({experimentalAutoDetectLongPolling:true,merge:true});
+  let autoLP=false;try{autoLP=localStorage.getItem('slAutoLP')==='1';}catch(e){}
+  db.settings(autoLP?{experimentalAutoDetectLongPolling:true,merge:true}:{experimentalForceLongPolling:true,merge:true});
 }catch(e){
-  console.warn('Firestore transport auto-detection unavailable; using SDK defaults:',e?.message||e);
+  console.warn('Firestore transport setting unavailable; using SDK defaults:',e?.message||e);
 }
 try{
   db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore persistence unavailable:',e?.code||e));
