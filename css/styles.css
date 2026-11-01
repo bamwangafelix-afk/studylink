@@ -596,3 +596,6 @@ body.dark .bbl.o .mabtn.dl,body.dark .bbl.o .dlring{background:rgba(255,255,255,
 /* light mode keeps the brand blue; the old rule forced white even there */
 .presence-text{color:var(--btnB);}
 body.dark .presence-text{color:#fff!important;}
+
+.vic{flex-shrink:0;vertical-align:-.2em;display:inline-block;}
+.btn .vic{margin-right:2px;}
