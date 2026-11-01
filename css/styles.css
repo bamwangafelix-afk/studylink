@@ -606,3 +606,8 @@ body.dark .presence-text{color:#fff!important;}
 .btn.r{background:#fff;color:#e74c3c;border:2px solid #e74c3c;padding:9px;}
 #disconnectBtn{background:#fff!important;color:#e74c3c!important;border:2px solid #e74c3c!important;padding:9px;}
 .btn.gm-gray{background:#fff!important;color:#6B7280!important;border:2px solid #6B7280!important;}
+
+.pm-wrap{position:relative;flex-shrink:0;}
+.pm{display:none;position:absolute;right:0;bottom:calc(100% + 6px);background:var(--card,#fff);border:1px solid var(--brd,#ccc);border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:60;min-width:130px;overflow:hidden;}
+.pm.open{display:block;}
+.pm button{display:block;width:100%;padding:11px 14px;background:none;border:none;color:#e74c3c;font-weight:700;font-size:13px;text-align:left;cursor:pointer;}

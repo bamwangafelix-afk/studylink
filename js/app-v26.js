@@ -66,7 +66,7 @@ const db=firebase.firestore(),auth=firebase.auth(),GP=new firebase.auth.GoogleAu
 // only on networks where its auto-detection finds that long-polling is needed.
 // Forcing long-polling on every device adds avoidable delay to live message updates.
 try{
-  db.settings({experimentalForceLongPolling:true,merge:true});
+  db.settings({experimentalAutoDetectLongPolling:true,merge:true});
 }catch(e){
   console.warn('Firestore transport auto-detection unavailable; using SDK defaults:',e?.message||e);
 }
@@ -380,7 +380,7 @@ function setupPresence(){
   setPresence('Online');
   // Heartbeat refreshes status + lastSeen so other users can tell a live session
   // from one that closed without a chance to write "Offline".
-  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},20000);
+  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},25000);
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'){
       clearTimeout(_presenceOfflineTimer);_presenceOfflineTimer=null;
@@ -392,7 +392,7 @@ function setupPresence(){
     }
     if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
   });
-  window.addEventListener('pagehide',()=>{if(CU)setPresence('Offline');});
+  window.addEventListener('pagehide',e=>{if(CU&&!e.persisted)setPresence('Offline');});
   window.addEventListener('pageshow',()=>{setPresence('Online');});
   window.addEventListener('online',()=>setPresence('Online'));
   window.addEventListener('focus',()=>{clearTimeout(_presenceOfflineTimer);setPresence('Online');});
@@ -1226,7 +1226,20 @@ async function addPost(){
   }catch(e){showToast('❌ '+e.message);}
   showOv(false);
 }
-async function delPost(id){if(!confirm('Delete?'))return;await db.collection('posts').doc(id).delete();}
+function closePostMenus(){document.querySelectorAll('.pm.open').forEach(x=>x.classList.remove('open'));}
+function togglePostMenu(id,ev){
+  if(ev)ev.stopPropagation();
+  const m=document.getElementById('pm_'+id);
+  const willOpen=!!m&&!m.classList.contains('open');
+  closePostMenus();
+  if(willOpen)m.classList.add('open');
+}
+document.addEventListener('click',closePostMenus);
+async function delPost(id){
+  closePostMenus();
+  if(!confirm(aT('Delete this post?','Supprimer cette publication ?')))return;
+  try{await db.collection('posts').doc(id).delete();}catch(e){showToast('❌ '+fErr(e&&e.code));}
+}
 function fmtLastSeen(lastSeen){
   if(!lastSeen)return t('time_active_while_ago');
   const sec=Math.floor((Date.now()-(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000))/1000);
@@ -1244,7 +1257,7 @@ function fmtLastSeen(lastSeen){
 function getStatusInfo(status,lastSeen){
   // A pending serverTimestamp is null locally: treat it as fresh.
   const _ls=lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;
-  const _stale=_ls>0&&Date.now()-_ls>90000;
+  const _stale=_ls>0&&Date.now()-_ls>150000;
   // The "Busy" status no longer exists: old stored values count as online.
   if((status==='Online'||status==='Busy')&&!_stale)return{cls:'online',label:t('status_online')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
@@ -1284,7 +1297,7 @@ function renderHome(posts,limit){
               ?`<button class="btn" style="flex:1;background:#95a5a6;" disabled>${t('group_request_sent_btn')}</button>`
               :`<button class="btn o" style="flex:1;" onclick="handleGroupAccess('${p.id}','${e2(p.groupName||'Group')}')">${ic('handshake')} ${(p.howCanJoin==='request'||p.accessRule==='request')?t('group_request_to_join'):t('home_join_group')}</button>`):
               `<button class="btn" style="flex:1;" onclick="openChat('${e2(du.name||'')}','${p.uid||''}')">${ic('chat')} ${t('home_message')}</button>`}
-        ${isOwn?`<button class="btn r" style="width:46px;flex-shrink:0;" onclick="delPost('${p.id}')">🗑️</button>`:''}
+        ${isOwn&&!isG?`<div class="pm-wrap"><button class="btn gm-gray" style="width:46px;margin:0;padding:9px 0;display:flex;align-items:center;justify-content:center;" onclick="togglePostMenu('${p.id}',event)" aria-label="Options"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button><div class="pm" id="pm_${p.id}"><button onclick="delPost('${p.id}')">${aT('Delete','Supprimer')}</button></div></div>`:''}
       </div>
       ${isG&&p.groupPhoto?`<div style="position:absolute;bottom:-6px;right:-6px;width:30px;height:30px;border-radius:50%;overflow:hidden;border:2px solid var(--card,#fff);box-shadow:0 1px 4px rgba(0,0,0,.3);"><img src="${p.groupPhoto}" style="width:100%;height:100%;object-fit:cover;"></div>`:''}
     </div>`;
