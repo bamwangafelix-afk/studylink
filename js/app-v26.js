@@ -3073,9 +3073,9 @@ else if(type==='audio' || type==='voice'){
           </div>
         </div>
       </div>
-      <div class="mar" style="margin-top:6px;">
-        <button class="mabtn dl" onclick="dlM('${esc(m.data)}','${isVoice?'voice.webm':'audio.mp3'}')">⬇ Download</button>
-      </div>
+      ${isVoice?'':`<div class="mar" style="margin-top:6px;">
+        <button class="mabtn dl" onclick="dlM('${esc(m.data)}','audio.mp3')">⬇ Download</button>
+      </div>`}
       ${rcHtml}${mediaReceipt}`;
   }
 }
