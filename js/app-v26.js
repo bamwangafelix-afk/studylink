@@ -2687,7 +2687,8 @@ async function sendGMsg(){
   if(!(await groupWriteAllowed()))return;
   const text=inp.value.trim();inp.value='';
   clearTimeout(gTypDebounce);void setPresenceState('group',curGrp.id,'typing',false);
-  const gi=el('gSendIcon');if(gi)gi.innerHTML='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
+  // Reset the group action button to the microphone after a text message.
+  setMicIcon('gSendIcon');
   const msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:messageTime(),createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   insertPendingBubble({...md,id:msgRef.id},true);
