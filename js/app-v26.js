@@ -2687,16 +2687,14 @@ async function sendGMsg(){
   if(!(await groupWriteAllowed()))return;
   const text=inp.value.trim();inp.value='';
   clearTimeout(gTypDebounce);void setPresenceState('group',curGrp.id,'typing',false);
-  // Reset the group action button to the microphone after a text message.
+  // Reset button correctly to microphone.
   setMicIcon('gSendIcon');
   const msgRef=db.collection('groups').doc(curGrp.id).collection('messages').doc();
   const md={type:'text',text,senderUid:CU.uid,senderName:MP?.name||'Me',senderPhoto:myPho||'',time:messageTime(),createdAt:firebase.firestore.FieldValue.serverTimestamp()};
   insertPendingBubble({...md,id:msgRef.id},true);
   try{await msgRef.set(md);}
   catch(e){document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();showToast('❌ '+e.message);}
-}
-
-// ── BUILD BUBBLE ──
+}// ── BUILD BUBBLE ──
 let selectedMsgs=new Set(),selMode=false;
 function toggleSelectMsg(id,isGrp){
   selMode=true;
@@ -2994,9 +2992,18 @@ function buildBbl(m,isGrp){
     inner=`${nameTag}${rq}${textPart}${linkCards}${!isGrp?`<div class="mar">${repBtn}</div>`:''} ${rcHtml}${receipt}`;
   }
   else if(type==='image'){
-    const imageName=m.name||'image.jpg';
-    if(!m.data){inner=pendingSrc?`${nameTag}${rq}<img src="${pendingSrc}" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;opacity:.82;">${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;}
-    else inner=`${nameTag}${rq}<div data-file-url="${esc(m.data)}" data-file-name="${esc(imageName)}" data-file-kind="image"><img src="${esc(m.data)}" onclick="openM('${esc(m.data)}','image','${m.id}')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"></div>${mediaActions(m,self,'image')}${rcHtml}${mediaReceipt}`;
+    if(!m.data){
+      inner = pendingSrc
+        ? `${nameTag}${rq}<img src="${pendingSrc}" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;opacity:.82;">${rcHtml}`
+        : `${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;
+    } else {
+      inner = `${nameTag}${rq}
+        <img src="${m.data}" onclick="openM('${m.data}','image','${m.id}')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;">
+        <div class="mar" style="margin-top:6px;">
+          <button class="mabtn dl" onclick="dlM('${esc(m.data)}','photo.jpg')">⬇ Download</button>
+        </div>
+        ${rcHtml}${mediaReceipt}`;
+    }
   }
   else if(type==='video'){
     const videoName=m.name||'video.mp4';
@@ -3004,70 +3011,74 @@ function buildBbl(m,isGrp){
     else if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
     else inner=`${nameTag}${rq}<div data-file-url="${esc(m.data)}" data-file-name="${esc(videoName)}" data-file-kind="video"><video src="${esc(m.data)}" controls preload="none" onplay="markMsgOpened('${m.id}')" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video></div>${mediaActions(m,self,'video')}${rcHtml}${mediaReceipt}`;
   }
-  else if(type==='audio'){
-    // Uploaded audio files use the same custom player as recorded voice notes.
-    // Native <audio controls> is inconsistently rendered in mobile WebViews and
-    // can leave the bubble without a visible play button.
-    const audioBg=isGrp?(self?'linear-gradient(135deg,#e67e22,#f39c12)':'rgba(230,126,34,.13)'):(self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)');
-    const audioAccent=isGrp?'#e67e22':'#2196f3';
-    const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
-    const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
-    const audioDur=m.dur||'0:00';
-    const audioName=m.name||'audio.mp3';
-    if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;"><span class="vload"></span></div><div style="flex:1;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;opacity:.85;">${audioDur}</span></div></div>${rcHtml}`;}
-    else inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" data-file-url="${esc(m.data)}" data-file-name="${esc(audioName)}" data-file-kind="audio" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">♫</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:#fff;border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">${t('audio_label')}</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${mediaActions(m,self,'audio')}${rcHtml}${mediaReceipt}`;
-  }
-  else if(type==='voice'){
-    // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
-    // Private voice messages stay blue; group voice messages use orange.
-    const vBlue='#2196f3',vOrange='#e67e22';
-    const vBubbleBg=isGrp?(self?'linear-gradient(135deg,#e67e22,#f39c12)':'rgba(230,126,34,.13)'):(self?'linear-gradient(135deg,#1565c0,#1e88e5)':'rgba(30,136,229,.13)');
-    const vWaveColor=self?'rgba(255,255,255,0.8)':(isGrp?vOrange:vBlue);
-    const vAccent=isGrp?vOrange:vBlue;
-    const vPlayedColor=isGrp?'#ffd7ad':'#4fc3f7';
-    // Waveform bars SVG
-    const waveSVG=`<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
-      ${[2,4,8,6,10,14,18,12,20,24,28,22,26,30,24,20,28,22,18,24,16,12,18,10,14,8,6,10,4,6].map((h,i)=>{
-        const x=2+i*4,bh=Math.max(4,h),y=(32-bh)/2;
-        return`<rect x="${x}" y="${y}" width="2.5" height="${bh}" rx="1.2" fill="${vWaveColor}" opacity="${0.5+h/60}"/>`;
+else if(type==='audio' || type==='voice'){
+  const isVoice = type === 'voice';
+  const vBlue = '#2196f3', vOrange = '#e67e22';
+  const vBubbleBg = isGrp
+    ? (self ? 'linear-gradient(135deg,#e67e22,#f39c12)' : 'rgba(230,126,34,.13)')
+    : (self ? 'linear-gradient(135deg,#1565c0,#1e88e5)' : 'rgba(30,136,229,.13)');
+  const vAccent = isGrp ? vOrange : vBlue;
+  const vWaveColor = self ? '#ffffff' : vAccent;   // WHITE when you sent it
+  const vPlayedColor = isGrp ? '#ffd7ad' : '#4fc3f7';
+  const playBtnBg = self ? 'rgba(255,255,255,0.25)' : vAccent;
+  const playShadow = isGrp ? 'rgba(230,126,34,.4)' : 'rgba(33,150,243,.4)';
+  const durLabel = m.dur || '0:00';
+  const label = isVoice ? (t('voice_message') || 'Voice') : (t('audio_label') || 'Music');
+
+  const waveSVG = `<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
+    ${[3,5,9,7,12,16,20,14,22,26,30,24,28,32,26,22,28,24,20,26,18,14,20,12,16,10,8,12,6,8]
+      .map((h,i)=>{
+        const x=2+i*4, bh=Math.max(4,h), y=(32-bh)/2;
+        return `<rect x="${x}" y="${y}" width="2.6" height="${bh}" rx="1.3" fill="${vWaveColor}" opacity="${0.55+h/70}"/>`;
       }).join('')}
-    </svg>`;
-    // Voice receipts: ✓ = sent, ✓✓ = delivered/seen, blue ✓✓ = played
-    let voiceReceipt='';
-    if(self){
-      if(m.voicePlayed){voiceReceipt=`<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;}
-      else{voiceReceipt='<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>';}
-    }
-    const durLabel=m.dur||'0:00';
-    const playBtnBg=self?'rgba(255,255,255,0.25)':vAccent;
-    const playBtnColor='#fff';
-    const playShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
-    if(m.status==='failed'){
-      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
-        <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')}</div><div style="font-size:10px;color:var(--sub);margin-top:2px;">${t('voice_failed_hint')}</div></div>
-      </div>${rcHtml}`;
-    }else if(!m.data){
-      // Still sending — show progress + "Sending" + timer
-      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <div style="flex:1;display:flex;align-items:center;gap:10px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
-      </div>${rcHtml}`;
-    }else{
-      inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" aria-label="Play voice message" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:${playBtnColor};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button>
+  </svg>`;
+
+  let voiceReceipt = '';
+  if(self && isVoice){
+    if(m.voicePlayed) voiceReceipt = `<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;
+    else voiceReceipt = `<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>`;
+  }
+
+  if(m.status==='failed'){
+    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
+      <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')||'Failed'}</div></div>
+    </div>${rcHtml}`;
+  }
+  else if(!m.data){
+    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
+      <div style="flex:1;display:flex;align-items:center;gap:10px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
+    </div>${rcHtml}`;
+  }
+  else{
+    inner=`${nameTag}
+      <div class="vbub" id="vp_${m.id}" style="min-width:230px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
+        <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};">
+          <svg viewBox="0 0 24 24" width="19" height="19" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
+        </button>
         <div style="flex:1;min-width:0;">
-          <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;">
+          <div class="vprog" id="vbar_${m.id}"
+               onclick="seekVP(event,'${m.id}')"
+               ontouchstart="seekVP(event,'${m.id}')"
+               style="height:30px;display:flex;align-items:center;cursor:pointer;position:relative;touch-action:none;">
             ${waveSVG}
-            <div style="position:absolute;left:0;top:0;width:0%;height:100%;background:${isGrp?'rgba(230,126,34,.24)':'rgba(33,150,243,.2)'};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div>
+            <div id="vfill_${m.id}" style="position:absolute;left:0;top:0;width:0%;height:100%;background:${self?'rgba(255,255,255,.25)':(isGrp?'rgba(230,126,34,.25)':'rgba(33,150,243,.25)')};border-radius:4px;pointer-events:none;"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
-            <span style="font-size:10px;color:${self?'rgba(255,255,255,.82)':vAccent};font-weight:600;">${t('voice_message')}</span>
-            <div style="display:flex;align-items:center;gap:4px;"><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>${voiceReceipt}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
+            <span style="font-size:10px;color:${self?'rgba(255,255,255,.85)':vAccent};font-weight:600;">${label}</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>
+              ${voiceReceipt}
+            </div>
           </div>
         </div>
-      </div>${rcHtml}`;
-    }
+      </div>
+      <div class="mar" style="margin-top:6px;">
+        <button class="mabtn dl" onclick="dlM('${esc(m.data)}','${isVoice?'voice.webm':'audio.mp3'}')">⬇ Download</button>
+      </div>
+      ${rcHtml}${mediaReceipt}`;
   }
+}
   else if(type==='doc'){
     const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';
     if(!m.data)inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${rcHtml}`;
@@ -3669,7 +3680,21 @@ function toggleVP(id,src){
     if(playPromise&&typeof playPromise.catch==='function')playPromise.catch(()=>{if(player===voicePlayer){resetVoicePlayer();showToast('⚠️ Lecture impossible. Appuyez de nouveau sur lecture.');}});
   }catch(e){resetVoicePlayer();showToast('⚠️ Lecture audio interrompue.');}
 }
-function seekVP(e,id){const bar=el('vbar_'+id),player=voicePlayer;if(!bar||!player||String(voicePlayerId)!==String(id)||!Number.isFinite(player.duration)||player.duration<=0)return;const ratio=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/Math.max(1,bar.offsetWidth)));try{player.currentTime=ratio*player.duration;}catch(e){}}
+function seekVP(e, id) {
+e.preventDefault();
+e.stopPropagation();
+const bar = el('vbar_' + id);
+const player = voicePlayer;
+if (!bar || !player || String(voicePlayerId) !== String(id) || !Number.isFinite(player.duration) || player.duration <= 0) return;
+const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+const rect = bar.getBoundingClientRect();
+const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
+try {
+player.currentTime = ratio * player.duration;
+const fill = el('vfill_' + id);
+if (fill) fill.style.width = (ratio * 100) + '%';
+} catch (err) {}
+}
 // ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
 function stopWave(canvasId){
   const timer=waveTimers[canvasId];
@@ -5458,7 +5483,7 @@ function setupNavigation(){
 }
 function setupPWA(){
   if(!('serviceWorker' in navigator))return;
-  const workerUrl=new URL('sw-v86.js?v=studylink-pwa-195',location.href).href;
+  const workerUrl=new URL('sw-v86.js?v=studylink-pwa-210',location.href).href;
   navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(regs.filter(reg=>reg.active?.scriptURL!==workerUrl).map(reg=>reg.unregister()))).then(()=>navigator.serviceWorker.register(workerUrl,{scope:'./',updateViaCache:'none'})).then(reg=>{
     reg.update().catch(()=>{});
     if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});
