@@ -3245,11 +3245,10 @@ function showLargeFilePrompt(file, dest, kind) {
   const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
   const limit = kind === 'video' ? 80 : 25;
 
-  const msg = kind === 'video'
-    ? `This video is ${sizeMB} MB (max recommended 80 MB).\n\nPlease upload it to Google Drive and share the link instead.`
-    : `This document is ${sizeMB} MB (max recommended 25 MB).\n\nPlease upload it to Google Drive and share the link instead.`;
+  const title = kind === 'video' ? 'Video too large' : 'Document too large';
+  const message = `${title} (${sizeMB} MB).\n\nMaximum recommended: ${limit} MB.\n\nPlease upload the file to Google Drive and share the link instead.`;
 
-  if (confirm(msg + '\n\nOpen Google Drive picker?')) {
+  if (confirm(message + '\n\nOpen Google Drive?')) {
     openGDrivePicker(dest);
   } else {
     showToast(`⚠️ File too large (${sizeMB} MB). Max ${limit} MB.`);
