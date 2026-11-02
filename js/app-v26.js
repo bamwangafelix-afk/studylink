@@ -2793,10 +2793,18 @@ function docActions(m,self){
   if(_dlDone(id)||_dlBlobs[id])return `<div class="mar" id="dlbox_${id}">${openBtn}</div>`;
   return `<div class="mar" id="dlbox_${id}"><button class="dlring" id="dlbtn_${id}" onclick="downloadDoc('${id}')" aria-label="Télécharger">${DL_ARROW}<svg class="dlring-svg" viewBox="0 0 36 36"><circle class="dlring-bg" cx="18" cy="18" r="16"/><circle class="dlring-fg" id="dlfg_${id}" cx="18" cy="18" r="16"/></svg></button></div>`;
 }
+function mediaActions(m,self,kind){
+  const id=m.id;
+  const openBtn=`<button class="mabtn op" onclick="openFile('${id}')">${t('file_open')||'Open'}</button>`;
+  // Keep the same behavior as document bubbles: sender can open; receiver downloads first.
+  if(self)return `<div class="mar">${openBtn}</div>`;
+  if(_dlDone(id)||_dlBlobs[id])return `<div class="mar" id="dlbox_${id}">${openBtn}</div>`;
+  return `<div class="mar" id="dlbox_${id}"><button class="dlring" id="dlbtn_${id}" onclick="downloadDoc('${id}')" aria-label="Download">${DL_ARROW}<svg class="dlring-svg" viewBox="0 0 36 36"><circle class="dlring-bg" cx="18" cy="18" r="16"/><circle class="dlring-fg" id="dlfg_${id}" cx="18" cy="18" r="16"/></svg></button></div>`;
+}
 function _msgFileInfo(id){
   const bw=document.querySelector(`.bw[data-id="${id}"]`);
   const box=bw?.querySelector('[data-file-url]');
-  return {url:box?.dataset.fileUrl||'',name:box?.dataset.fileName||'file'};
+  return {url:box?.dataset.fileUrl||'',name:box?.dataset.fileName||'file',kind:box?.dataset.fileKind||'doc'};
 }
 function markMsgOpened(id){
   if(!id||!CU||!curChat)return;
@@ -2814,7 +2822,7 @@ function _setRing(id,p){
 function _dlFinished(id){
   try{localStorage.setItem('sl_dl_'+id,'1');}catch(e){}
   const box=el('dlbox_'+id);
-  if(box)box.innerHTML=`<button class="mabtn op" onclick="openDoc('${id}')">${t('file_open')||'Ouvrir'}</button>`;
+  if(box)box.innerHTML=`<button class="mabtn op" onclick="openFile('${id}')">${t('file_open')||'Open'}</button>`;
 }
 async function downloadDoc(id){
   const {url,name}=_msgFileInfo(id);if(!url)return;
@@ -2841,6 +2849,12 @@ async function downloadDoc(id){
     console.warn('download via fetch failed:',e?.message||e);
     _setRing(id,1);dlM(url,name);setTimeout(()=>_dlFinished(id),900);
   }
+}
+function openFile(id){
+  const {url,kind}=_msgFileInfo(id);
+  if(!url)return;
+  if(kind==='doc')return openDoc(id);
+  openM(url,kind,id);
 }
 function openDoc(id){
   const {url}=_msgFileInfo(id);if(!url)return;
@@ -2980,13 +2994,15 @@ function buildBbl(m,isGrp){
     inner=`${nameTag}${rq}${textPart}${linkCards}${!isGrp?`<div class="mar">${repBtn}</div>`:''} ${rcHtml}${receipt}`;
   }
   else if(type==='image'){
+    const imageName=m.name||'image.jpg';
     if(!m.data){inner=pendingSrc?`${nameTag}${rq}<img src="${pendingSrc}" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;opacity:.82;">${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<img src="${m.data}" onclick="openM('${m.data}','image','${m.id}')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;">${rcHtml}${mediaReceipt}`;}
+    else inner=`${nameTag}${rq}<div data-file-url="${esc(m.data)}" data-file-name="${esc(imageName)}" data-file-kind="image"><img src="${esc(m.data)}" onclick="openM('${esc(m.data)}','image','${m.id}')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;"></div>${mediaActions(m,self,'image')}${rcHtml}${mediaReceipt}`;
   }
   else if(type==='video'){
+    const videoName=m.name||'video.mp4';
     if(m.status==='failed'){inner=`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);text-align:center;min-width:180px;color:#e74c3c;font-size:11px;">${t('video_failed')}</div>${rcHtml}`;}
     else if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<video src="${m.data}" controls preload="none" onplay="markMsgOpened('${m.id}')" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video>${rcHtml}${mediaReceipt}`;}
+    else inner=`${nameTag}${rq}<div data-file-url="${esc(m.data)}" data-file-name="${esc(videoName)}" data-file-kind="video"><video src="${esc(m.data)}" controls preload="none" onplay="markMsgOpened('${m.id}')" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video></div>${mediaActions(m,self,'video')}${rcHtml}${mediaReceipt}`;
   }
   else if(type==='audio'){
     // Uploaded audio files use the same custom player as recorded voice notes.
@@ -2997,8 +3013,9 @@ function buildBbl(m,isGrp){
     const audioColor=self?'rgba(255,255,255,.82)':audioAccent;
     const audioPlayShadow=isGrp?'rgba(230,126,34,.4)':'rgba(33,150,243,.4)';
     const audioDur=m.dur||'0:00';
+    const audioName=m.name||'audio.mp3';
     if(!m.data){inner=`${nameTag}${rq}<div class="vbub" style="min-width:220px;gap:10px;background:${audioBg};border-radius:16px;padding:10px 14px;"><div style="width:38px;height:38px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':audioAccent};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:#fff;"><span class="vload"></span></div><div style="flex:1;display:flex;align-items:center;gap:8px;"><span style="font-size:11px;opacity:.85;">${audioDur}</span></div></div>${rcHtml}`;}
-    else{inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">♫</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">${t('audio_label')}</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${rcHtml}${mediaReceipt}`;}
+    else inner=`${nameTag}${rq}<div class="vbub" id="vp_${m.id}" data-file-url="${esc(m.data)}" data-file-name="${esc(audioName)}" data-file-kind="audio" style="min-width:220px;gap:10px;align-items:center;background:${audioBg};border-radius:16px;padding:10px 14px;"><button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play audio" title="Play audio" style="width:38px;height:38px;border-radius:50%;border:none;background:${self?'rgba(255,255,255,.25)':audioAccent};color:#fff;font-size:17px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${audioPlayShadow};"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg></button><div style="font-size:26px;line-height:1;color:${audioColor};flex-shrink:0;">♫</div><div style="flex:1;min-width:0;"><div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;"><div style="height:4px;width:100%;background:${isGrp?'rgba(230,126,34,.22)':'rgba(33,150,243,.22)'};border-radius:4px;"></div><div style="position:absolute;left:0;top:12px;width:0%;height:4px;background:${audioAccent};border-radius:4px;transition:width .1s linear;" id="vfill_${m.id}"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.75)':'var(--sub)'};">${t('audio_label')}</span><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${audioDur}</span></div></div></div>${mediaActions(m,self,'audio')}${rcHtml}${mediaReceipt}`;
   }
   else if(type==='voice'){
     // Sent voice bubbles intentionally show only play, waveform, duration, and receipts.
@@ -5322,10 +5339,18 @@ function localizeToastMessage_old(msg){
   const pair=TOAST_PAIRS.find(([fr,en])=>raw===fr||raw===en);
   return pair?(appLang==='en'?pair[1]:pair[0]):raw;
 }
+function stripToastIcons(value){
+  return String(value??'')
+    // Remove emoji, pictographs, dingbats, decorative symbols, variation
+    // selectors and zero-width joiners while preserving normal text and punctuation.
+    .replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0E}\u{FE0F}\u{200D}\u{20E3}]/gu,'')
+    .replace(/[ \t]{2,}/g,' ')
+    .replace(/^[ \t]+|[ \t]+$/g,'');
+}
 function showToast(msg,color){
   const t=el('toast');
-  // Keep the toast wording, but remove the error-cross decoration everywhere.
-  t.textContent=localizeToastMessage(msg).replace(/^\s*❌\s*/,'').replace(/✅\s*/g,'');
+  // Toasts remain text-only: no emoji, icon, or decorative symbol is displayed.
+  t.textContent=stripToastIcons(localizeToastMessage(msg));
   const statusOpen=el('statusView')?.style.display!=='none'&&el('statusView')?.style.display;
   const themedColor=color||(statusOpen?viewingCategoryColor():null);
   t.style.background=themedColor||'';
