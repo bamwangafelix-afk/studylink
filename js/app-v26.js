@@ -3198,17 +3198,62 @@ function switchGStickerTab(tab){
 
 // ── FILES ──
 function pickF(accept,type,dest){fType=type;fDest=dest;const fi=el(dest==='g'?'fGrp':'fPrv');fi.accept=accept;fi.value='';fi.click();}
-async function handleF(e,dest){
-  const file=e.target.files[0];if(!file)return;
-  if(fType==='image'){showImgPreview(file,dest);return;}
-  // Size limits
-  if(fType==='video'&&file.size>200*1024*1024){showToast('⚠️ Video too large. Max 200MB.');return;}
-  if(fType==='audio'&&file.size>50*1024*1024){showToast('⚠️ Audio too large. Max 50MB.');return;}
-  if(fType==='doc'&&file.size>200*1024*1024){showToast('⚠️ Document too large. Max 200MB.');return;}
-  const ext=file.name.split('.').pop().toLowerCase();
-  if(fType==='video')void sendMediaDirect({dest,kind:'video',file,lastLabel:'__video__'});
-  else if(fType==='audio')void sendMediaDirect({dest,kind:'audio',file,lastLabel:'__audio__'});
-  else void sendMediaDirect({dest,kind:'doc',file,fields:{name:file.name,ext},lastLabel:'__doc__:'+file.name});
+async function handleF(e, dest) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (fType === 'image') {
+    showImgPreview(file, dest);
+    return;
+  }
+
+  // Realistic limits for mobile networks
+  const MAX_VIDEO = 80 * 1024 * 1024;   // 80 MB
+  const MAX_AUDIO = 30 * 1024 * 1024;   // 30 MB
+  const MAX_DOC   = 25 * 1024 * 1024;   // 25 MB
+
+  if (fType === 'video' && file.size > MAX_VIDEO) {
+    showLargeFilePrompt(file, dest, 'video');
+    return;
+  }
+  if (fType === 'audio' && file.size > MAX_AUDIO) {
+    showToast('⚠️ Audio too large. Max 30 MB.');
+    return;
+  }
+  if (fType === 'doc' && file.size > MAX_DOC) {
+    showLargeFilePrompt(file, dest, 'doc');
+    return;
+  }
+
+  // Normal path
+  if (fType === 'video') {
+    void sendMediaDirect({ dest, kind: 'video', file, lastLabel: '__video__' });
+  } else if (fType === 'audio') {
+    void sendMediaDirect({ dest, kind: 'audio', file, lastLabel: '__audio__' });
+  } else {
+    void sendMediaDirect({
+      dest,
+      kind: 'doc',
+      file,
+      fields: { name: file.name, ext: file.name.split('.').pop() },
+      lastLabel: '__doc__:' + file.name
+    });
+  }
+}
+
+function showLargeFilePrompt(file, dest, kind) {
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  const limit = kind === 'video' ? 80 : 25;
+
+  const msg = kind === 'video'
+    ? `This video is ${sizeMB} MB (max recommended 80 MB).\n\nPlease upload it to Google Drive and share the link instead.`
+    : `This document is ${sizeMB} MB (max recommended 25 MB).\n\nPlease upload it to Google Drive and share the link instead.`;
+
+  if (confirm(msg + '\n\nOpen Google Drive picker?')) {
+    openGDrivePicker(dest);
+  } else {
+    showToast(`⚠️ File too large (${sizeMB} MB). Max ${limit} MB.`);
+  }
 }
 let _previewFile=null,_previewDest=null;
 // Compress image client-side to avoid 10MB limit — max 1000px, quality 0.7
