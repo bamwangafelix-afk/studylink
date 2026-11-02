@@ -611,28 +611,3 @@ body.dark .presence-text{color:#fff!important;}
 .pm{display:none;position:absolute;right:0;bottom:calc(100% + 6px);background:var(--card,#fff);border:1px solid var(--brd,#ccc);border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:60;min-width:130px;overflow:hidden;}
 .pm.open{display:block;}
 .pm button{display:block;width:100%;padding:11px 14px;background:none;border:none;color:#e74c3c;font-weight:700;font-size:13px;text-align:left;cursor:pointer;}
-
-/* Stable composer action shape after send/voice reset. Keep hold-and-swipe behavior. */
-.cin-action,
-.cin-action:focus,
-.cin-action:hover,
-.cin-action:active{
-  box-sizing:border-box;
-  width:50px!important;
-  min-width:50px!important;
-  max-width:50px!important;
-  height:50px!important;
-  min-height:50px!important;
-  max-height:50px!important;
-  flex:0 0 50px!important;
-  aspect-ratio:1 / 1;
-  padding:0!important;
-  border-radius:50%!important;
-  overflow:hidden;
-}
-.cin-action svg{
-  display:block;
-  flex:0 0 auto;
-  width:22px!important;
-  height:22px!important;
-}
