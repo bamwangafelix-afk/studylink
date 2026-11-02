@@ -3056,6 +3056,7 @@ else if(type==='audio' || type==='voice'){
         <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};">
           <svg viewBox="0 0 24 24" width="19" height="19" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
         </button>
+        ${isVoice?'':`<div style="font-size:26px;line-height:1;color:${self?'rgba(255,255,255,.82)':vAccent};flex-shrink:0;">♫</div>`}
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}"
                onclick="seekVP(event,'${m.id}')"
