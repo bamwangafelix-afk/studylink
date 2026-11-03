@@ -662,4 +662,31 @@ body.dark .hdr{background:linear-gradient(120deg,#030f24 0%,#07203f 55%,#0a2f50 
   background:rgba(12,38,100,.72);color:#fff;
 }
 .hdr .dark-btn svg{width:clamp(15px,2vw,26px);height:clamp(15px,2vw,26px);}
-@media (max-width:360px){.hdr-tagline{display:none;}}
+/* Phones: keep the "Connect • Learn • Grow" tagline visible (it used to be hidden at <=360px)
+   and shrink the EN / moon / bell buttons so they no longer eat the header. */
+@media (max-width:480px){
+  .hdr{--hb:50px;min-height:76px;padding:8px 10px;gap:8px;}
+  .hdr-brand{gap:8px!important;}
+  .hdr-brand .hdr-wordmark{font-size:23px;}
+  .hdr-tagline{display:block!important;font-size:10.5px;margin-top:2px;letter-spacing:.1px;}
+  .hdr-bars{margin-top:4px;}
+  .hdr-bars i{height:4px;}
+  .hdr-bars i:first-child{width:44px;}
+  .hdr-bars i:last-child{width:30px;}
+  .hdr-right{gap:3px!important;}
+  .hdr-right #topN{font-size:11px!important;max-width:30vw!important;}
+  .hdr-btns{gap:6px!important;}
+  .hdr .dark-btn{height:30px;min-width:34px;padding:0 6px!important;font-size:11px!important;border-width:1.5px;}
+  .hdr .dark-btn svg{width:15px;height:15px;}
+  #notifB{top:-6px!important;right:-6px!important;}
+}
+@media (max-width:340px){
+  .hdr{--hb:44px;padding:8px;}
+  .hdr-brand{gap:6px!important;}
+  .hdr-brand .hdr-wordmark{font-size:20px;}
+  .hdr-tagline{font-size:9.5px;}
+  .hdr-bars i:first-child{width:36px;}
+  .hdr-bars i:last-child{width:24px;}
+  .hdr-btns{gap:4px!important;}
+  .hdr .dark-btn{height:28px;min-width:30px;padding:0 5px!important;}
+}
