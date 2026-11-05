@@ -1273,7 +1273,7 @@ function fmtLastSeen(lastSeen){
 function getStatusInfo(status,lastSeen){
   // A pending serverTimestamp is null locally: treat it as fresh.
   const _ls=lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;
-  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>150000;
+  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>180000;
   // The "Busy" status no longer exists: old stored values count as online.
   if((status==='Online'||status==='Busy')&&!_stale)return{cls:'online',label:t('status_online')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
