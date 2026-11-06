@@ -2286,6 +2286,7 @@ function openChat(name,uid){
     // Keep known message documents across overlapping realtime snapshots. Each
     // query can emit a partial cached view before the other catches up.
     const messageDocsById=new Map();
+  const pendingDeliveryIds=new Set();
     const rememberMessageSnapshot=sn=>{
       sn.docs.forEach(d=>messageDocsById.set(d.id,d));
       try{
@@ -2334,6 +2335,23 @@ function openChat(name,uid){
         const seenBatch=db.batch();
         unseen.forEach(m=>seenBatch.update(m._doc.ref,{seen:true}));
         seenBatch.commit().catch(()=>{});
+      }
+      const justArrived=[...visibleSnapshotDocs.values()].map(d=>({id:d.id,...d.data(),_doc:d}))
+        .filter(m=>m.senderUid!==CU.uid&&!m.deliveredAt&&!pendingDeliveryIds.has(m.id)&&m.status!=='sending'&&m.status!=='failed');
+      if(justArrived.length){
+        justArrived.forEach(m=>pendingDeliveryIds.add(m.id));
+        const arrivedBatch=db.batch();
+        justArrived.forEach(m=>arrivedBatch.update(m._doc.ref,{deliveredAt:firebase.firestore.FieldValue.serverTimestamp()}));
+        arrivedBatch.commit().then(async()=>{
+          try{
+            const chatRef=db.collection('chats').doc(cid),summary=await chatRef.get({source:'server'});
+            const lastId=summary.data()?.lastMessageId;
+            if(lastId&&justArrived.some(m=>m.id===lastId)){
+              const delivery={};delivery[`deliveredBy.${CU.uid}`]=lastId;
+              await chatRef.update(delivery);
+            }
+          }catch(e){console.warn('Delivery receipt update:',e?.code||e?.message||e);}
+        }).catch(e=>{justArrived.forEach(m=>pendingDeliveryIds.delete(m.id));console.warn('Message delivery receipt:',e?.code||e?.message||e);});
       }
       mb.scrollTop=mb.scrollHeight;
       if(curChat?.uid===uid)void markChatRead(cid,unseen.length>0).catch(()=>{});
@@ -2695,89 +2713,153 @@ async function sendGMsg(){
   try{await msgRef.set(md);}
   catch(e){document.querySelector(`.bw[data-id="${msgRef.id}"]`)?.remove();showToast('❌ '+e.message);}
 }// ── BUILD BUBBLE ──
-let selectedMsgs=new Set(),selMode=false;
+let selectedMsgs=new Set(),selMode=false,selectionIsGroup=false;
+function selectedMessageNode(id){
+  const root=el(selectionIsGroup?'groupW':'chatW')||document;
+  return [...root.querySelectorAll('.bw')].find(node=>String(node.dataset.id)===String(id))||null;
+}
+function canDeleteAllSelectedForEveryone(){
+  const ids=[...selectedMsgs];
+  return ids.length>0&&ids.every(id=>selectedMessageNode(id)?.classList.contains('s'));
+}
+function showSelectionMore(){showToast('More options will be added later');}
+function renderSelectionHeader(isGrp){
+  const win=el(isGrp?'groupW':'chatW');
+  const normal=win?.querySelector('.chdr');
+  if(!win||!normal)return;
+  normal.style.display='none';
+  let bar=win.querySelector('.selection-header');
+  if(!bar){bar=document.createElement('div');bar.className='selection-header';win.insertBefore(bar,normal);}
+  const searchAction=isGrp?'openGroupSearch()':'toggleCS()';
+  bar.innerHTML=`<button class="selection-back" onclick="clearSelection()" aria-label="Back">←</button><span class="selection-count">${selectedMsgs.size}</span><span class="selection-spacer"></span><button class="selection-tool" onclick="${searchAction}" aria-label="Search messages" title="Search messages"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7.5"></circle><path d="m16.5 16.5 4 4"></path></svg></button><button class="selection-tool" onclick="deleteSelectedMsgs(${!!isGrp})" aria-label="Delete selected messages" title="Delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m4 3v7m4-7v7"></path></svg></button><button class="selection-tool selection-more" onclick="showSelectionMore()" aria-label="More options" title="More options">⋮</button>`;
+}
 function toggleSelectMsg(id,isGrp){
+  if(!selectedMsgs.size)selectionIsGroup=!!isGrp;
+  else if(selectionIsGroup!==!!isGrp){clearSelection();selectionIsGroup=!!isGrp;}
   selMode=true;
-  const bw=document.querySelector(`.bw[data-id="${id}"]`);if(!bw)return;
+  const bw=selectedMessageNode(id);if(!bw)return;
   const isSelf=bw.classList.contains('s');
   const bbl=bw.querySelector('.bbl');
   const btn=bw.querySelector('.selbtn');
   if(selectedMsgs.has(id)){
     selectedMsgs.delete(id);
-    bbl.style.outline='none';
+    if(bbl)bbl.style.outline='none';
     bw.querySelector('.sel-chk')?.remove();
     if(btn){btn.textContent='☐';btn.classList.remove('checked');}
   }else{
     selectedMsgs.add(id);
-    bbl.style.outline=`2px solid ${isSelf?'rgba(255,255,255,.6)':'#1565c0'}`;
+    if(bbl){bbl.style.outline=`2px solid ${isSelf?'rgba(255,255,255,.6)':'#1565c0'}`;}
     if(btn){btn.textContent='☑';btn.classList.add('checked');}
-    if(!bw.querySelector('.sel-chk')){
+    if(bbl&&!bw.querySelector('.sel-chk')){
       const chk=document.createElement('div');
-      chk.className='sel-chk';
-      chk.textContent='✔';
+      chk.className='sel-chk';chk.textContent='✔';
       chk.style.cssText=`position:absolute;top:-8px;${isSelf?'left:-8px':'right:-8px'};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;z-index:10;background:${isSelf?'#fff':'#1565c0'};color:${isSelf?'#1565c0':'#fff'};`;
-      bbl.style.position='relative';
-      bbl.appendChild(chk);
+      bbl.style.position='relative';bbl.appendChild(chk);
     }
   }
-  if(selectedMsgs.size>0){
-    let bar=document.getElementById('selBar');
-    if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:var(--hdr);color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
-    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
-  }else{clearSelection();}
+  if(selectedMsgs.size)renderSelectionHeader(selectionIsGroup);else clearSelection();
 }
 function clearSelection(){
   selectedMsgs.clear();selMode=false;
   document.querySelectorAll('.bbl').forEach(b=>{b.style.outline='none';});
   document.querySelectorAll('.sel-chk').forEach(c=>c.remove());
   document.querySelectorAll('.selbtn').forEach(b=>{b.textContent='☐';b.classList.remove('checked');});
+  document.querySelectorAll('#chatW .selection-header,#groupW .selection-header').forEach(h=>h.remove());
+  ['chatW','groupW'].forEach(id=>{const hdr=el(id)?.querySelector('.chdr');if(hdr)hdr.style.display='';});
   document.getElementById('selBar')?.remove();
+  selectionIsGroup=false;
 }
+function closeDeleteDialog(){el('delSheet')?.remove();}
 async function deleteSelectedMsgs(isGrp,scope){
-  if(!scope){
-    // Fallback: show sheet
-    const count=selectedMsgs.size;
-    const sheet=document.createElement('div');sheet.id='delSheet';
-    sheet.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
-    sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:18px;">
-      <p style="font-weight:bold;font-size:15px;text-align:center;margin-bottom:14px;">Delete ${count} message${count>1?'s':''}?</p>
-      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for everyone</button>
-      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for me</button>
-      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;">Cancel</button>
-    </div>`;
-    sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
-    document.body.appendChild(sheet);
-    return;
+  if(scope){
+    if(scope==='everyone'&&!canDeleteAllSelectedForEveryone()){
+      showToast('Only the sender can delete messages for everyone');return;
+    }
+    await execDelMsgs(scope,isGrp);return;
   }
-  await execDelMsgs(scope,isGrp);
+  const count=selectedMsgs.size;if(!count)return;
+  const canEveryone=canDeleteAllSelectedForEveryone();
+  const sheet=document.createElement('div');sheet.id='delSheet';sheet.className='delete-overlay';
+  sheet.innerHTML=`<div class="delete-dialog" role="dialog" aria-modal="true"><div class="delete-title">Delete ${count} message${count>1?'s':''}?</div>${canEveryone?`<button class="delete-action delete-primary" onclick="execDelMsgs('everyone',${!!isGrp})">Delete for everyone</button>`:''}<button class="delete-action delete-secondary" onclick="execDelMsgs('me',${!!isGrp})">Delete for me</button><button class="delete-action delete-cancel" onclick="closeDeleteDialog()">Cancel</button></div>`;
+  sheet.addEventListener('click',e=>{if(e.target===sheet)closeDeleteDialog();});
+  document.body.appendChild(sheet);
+}
+function previewLabelForMessage(m){
+  const type=m?.type||'text';
+  if(type==='image')return '__photo__';
+  if(type==='video')return '__video__';
+  if(type==='audio')return '__audio__';
+  if(type==='voice')return '__voice__';
+  if(type==='doc')return '__doc__:'+(m.name||'file');
+  return m?.text||'';
+}
+function sortTimeForMessage(m){
+  const timestamp=messageMillis(m.createdAt)||messageMillis(m.time);
+  if(timestamp)return timestamp;
+  const match=String(m.time||'').match(/^([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?$/);
+  return match?Number(match[1])*3600000+Number(match[2])*60000+Number(match[3]||0)*1000:0;
+}
+async function refreshPrivateChatPreviewAfterDelete(chatRef,deletedIds,lastId){
+  if(!chatRef||!lastId||!deletedIds.includes(lastId))return;
+  try{
+    const messages=chatRef.collection('messages');
+    const [created,time]=await Promise.all([
+      messages.orderBy('createdAt','desc').limit(10).get({source:'server'}).catch(()=>null),
+      messages.orderBy('time','desc').limit(10).get({source:'server'}).catch(()=>null)
+    ]);
+    const byId=new Map();
+    [created,time].filter(Boolean).forEach(sn=>sn.docs.forEach(d=>byId.set(d.id,{id:d.id,...d.data()})));
+    const remaining=[...byId.values()].filter(m=>!m.deletedFor?.[CU.uid]).sort((a,b)=>sortTimeForMessage(a)-sortTimeForMessage(b));
+    const latest=remaining[remaining.length-1]||null;
+    const current=await chatRef.get({source:'server'}).catch(()=>null);
+    const currentLastId=current?.data()?.lastMessageId;
+    if(currentLastId&&!deletedIds.includes(currentLastId))return;
+    const F=firebase.firestore.FieldValue;
+    const latestAt=latest?(messageMillis(latest.createdAt)||messageMillis(latest.time)||0):0;
+    const update=latest?{
+      lastMsg:previewLabelForMessage(latest),lastMessageId:latest.id,
+      lastMessageAt:latestAt,
+      lastSenderUid:latest.senderUid||'',lastTime:displayMessageTime(latest.time||latest.createdAt),
+      lastTs:latestAt?firebase.firestore.Timestamp.fromMillis(latestAt):firebase.firestore.FieldValue.serverTimestamp(),
+      lastVoiceDur:latest.type==='voice'?(latest.dur||''):F.delete()
+    }:{lastMsg:'',lastMessageId:'',lastMessageAt:0,lastSenderUid:'',lastTime:'',lastTs:0,lastVoiceDur:F.delete()};
+    await chatRef.set(update,{merge:true});
+  }catch(e){console.warn('Chat preview refresh after delete:',e?.code||e?.message||e);}
 }
 async function execDelMsgs(scope,isGrp){
-  el('delSheet')?.remove();
-  const ids=[...selectedMsgs];
-  // Immediately hide 'delete for me' bubbles from DOM so UI feels instant
-  if(scope==='me'){
-    ids.forEach(id=>{
-      const bw=document.querySelector(`.bw[data-id="${id}"]`);
-      if(bw)bw.remove();
-    });
+  closeDeleteDialog();
+  const ids=[...selectedMsgs];if(!ids.length)return;
+  if(scope==='everyone'&&!canDeleteAllSelectedForEveryone()){
+    showToast('Only the sender can delete messages for everyone');return;
   }
+  let privateChatRef=null,lastId='';
+  if(scope==='everyone'&&!isGrp&&curChat&&CU){
+    privateChatRef=db.collection('chats').doc(getCID(CU.uid,curChat.uid));
+    const summary=await privateChatRef.get({source:'server'}).catch(()=>null);
+    const candidate=summary?.data()?.lastMessageId;
+    if(candidate&&ids.includes(candidate))lastId=candidate;
+  }
+  if(scope==='me')ids.forEach(id=>{const bw=selectedMessageNode(id);if(bw)bw.remove();});
   const failed=[];
   for(const id of ids){
     try{
       let ref;
       if(!isGrp&&curChat)ref=db.collection('chats').doc(getCID(CU.uid,curChat.uid)).collection('messages').doc(id);
       else if(isGrp&&curGrp)ref=db.collection('groups').doc(curGrp.id).collection('messages').doc(id);
-      if(ref){
-        if(scope==='everyone'){
-          await ref.delete();
-          document.querySelector(`.bw[data-id="${id}"]`)?.remove();
-          if(!isGrp)window._privateMsgForget?.(id);
-        }else await ref.update({['deletedFor.'+CU.uid]:true});
-      }
+      if(!ref)continue;
+      if(scope==='everyone'){
+        const snap=await ref.get({source:'server'});
+        if(!snap.exists)continue;
+        if(snap.data()?.senderUid!==CU?.uid){failed.push('not-sender');continue;}
+        await ref.delete();
+        selectedMessageNode(id)?.remove();
+        if(!isGrp)window._privateMsgForget?.(id);
+      }else await ref.update({['deletedFor.'+CU.uid]:true});
     }catch(e){console.log(e);failed.push(e?.code||e?.message||'error');}
   }
   clearSelection();
-  if(failed.length)showToast('❌ Could not delete '+failed.length+' message(s): '+failed[0]);
+  if(lastId&&privateChatRef)await refreshPrivateChatPreviewAfterDelete(privateChatRef,ids,lastId);
+  if(failed.length)showToast(failed.includes('not-sender')?'❌ Only the sender can delete for everyone':'❌ Could not delete '+failed.length+' message(s): '+failed[0]);
   else showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
 // ── FILE DOWNLOAD / OPEN ──
@@ -2963,9 +3045,10 @@ function buildBbl(m,isGrp){
   const wasRead=!!m.seen||messageWasReadByOther(m);
   // Sent = a single check. Double check + Seen only once the receiver opened it:
   // text -> when the chat is opened; media/files -> when the receiver opens/plays it.
-  const receipt=self&&type==='text'?`<div class="receipt" data-rkind="text">${wasRead?'✓✓ '+t('msg_seen'):'✓'}</div>`:'';
+  const wasDelivered=!!m.deliveredAt;
+   const receipt=self&&type==='text'?`<div class="receipt" data-rkind="text">${wasRead?`<span style="color:var(--receipt-blue,#4fc3f7)">✓✓ ${t('msg_seen')}</span>`:wasDelivered?'<span style="color:rgba(255,255,255,.72)">✓✓</span>':'✓'}</div>`:'';
   const _opened=!!(m.seen||m.openedAt||m.voicePlayed);
-  const mediaReceipt=self?`<div class="receipt" data-rkind="media">${_opened?'<span style="color:#4fc3f7;">✓✓ '+t('msg_seen')+'</span>':'✓'}</div>`:'';
+  const mediaReceipt=self?`<div class="receipt" data-rkind="media">${_opened?'<span style="color:var(--receipt-blue,#4fc3f7);">✓✓ '+t('msg_seen')+'</span>':wasDelivered?'<span style="color:rgba(255,255,255,.72)">✓✓</span>':'✓'}</div>`:'';
   const rc=m.reactions||{},ec={};
   Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
   const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
@@ -3014,16 +3097,18 @@ function buildBbl(m,isGrp){
 else if(type==='audio' || type==='voice'){
   const isVoice = type === 'voice';
   const vBlue = '#2196f3', vOrange = '#e67e22';
-  const vBubbleBg = isGrp
+  const vBubbleBg = isVoice ? 'transparent' : (isGrp
     ? (self ? 'linear-gradient(135deg,#e67e22,#f39c12)' : 'rgba(230,126,34,.13)')
-    : (self ? 'linear-gradient(135deg,#1565c0,#1e88e5)' : 'rgba(30,136,229,.13)');
+    : (self ? 'linear-gradient(135deg,#1565c0,#1e88e5)' : 'rgba(30,136,229,.13)'));
   const vAccent = isGrp ? vOrange : vBlue;
   const vWaveColor = self ? '#ffffff' : vAccent;   // WHITE when you sent it
-  const vPlayedColor = isGrp ? '#ffd7ad' : '#4fc3f7';
+  const vPlayedColor = 'var(--receipt-blue,#4fc3f7)';
   const playBtnBg = self ? 'rgba(255,255,255,0.25)' : vAccent;
   const playShadow = isGrp ? 'rgba(230,126,34,.4)' : 'rgba(33,150,243,.4)';
   const durLabel = m.dur || '0:00';
   const label = isVoice ? (t('voice_message') || 'Voice') : (t('audio_label') || 'Music');
+  const voicePhoto = self ? (myPho||MP?.photo||CU?.photoURL||'') : (m.senderPhoto||allUsers.find(u=>u.uid===m.senderUid)?.photo||'');
+  const voiceAvatar = isVoice ? `<div class="voice-avatar">${voicePhoto?`<img src="${esc(voicePhoto)}" alt="">`:'<span class="voice-avatar-fallback">👤</span>'}<span class="voice-mic-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11z"></path></svg></span></div>` : '';
 
   const waveSVG = `<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
     ${[3,5,9,7,12,16,20,14,22,26,30,24,28,32,26,22,28,24,20,26,18,14,20,12,16,10,8,12,6,8]
@@ -3036,24 +3121,25 @@ else if(type==='audio' || type==='voice'){
   let voiceReceipt = '';
   if(self && isVoice){
     if(m.voicePlayed) voiceReceipt = `<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;
-    else voiceReceipt = `<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>`;
+    else if(wasDelivered) voiceReceipt = `<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.72);margin-left:4px;">✓✓</span>`;
+    else voiceReceipt = `<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.72);margin-left:4px;">✓</span>`;
   }
 
   if(m.status==='failed'){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
+    inner=`${nameTag}<div class="vbub ${isVoice?'voice-message':''}" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">${voiceAvatar}
       <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
       <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')||'Failed'}</div></div>
     </div>${rcHtml}`;
   }
   else if(!m.data){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
+    inner=`${nameTag}<div class="vbub ${isVoice?'voice-message':''}" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">${voiceAvatar}
       <div style="flex:1;display:flex;align-items:center;gap:10px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
     </div>${rcHtml}`;
   }
   else{
     inner=`${nameTag}
-      <div class="vbub" id="vp_${m.id}" style="min-width:230px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};">
+      <div class="vbub ${isVoice?'voice-message':''}" id="vp_${m.id}" style="min-width:230px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">${voiceAvatar}
+        <button class="vpbtn ${isVoice?'voice-play':''}" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:${isVoice?'28px':'38px'};height:38px;border-radius:${isVoice?'0':'50%'};border:none;background:${isVoice?'transparent':playBtnBg};color:${self?'#fff':vAccent};cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:${isVoice?'none':'0 2px 8px '+playShadow};">
           <svg viewBox="0 0 24 24" width="19" height="19" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
         </button>
         ${isVoice?'':`<div style="font-size:26px;line-height:1;color:${self?'rgba(255,255,255,.82)':vAccent};flex-shrink:0;">♫</div>`}
@@ -3065,19 +3151,13 @@ else if(type==='audio' || type==='voice'){
             ${waveSVG}
             <div id="vfill_${m.id}" style="position:absolute;left:0;top:0;width:0%;height:100%;background:${self?'rgba(255,255,255,.25)':(isGrp?'rgba(230,126,34,.25)':'rgba(33,150,243,.25)')};border-radius:4px;pointer-events:none;"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
-            <span style="font-size:10px;color:${self?'rgba(255,255,255,.85)':vAccent};font-weight:600;">${label}</span>
-            <div style="display:flex;align-items:center;gap:4px;">
-              <span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>
-              ${voiceReceipt}
-            </div>
-          </div>
+          ${isVoice?`<div class="voice-meta-row"><span class="vdur" id="vdur_${m.id}">${durLabel}</span><span class="voice-sent-time">${displayMessageTime(m.time)}</span>${voiceReceipt}</div>`:`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;"><span style="font-size:10px;color:${self?'rgba(255,255,255,.85)':vAccent};font-weight:600;">${label}</span><div style="display:flex;align-items:center;gap:4px;"><span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>${voiceReceipt}</div></div>`}
         </div>
       </div>
       ${isVoice?'':`<div class="mar" style="margin-top:6px;">
         <button class="mabtn dl" onclick="dlM('${esc(m.data)}','audio.mp3')">⬇ Download</button>
       </div>`}
-      ${rcHtml}${mediaReceipt}`;
+      ${rcHtml}${isVoice?'':mediaReceipt}`;
   }
 }
   else if(type==='doc'){
@@ -3086,7 +3166,8 @@ else if(type==='audio' || type==='voice'){
     else inner=`${nameTag}${rq}<div class="dbub" data-file-url="${esc(m.data)}" data-file-name="${esc(m.name||'file')}"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${docActions(m,self)}${rcHtml}${mediaReceipt}`;
   }
   if((type==='voice'||type==='audio')&&voicePlayer&&String(voicePlayerId)===String(m.id))setTimeout(restoreVoiceUI,0);
-  return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${displayMessageTime(m.time)}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
+  const bubbleTime=type==='voice'?'':`<div class="btime">${displayMessageTime(m.time)}</div>`;
+  return `<div class="bw ${side}" data-id="${m.id}" data-type="${esc(type)}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}${bubbleTime}</div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
 let _lpTimer=null,_lpFired=false;
@@ -3991,8 +4072,12 @@ function renderInbox(q="",sn=null){
       else if(_rawMsg==='__voice__'){
         // Show duration from chat data if stored
         const _vDur=data.lastVoiceDur||'';
-        const _vSeen=(data.unread||{})[CU.uid]===0||unread===0;
-        const _vTick=_vSeen?'<span style="color:#4fc3f7;font-size:11px;margin-left:2px;font-weight:bold;">✓✓</span>':'<span style="font-size:11px;opacity:.6;margin-left:2px;">✓</span>';
+        const _sentByMe=data.lastSenderUid===CU.uid;
+        const _lastAt=Number(data.lastMessageAt)||0;
+        const _otherReadAt=messageMillis(data.readAt?.[ouid]);
+        const _vSeen=_sentByMe&&!!data.lastMessageId&&((_lastAt>0&&_otherReadAt>=_lastAt)||(Number((data.unread||{})[ouid])===0));
+        const _vDelivered=_sentByMe&&!_vSeen&&data.deliveredBy?.[ouid]===data.lastMessageId;
+        const _vTick=!_sentByMe?'':_vSeen?'<span style="color:var(--receipt-blue,#4fc3f7);font-size:11px;margin-left:2px;font-weight:bold;">✓✓</span>':_vDelivered?'<span style="color:rgba(120,130,140,.9);font-size:11px;margin-left:2px;font-weight:bold;">✓✓</span>':'<span style="color:rgba(120,130,140,.9);font-size:11px;margin-left:2px;">✓</span>';
         _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}${_vTick}`;
       }
       else if(_rawMsg==='__gdrive__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>File`;
