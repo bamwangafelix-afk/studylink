@@ -384,17 +384,15 @@ async function setPresence(status){
 function setupPresence(){
   if(window._presenceReady)return;window._presenceReady=true;
   setPresence('Online');
-  // Heartbeat refreshes status + lastSeen so other users can tell a live session
-  // from one that closed without a chance to write "Offline".
-  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},25000);
+  // Heartbeat every 18s so lastSeen stays fresh even on slow mobile networks.
+  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},18000);
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'){
       clearTimeout(_presenceOfflineTimer);_presenceOfflineTimer=null;
       setPresence('Online');
     }else{
-      // Do not flip to Offline for a short app switch / notification shade.
       clearTimeout(_presenceOfflineTimer);
-      _presenceOfflineTimer=setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},45000);
+      _presenceOfflineTimer=setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},60000);
     }
     if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
   });
@@ -402,6 +400,8 @@ function setupPresence(){
   window.addEventListener('pageshow',()=>{setPresence('Online');});
   window.addEventListener('online',()=>setPresence('Online'));
   window.addEventListener('focus',()=>{clearTimeout(_presenceOfflineTimer);setPresence('Online');});
+  document.addEventListener('resume',()=>setPresence('Online'));
+  window.addEventListener('pageshow',e=>{if(e.persisted)setPresence('Online');});
 }
 
 async function keepVoiceScreenOn(){
@@ -458,7 +458,20 @@ async function getVoiceStream(){
   if(permission==='denied'){
     const err=new Error('Microphone permission denied');err.name='MicPermissionDenied';throw err;
   }
-  return navigator.mediaDevices.getUserMedia({audio:true});
+  const constraints={
+    audio:{
+      echoCancellation:true,
+      noiseSuppression:true,
+      autoGainControl:true,
+      channelCount:1,
+      sampleRate:{ideal:16000}
+    }
+  };
+  try{
+    return await navigator.mediaDevices.getUserMedia(constraints);
+  }catch(e){
+    return navigator.mediaDevices.getUserMedia({audio:true});
+  }
 }
 
 // ── CLOUDINARY ──
@@ -1273,7 +1286,8 @@ function fmtLastSeen(lastSeen){
 function getStatusInfo(status,lastSeen){
   // A pending serverTimestamp is null locally: treat it as fresh.
   const _ls=lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;
-  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>180000;
+  // 3.5 minutes: allows for slow mobile networks + heartbeat interval + clock skew.
+  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>210000;
   // The "Busy" status no longer exists: old stored values count as online.
   if((status==='Online'||status==='Busy')&&!_stale)return{cls:'online',label:t('status_online')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
@@ -2120,14 +2134,28 @@ function messageWasReadByOther(m){
   if(!m||m.senderUid!==CU?.uid||!curChat?.uid)return false;
   return messageMillis(curChatReadAt[curChat.uid])>=messageMillis(m.time);
 }
+// Receipt states (sender only):
+//   ✓   gray  = sent
+//   ✓✓  gray  = delivered
+//   ✓✓  blue  = read
+const RECEIPT_BLUE='#53bdeb';
+function receiptHtml(m,type){
+  if(m.senderUid!==CU?.uid)return '';
+  const read=!!m.seen||!!m.voicePlayed||!!m.openedAt||messageWasReadByOther(m);
+  const delivered=read||m.status==='sent'||m.delivered===true||!!m.deliveredAt;
+  if(read)return `<div class="receipt" data-rkind="${type||'text'}" style="color:${RECEIPT_BLUE};">✓✓</div>`;
+  if(delivered)return `<div class="receipt" data-rkind="${type||'text'}" style="color:rgba(255,255,255,.65);">✓✓</div>`;
+  return `<div class="receipt" data-rkind="${type||'text'}" style="color:rgba(255,255,255,.55);">✓</div>`;
+}
 function refreshPrivateReceipts(){
   if(!curChat)return;
   document.querySelectorAll('#msgB .bw.s').forEach(bw=>{
-    const id=bw.dataset.id;
-    const receipt=bw.querySelector('.receipt[data-rkind="text"]');
+    const receipt=bw.querySelector('.receipt');
     if(!receipt)return;
-    const read=messageWasReadByOther({id,senderUid:CU.uid,time:bw.dataset.time});
-    if(read){receipt.innerHTML='✓✓ '+t('msg_seen');receipt.style.color='#4fc3f7';}
+    const time=bw.dataset.time;
+    const read=messageWasReadByOther({id:bw.dataset.id,senderUid:CU.uid,time});
+    if(read){receipt.innerHTML='✓✓';receipt.style.color=RECEIPT_BLUE;}
+    else if(receipt.textContent.trim()!=='✓'){receipt.innerHTML='✓✓';receipt.style.color='rgba(255,255,255,.65)';}
   });
 }
 // Firestore's set(...,{merge:true}) does NOT parse dotted keys as nested paths: a key like
@@ -2721,10 +2749,68 @@ function toggleSelectMsg(id,isGrp){
     }
   }
   if(selectedMsgs.size>0){
-    let bar=document.getElementById('selBar');
-    if(!bar){bar=document.createElement('div');bar.id='selBar';bar.style.cssText='position:fixed;bottom:72px;left:0;right:0;background:var(--hdr);color:#fff;padding:12px 16px;display:flex;gap:8px;align-items:center;z-index:5000;box-shadow:0 -2px 12px rgba(0,0,0,.4);';document.body.appendChild(bar);}
-    bar.innerHTML=`<span style="flex:1;font-size:13px;font-weight:bold;">${selectedMsgs.size} selected</span><button onclick="deleteSelectedMsgs(${isGrp},'everyone')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for everyone</button><button onclick="deleteSelectedMsgs(${isGrp},'me')" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Delete for me</button><button onclick="clearSelection()" style="background:#1e88e5;color:#fff;border:none;padding:9px 14px;border-radius:20px;font-size:13px;font-weight:bold;cursor:pointer;">Cancel</button>`;
+    updateSelBar(isGrp);
   }else{clearSelection();}
+}
+function selectedAreAllMine(){
+  for(const id of selectedMsgs){
+    const bw=document.querySelector(`.bw[data-id="${id}"]`);
+    if(!bw||!bw.classList.contains('s'))return false;
+  }
+  return selectedMsgs.size>0;
+}
+function updateSelBar(isGrp){
+  let bar=document.getElementById('selBar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='selBar';
+    bar.style.cssText='position:fixed;top:0;left:0;right:0;height:56px;background:#1f2c34;color:#fff;display:flex;align-items:center;padding:0 8px;z-index:5000;gap:2px;box-shadow:0 2px 8px rgba(0,0,0,.35);';
+    document.body.appendChild(bar);
+  }
+  const count=selectedMsgs.size;
+  bar.innerHTML=`
+    <button onclick="clearSelection()" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" aria-label="Back">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span style="font-size:18px;font-weight:600;min-width:28px;margin:0 6px 0 2px;">${count}</span>
+    <div style="flex:1;"></div>
+    <button onclick="showMsgSearchFromSel()" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Search" aria-label="Search">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    </button>
+    <button onclick="showDeleteOptions(${isGrp})" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Delete" aria-label="Delete">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </button>
+    <button onclick="showSelMoreMenu(${isGrp})" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="More" aria-label="More">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+    </button>`;
+}
+function showMsgSearchFromSel(){
+  const q=el('chatSearch')||el('msgSearch');
+  if(q){q.focus();return;}
+  showToast(appLang==='fr'?'Recherche bientôt disponible':'Search coming soon');
+}
+function showSelMoreMenu(isGrp){
+  showToast(appLang==='fr'?'Plus d’options bientôt':'More options coming soon');
+}
+function showDeleteOptions(isGrp){
+  const count=selectedMsgs.size;
+  if(!count)return;
+  const canEveryone=selectedAreAllMine();
+  el('delSheet')?.remove();
+  const sheet=document.createElement('div');sheet.id='delSheet';
+  sheet.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
+  const everyoneBtn=canEveryone
+    ?`<button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:14px;margin-bottom:8px;border:none;background:transparent;color:#e74c3c;font-size:16px;font-weight:600;cursor:pointer;border-radius:12px;">${appLang==='fr'?'Supprimer pour tout le monde':'Delete for everyone'}</button>`
+    :'';
+  sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:16px 16px 0 0;padding:10px 12px 18px;box-shadow:0 -4px 24px rgba(0,0,0,.25);">
+    <div style="width:36px;height:4px;background:var(--brd);border-radius:4px;margin:4px auto 14px;"></div>
+    <p style="font-weight:700;font-size:15px;text-align:center;margin-bottom:12px;color:var(--txt);">${appLang==='fr'?`Supprimer ${count} message${count>1?'s':''} ?`:`Delete ${count} message${count>1?'s':''}?`}</p>
+    ${everyoneBtn}
+    <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:14px;margin-bottom:8px;border:none;background:transparent;color:#e74c3c;font-size:16px;font-weight:600;cursor:pointer;border-radius:12px;">${appLang==='fr'?'Supprimer pour moi':'Delete for me'}</button>
+    <button onclick="el('delSheet').remove()" style="width:100%;padding:14px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;">${appLang==='fr'?'Annuler':'Cancel'}</button>
+  </div>`;
+  sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
+  document.body.appendChild(sheet);
 }
 function clearSelection(){
   selectedMsgs.clear();selMode=false;
@@ -2732,29 +2818,19 @@ function clearSelection(){
   document.querySelectorAll('.sel-chk').forEach(c=>c.remove());
   document.querySelectorAll('.selbtn').forEach(b=>{b.textContent='☐';b.classList.remove('checked');});
   document.getElementById('selBar')?.remove();
+  el('delSheet')?.remove();
 }
 async function deleteSelectedMsgs(isGrp,scope){
-  if(!scope){
-    // Fallback: show sheet
-    const count=selectedMsgs.size;
-    const sheet=document.createElement('div');sheet.id='delSheet';
-    sheet.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
-    sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:18px 18px 0 0;padding:18px;">
-      <p style="font-weight:bold;font-size:15px;text-align:center;margin-bottom:14px;">Delete ${count} message${count>1?'s':''}?</p>
-      <button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for everyone</button>
-      <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:13px;margin-bottom:8px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;">Delete for me</button>
-      <button onclick="el('delSheet').remove()" style="width:100%;padding:13px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;">Cancel</button>
-    </div>`;
-    sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
-    document.body.appendChild(sheet);
-    return;
-  }
+  if(!scope){showDeleteOptions(isGrp);return;}
   await execDelMsgs(scope,isGrp);
 }
 async function execDelMsgs(scope,isGrp){
   el('delSheet')?.remove();
   const ids=[...selectedMsgs];
-  // Immediately hide 'delete for me' bubbles from DOM so UI feels instant
+  if(scope==='everyone'&&!selectedAreAllMine()){
+    showToast(appLang==='fr'?'Vous ne pouvez supprimer pour tout le monde que vos propres messages':'You can only delete your own messages for everyone');
+    return;
+  }
   if(scope==='me'){
     ids.forEach(id=>{
       const bw=document.querySelector(`.bw[data-id="${id}"]`);
@@ -2762,6 +2838,7 @@ async function execDelMsgs(scope,isGrp){
     });
   }
   const failed=[];
+  let needLastMsgRefresh=false;
   for(const id of ids){
     try{
       let ref;
@@ -2772,13 +2849,53 @@ async function execDelMsgs(scope,isGrp){
           await ref.delete();
           document.querySelector(`.bw[data-id="${id}"]`)?.remove();
           if(!isGrp)window._privateMsgForget?.(id);
-        }else await ref.update({['deletedFor.'+CU.uid]:true});
+          needLastMsgRefresh=true;
+        }else{
+          await ref.update({['deletedFor.'+CU.uid]:true});
+          needLastMsgRefresh=true;
+        }
       }
     }catch(e){console.log(e);failed.push(e?.code||e?.message||'error');}
   }
   clearSelection();
+  if(needLastMsgRefresh&&!isGrp&&curChat){
+    try{await refreshChatLastMessage(getCID(CU.uid,curChat.uid));}catch(e){console.warn('lastMsg refresh',e);}
+  }
   if(failed.length)showToast('❌ Could not delete '+failed.length+' message(s): '+failed[0]);
-  else showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
+  else showToast(scope==='everyone'?(appLang==='fr'?'Supprimé pour tout le monde':'Deleted for everyone'):(appLang==='fr'?'Supprimé pour vous':'Deleted for you'));
+}
+async function refreshChatLastMessage(cid){
+  if(!cid||!CU)return;
+  const col=db.collection('chats').doc(cid).collection('messages');
+  const sn=await col.orderBy('createdAt','desc').limit(12).get();
+  let last=null;
+  for(const d of sn.docs){
+    const m=d.data();
+    if(m.deletedFor&&m.deletedFor[CU.uid])continue;
+    last={id:d.id,...m};
+    break;
+  }
+  const chatRef=db.collection('chats').doc(cid);
+  if(!last){
+    await chatRef.set({lastMsg:'',lastTime:'',lastMessageAt:0,lastMessageId:'',lastSenderUid:''},{merge:true});
+    return;
+  }
+  let preview='';
+  if(last.type==='text')preview=last.text||'';
+  else if(last.type==='voice')preview='🎤 '+(appLang==='fr'?'Message vocal':'Voice message');
+  else if(last.type==='image')preview='📷 Photo';
+  else if(last.type==='video')preview='🎥 Video';
+  else if(last.type==='audio')preview='🎵 Audio';
+  else if(last.type==='doc')preview='📄 '+(last.name||'Document');
+  else preview=last.text||'';
+  const ts=last.createdAt||last.time||Date.now();
+  await chatRef.set({
+    lastMsg:preview,
+    lastTime:typeof last.time==='string'?last.time:displayMessageTime(ts),
+    lastMessageAt:messageMillis(ts)||Date.now(),
+    lastMessageId:last.id,
+    lastSenderUid:last.senderUid||''
+  },{merge:true});
 }
 // ── FILE DOWNLOAD / OPEN ──
 const _dlBlobs=Object.create(null);
@@ -2961,11 +3078,9 @@ function buildBbl(m,isGrp){
   const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
   const wasRead=!!m.seen||messageWasReadByOther(m);
-  // Sent = a single check. Double check + Seen only once the receiver opened it:
-  // text -> when the chat is opened; media/files -> when the receiver opens/plays it.
-  const receipt=self&&type==='text'?`<div class="receipt" data-rkind="text">${wasRead?'✓✓ '+t('msg_seen'):'✓'}</div>`:'';
-  const _opened=!!(m.seen||m.openedAt||m.voicePlayed);
-  const mediaReceipt=self?`<div class="receipt" data-rkind="media">${_opened?'<span style="color:#4fc3f7;">✓✓ '+t('msg_seen')+'</span>':'✓'}</div>`:'';
+  // Receipts only appear on the sender side (never on received messages).
+  const receipt=self&&type==='text'?receiptHtml(m,'text'):'';
+  const mediaReceipt=self?receiptHtml(m,'media'):'';
   const rc=m.reactions||{},ec={};
   Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
   const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
@@ -3013,62 +3128,68 @@ function buildBbl(m,isGrp){
   }
 else if(type==='audio' || type==='voice'){
   const isVoice = type === 'voice';
-  const vBlue = '#2196f3', vOrange = '#e67e22';
+  // Voice bubbles use the same solid colors as text bubbles (no special gradients).
   const vBubbleBg = isGrp
-    ? (self ? 'linear-gradient(135deg,#e67e22,#f39c12)' : 'rgba(230,126,34,.13)')
-    : (self ? 'linear-gradient(135deg,#1565c0,#1e88e5)' : 'rgba(30,136,229,.13)');
-  const vAccent = isGrp ? vOrange : vBlue;
-  const vWaveColor = self ? '#ffffff' : vAccent;   // WHITE when you sent it
-  const vPlayedColor = isGrp ? '#ffd7ad' : '#4fc3f7';
-  const playBtnBg = self ? 'rgba(255,255,255,0.25)' : vAccent;
-  const playShadow = isGrp ? 'rgba(230,126,34,.4)' : 'rgba(33,150,243,.4)';
+    ? (self ? '#e67e22' : (document.body.classList.contains('dark') ? '#243448' : '#fff'))
+    : (self ? 'var(--btnB)' : (document.body.classList.contains('dark') ? '#243448' : '#fff'));
+  const vWaveColor = self ? '#ffffff' : (isGrp ? '#e67e22' : '#2196f3');
+  const textMuted = self ? 'rgba(255,255,255,.85)' : 'var(--sub)';
   const durLabel = m.dur || '0:00';
-  const label = isVoice ? (t('voice_message') || 'Voice') : (t('audio_label') || 'Music');
+  const timeLabel = displayMessageTime(m.time||m.createdAt);
+  const peerPhoto = self
+    ? (myPho || '')
+    : (m.senderPhoto || (curChat && !isGrp ? (allUsers.find(u=>u.uid===curChat.uid)?.photo||'') : '') || '');
+  const avatarHtml = peerPhoto
+    ? `<img src="${esc(peerPhoto)}" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${self?'rgba(255,255,255,.35)':'rgba(0,0,0,.08)'};">`
+    : `<div style="width:42px;height:42px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':'rgba(0,0,0,.08)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">👤</div>`;
 
-  const waveSVG = `<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
-    ${[3,5,9,7,12,16,20,14,22,26,30,24,28,32,26,22,28,24,20,26,18,14,20,12,16,10,8,12,6,8]
+  const waveSVG = `<svg viewBox="0 0 120 28" width="100" height="26" style="flex:1;min-width:72px;" preserveAspectRatio="none">
+    ${[4,6,10,8,14,18,22,16,24,28,26,22,28,24,20,26,18,14,20,12,16,10,8,12,6,8]
       .map((h,i)=>{
-        const x=2+i*4, bh=Math.max(4,h), y=(32-bh)/2;
-        return `<rect x="${x}" y="${y}" width="2.6" height="${bh}" rx="1.3" fill="${vWaveColor}" opacity="${0.55+h/70}"/>`;
+        const x=2+i*4.5, bh=Math.max(4,h*0.85), y=(28-bh)/2;
+        return `<rect x="${x}" y="${y}" width="2.8" height="${bh}" rx="1.4" fill="${vWaveColor}" opacity="${0.55+h/70}"/>`;
       }).join('')}
   </svg>`;
 
   let voiceReceipt = '';
-  if(self && isVoice){
-    if(m.voicePlayed) voiceReceipt = `<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;
-    else voiceReceipt = `<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>`;
+  if(self){
+    const read = !!m.voicePlayed || !!m.seen || messageWasReadByOther(m);
+    if(read) voiceReceipt = `<span data-vreceipt="1" style="font-size:12px;color:${RECEIPT_BLUE};margin-left:3px;font-weight:700;">✓✓</span>`;
+    else voiceReceipt = `<span data-vreceipt="1" style="font-size:12px;color:rgba(255,255,255,.7);margin-left:3px;">✓✓</span>`;
   }
 
   if(m.status==='failed'){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
-      <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
+    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:210px;gap:8px;align-items:center;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:14px;padding:8px 10px;">
+      <div style="width:36px;height:36px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">!</div>
       <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')||'Failed'}</div></div>
     </div>${rcHtml}`;
   }
   else if(!m.data){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-      <div style="flex:1;display:flex;align-items:center;gap:10px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
+    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:210px;gap:8px;align-items:center;background:${vBubbleBg};border-radius:14px;padding:8px 10px;${self?'':'box-shadow:0 1px 4px rgba(0,0,0,.1);'}">
+      ${avatarHtml}
+      <div style="flex:1;display:flex;align-items:center;gap:8px;"><span class="vload"></span><span class="vdur" style="color:${textMuted};">${durLabel}</span></div>
     </div>${rcHtml}`;
   }
   else{
+    const playIcon = `<svg viewBox="0 0 24 24" width="22" height="22" style="display:block;fill:${self?'#fff':vWaveColor};"><path d="M8 5v14l11-7z"/></svg>`;
     inner=`${nameTag}
-      <div class="vbub" id="vp_${m.id}" style="min-width:230px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};">
-          <svg viewBox="0 0 24 24" width="19" height="19" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
+      <div class="vbub" id="vp_${m.id}" style="min-width:220px;max-width:280px;gap:8px;align-items:center;background:${vBubbleBg};border-radius:14px;padding:8px 10px;${self?'':'box-shadow:0 1px 4px rgba(0,0,0,.1);'}">
+        ${avatarHtml}
+        <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:28px;height:28px;border:none;background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;">
+          ${playIcon}
         </button>
-        ${isVoice?'':`<div style="font-size:26px;line-height:1;color:${self?'rgba(255,255,255,.82)':vAccent};flex-shrink:0;">♫</div>`}
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}"
                onclick="seekVP(event,'${m.id}')"
                ontouchstart="seekVP(event,'${m.id}')"
-               style="height:30px;display:flex;align-items:center;cursor:pointer;position:relative;touch-action:none;">
+               style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;touch-action:none;">
             ${waveSVG}
-            <div id="vfill_${m.id}" style="position:absolute;left:0;top:0;width:0%;height:100%;background:${self?'rgba(255,255,255,.25)':(isGrp?'rgba(230,126,34,.25)':'rgba(33,150,243,.25)')};border-radius:4px;pointer-events:none;"></div>
+            <div id="vfill_${m.id}" style="position:absolute;left:0;top:0;width:0%;height:100%;background:${self?'rgba(255,255,255,.22)':'rgba(33,150,243,.18)'};border-radius:4px;pointer-events:none;"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
-            <span style="font-size:10px;color:${self?'rgba(255,255,255,.85)':vAccent};font-weight:600;">${label}</span>
-            <div style="display:flex;align-items:center;gap:4px;">
-              <span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1px;">
+            <span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${textMuted};font-weight:600;">${durLabel}</span>
+            <div style="display:flex;align-items:center;gap:3px;">
+              <span style="font-size:10px;color:${textMuted};">${timeLabel}</span>
               ${voiceReceipt}
             </div>
           </div>

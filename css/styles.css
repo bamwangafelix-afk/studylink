@@ -156,7 +156,7 @@ body.dark .bbl.o{background:#243448;}
 .bname{font-size:10px;font-weight:bold;opacity:.8;margin-bottom:2px;}
 .rq{background:rgba(255,255,255,.15);border-left:3px solid rgba(255,255,255,.5);border-radius:5px;padding:4px 7px;font-size:11px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bbl.o .rq{background:rgba(0,0,0,.06);border-left-color:var(--btnB);}
-.receipt{font-size:9px;opacity:.6;text-align:right;}
+.receipt{font-size:11px;opacity:1;text-align:right;font-weight:600;letter-spacing:-0.3px;line-height:1;}
 /* INBOX */
 .inbx-item{display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer;border-bottom:1px solid var(--brd);}
 .inbx-av{width:46px;height:46px;min-width:46px;background:#ddd;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px;position:relative;flex-shrink:0;}
@@ -582,16 +582,18 @@ body.dark #typebar,body.dark #gTypebar{color:#fff!important;}
 /* --- v30: dark mode, blue text becomes white --- */
 body.dark .tag{border-color:#fff;color:#fff;}
 body.dark .inbox-presence,body.dark .selbtn.checked,body.dark .voice-float-indicator,body.dark .stPhotoVector,body.dark .profile-back-btn,body.dark .profile-header-title{color:#fff!important;}
-body.dark .receipt,body.dark .receipt span,body.dark [data-vreceipt]{color:#fff!important;}
-body.dark [style*="color:var(--btnB)"]:not([style*="background"]),
-body.dark [style*="color: var(--btnB)"]:not([style*="background"]),
-body.dark [style*="color:#2196f3"]:not([style*="background"]),
-body.dark [style*="color:#1e88e5"]:not([style*="background"]),
-body.dark [style*="color:#1565c0"]:not([style*="background"]),
-body.dark [style*="color:#1a73e8"]:not([style*="background"]),
-body.dark [style*="color:#0A3C6D"]:not([style*="background"]),
-body.dark [style*="color:#0a3c6d"]:not([style*="background"]),
-body.dark [style*="color:#4fc3f7"]:not([style*="background"]){color:#fff!important;}
+/* Keep read receipts blue (#53bdeb) in dark mode */
+body.dark .receipt:not([style*="53bdeb"]),body.dark .receipt span:not([style*="53bdeb"]){color:rgba(255,255,255,.7)!important;}
+body.dark [data-vreceipt]:not([style*="53bdeb"]){color:rgba(255,255,255,.7)!important;}
+body.dark [style*="color:var(--btnB)"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color: var(--btnB)"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color:#2196f3"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color:#1e88e5"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color:#1565c0"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color:#1a73e8"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color:#0A3C6D"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color:#0a3c6d"]:not([style*="background"]):not(.receipt):not([data-vreceipt]),
+body.dark [style*="color:#4fc3f7"]:not([style*="background"]):not(.receipt):not([data-vreceipt]){color:#fff!important;}
 body.dark .bbl.o .mabtn.dl,body.dark .bbl.o .dlring{background:rgba(255,255,255,.16);color:#fff;}
 /* light mode keeps the brand blue; the old rule forced white even there */
 .presence-text{color:var(--btnB);}
