@@ -1164,14 +1164,14 @@ function listenPosts(){
       const hadPosts=cachedPosts.length>0;
       if(hadPosts&&newPosts.length>cachedPosts.length){
         const newCount=newPosts.length-cachedPosts.length;
-        const b=el('feedB');if(b){b.textContent='+'+newCount+' new';b.style.display='inline-block';}
+        const b=el('feedB');if(b){b.textContent=String(newCount>9?'9+':newCount);b.style.display='flex';}
       }
       cachedPosts=newPosts;lastPostCount=cachedPosts.length;
       renderHome(cachedPosts,_feedShown);
     }else{
       if(lastPostCount>0&&newPosts.length>lastPostCount){
         const newCount=newPosts.length-lastPostCount;
-        const b=el('feedB');if(b){b.textContent='+'+newCount+' new';b.style.display='inline-block';}
+        const b=el('feedB');if(b){b.textContent=String(newCount>9?'9+':newCount);b.style.display='flex';}
       }
       cachedPosts=newPosts;lastPostCount=cachedPosts.length;
     }
@@ -2137,14 +2137,21 @@ function tickMarkup(state,ctx){
   return `<span class="tkw ${state}${ctx?' '+ctx:''}">${state==='sent'?TICK_ONE:TICK_TWO}</span>`;
 }
 function receiptStateFrom(ms,seenFlag,otherReadAt,otherDeliveredAt){
-  if(seenFlag||(ms>0&&messageMillis(otherReadAt)>=ms))return 'read';
-  if(ms>0&&messageMillis(otherDeliveredAt)>=ms)return 'delivered';
+  // Delivered first, then read. Never jump straight to blue before the other device confirmed arrival.
+  const delivered=ms>0&&messageMillis(otherDeliveredAt)>=ms;
+  const read=seenFlag||(ms>0&&messageMillis(otherReadAt)>=ms);
+  if(read&&delivered)return 'read';
+  if(read&&!otherDeliveredAt){
+    // Fallback: if we never tracked deliveredAt (older chats), allow read when the peer's readAt is set.
+    if(ms>0&&messageMillis(otherReadAt)>=ms)return 'read';
+  }
+  if(delivered)return 'delivered';
   return 'sent';
 }
 function receiptState(m,isGrp){
-  if(m.status==='sending')return 'sent';
+  if(m.status==='sending'||m.status==='failed')return 'sent';
   const seen=!!(m.seen||m.openedAt||m.voicePlayed);
-  if(isGrp)return seen?'read':'sent';
+  if(isGrp)return seen?'read':'delivered';
   const other=curChat?.uid;
   return receiptStateFrom(messageMillis(m.time),seen,other?curChatReadAt[other]:0,other?curChatDeliveredAt[other]:0);
 }
@@ -3116,11 +3123,10 @@ function buildBbl(m,isGrp){
         ? `${nameTag}${rq}<img src="${pendingSrc}" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;opacity:.82;">${rcHtml}`
         : `${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🖼️</div></div>${rcHtml}`;
     } else {
+      const imgDl=self?'':`<div class="mar" style="margin-top:6px;"><button class="mabtn dl" onclick="dlM('${esc(m.data)}','photo.jpg')">⬇ Download</button></div>`;
       inner = `${nameTag}${rq}
         <img src="${m.data}" onclick="openM('${m.data}','image','${m.id}')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;">
-        <div class="mar" style="margin-top:6px;">
-          <button class="mabtn dl" onclick="dlM('${esc(m.data)}','photo.jpg')">⬇ Download</button>
-        </div>
+        ${imgDl}
         ${rcHtml}${mediaReceipt}`;
     }
   }
@@ -3146,76 +3152,35 @@ else if(type==='voice'&&m.data&&m.status!=='failed'){
     </div>
   </div>${rcHtml}`;
 }
-else if(type==='audio' || type==='voice'){
+else if(type==='audio' || (type==='voice' && (!m.data || m.status==='failed'))){
+  // Fallback / music file: same layout as voice, but music note in the avatar slot.
   const isVoice = type === 'voice';
-  const vBlue = '#2196f3', vOrange = '#e67e22';
-  const vBubbleBg = isGrp
-    ? (self ? 'linear-gradient(135deg,#e67e22,#f39c12)' : 'rgba(230,126,34,.13)')
-    : (self ? 'linear-gradient(135deg,#1565c0,#1e88e5)' : 'rgba(30,136,229,.13)');
-  const vAccent = isGrp ? vOrange : vBlue;
-  const vWaveColor = self ? '#ffffff' : vAccent;   // WHITE when you sent it
-  const vPlayedColor = isGrp ? '#ffd7ad' : '#4fc3f7';
-  const playBtnBg = self ? 'rgba(255,255,255,0.25)' : vAccent;
-  const playShadow = isGrp ? 'rgba(230,126,34,.4)' : 'rgba(33,150,243,.4)';
   const durLabel = m.dur || '0:00';
-  const label = isVoice ? (t('voice_message') || 'Voice') : (t('audio_label') || 'Music');
-
-  const waveSVG = `<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
-    ${[3,5,9,7,12,16,20,14,22,26,30,24,28,32,26,22,28,24,20,26,18,14,20,12,16,10,8,12,6,8]
-      .map((h,i)=>{
-        const x=2+i*4, bh=Math.max(4,h), y=(32-bh)/2;
-        return `<rect x="${x}" y="${y}" width="2.6" height="${bh}" rx="1.3" fill="${vWaveColor}" opacity="${0.55+h/70}"/>`;
-      }).join('')}
-  </svg>`;
-
-  let voiceReceipt = '';
-  if(self && isVoice){
-    if(m.voicePlayed) voiceReceipt = `<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;
-    else voiceReceipt = `<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>`;
-  }
-
+  const musicIcon = `<span class="vavph" style="background:${self?'rgba(255,255,255,.22)':'rgba(33,150,243,.15)'};color:${self?'#fff':'var(--btnB)'};"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></span>`;
   if(m.status==='failed'){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
-      <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
-      <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')||'Failed'}</div></div>
+    inner=`${nameTag}<div class="vmsg" id="vp_${m.id}">
+      ${musicIcon}
+      <div class="vcol"><div style="font-size:12px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')||'Failed'}</div></div>
     </div>${rcHtml}`;
-  }
-  else if(!m.data){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-      <div style="flex:1;display:flex;align-items:center;gap:10px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
+  }else if(!m.data){
+    inner=`${nameTag}<div class="vmsg" id="vp_${m.id}">
+      ${musicIcon}
+      <div class="vcol" style="display:flex;align-items:center;gap:8px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
     </div>${rcHtml}`;
-  }
-  else{
-    inner=`${nameTag}
-      <div class="vbub" id="vp_${m.id}" style="min-width:230px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
-        <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};">
-          <svg viewBox="0 0 24 24" width="19" height="19" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        ${isVoice?'':`<div style="font-size:26px;line-height:1;color:${self?'rgba(255,255,255,.82)':vAccent};flex-shrink:0;">♫</div>`}
-        <div style="flex:1;min-width:0;">
-          <div class="vprog" id="vbar_${m.id}"
-               onclick="seekVP(event,'${m.id}')"
-               ontouchstart="seekVP(event,'${m.id}')"
-               style="height:30px;display:flex;align-items:center;cursor:pointer;position:relative;touch-action:none;">
-            ${waveSVG}
-            <div id="vfill_${m.id}" style="position:absolute;left:0;top:0;width:0%;height:100%;background:${self?'rgba(255,255,255,.25)':(isGrp?'rgba(230,126,34,.25)':'rgba(33,150,243,.25)')};border-radius:4px;pointer-events:none;"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
-            <span style="font-size:10px;color:${self?'rgba(255,255,255,.85)':vAccent};font-weight:600;">${label}</span>
-            <div style="display:flex;align-items:center;gap:4px;">
-              <span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>
-              ${voiceReceipt}
-            </div>
-          </div>
-        </div>
+  }else{
+    const bars=voiceBarsFor(m.id).map(h=>`<i style="height:${h}%"></i>`).join('');
+    const dl=self?'':`<div class="mar" style="margin-top:6px;"><button class="mabtn dl" onclick="dlM('${esc(m.data)}','audio.mp3')">⬇ Download</button></div>`;
+    inner=`${nameTag}<div class="vmsg" id="vp_${m.id}" data-voice-src="${esc(m.data)}">
+      <div class="vav">${musicIcon}<span class="vmic"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg></span></div>
+      <button class="vpbtn vplain" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play">${VOICE_PLAY_ICON}</button>
+      <div class="vcol">
+        <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" ontouchstart="seekVP(event,'${m.id}')"><div class="vwave" id="vwave_${m.id}">${bars}</div><span class="vdot" id="vdot_${m.id}"></span></div>
+        <div class="vmeta"><span class="vdur" id="vdur_${m.id}">${durLabel}</span><span class="vright"><span class="vtm">${displayMessageTime(m.time)}</span>${self?`<span data-tick="1">${tickMarkup(rState)}</span>`:''}</span></div>
       </div>
-      ${isVoice?'':`<div class="mar" style="margin-top:6px;">
-        <button class="mabtn dl" onclick="dlM('${esc(m.data)}','audio.mp3')">⬇ Download</button>
-      </div>`}
-      ${rcHtml}${mediaReceipt}`;
+    </div>${dl}${rcHtml}`;
   }
 }
-  else if(type==='doc'){
+else if(type==='doc'){
     const ic={'pdf':'📕','zip':'🗜️','ppt':'📊','pptx':'📊','xls':'📗','xlsx':'📗','doc':'📘','docx':'📘'}[m.ext||'']||'📄';
     if(!m.data)inner=`${nameTag}${rq}<div class="dbub"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${rcHtml}`;
     else inner=`${nameTag}${rq}<div class="dbub" data-file-url="${esc(m.data)}" data-file-name="${esc(m.name||'file')}"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${docActions(m,self)}${rcHtml}${mediaReceipt}`;
@@ -4146,11 +4111,10 @@ function renderInbox(q="",sn=null){
       else if(_rawMsg==='__video__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>Video`;
       else if(_rawMsg==='__audio__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>Audio`;
       else if(_rawMsg==='__voice__'){
-        // Show duration from chat data if stored
         const _vDur=sum.lastVoiceDur||'';
-        const _vSeen=(data.unread||{})[CU.uid]===0||unread===0;
-        const _vTick=_vSeen?'<span style="color:#4fc3f7;font-size:11px;margin-left:2px;font-weight:bold;">✓✓</span>':'<span style="font-size:11px;opacity:.6;margin-left:2px;">✓</span>';
-        _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}`;
+        const _tickSt=sum.lastSenderUid===CU.uid?inboxTickState({...sum,readAt:data.readAt,deliveredAt:data.deliveredAt},ouid):'';
+        const _micColor=_tickSt==='read'?'var(--tick-blue,#4fc3f7)':'currentColor';
+        _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="${_micColor}" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}`;
       }
       else if(_rawMsg==='__gdrive__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>File`;
       else if(_rawMsg.startsWith('__doc__:'))_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>${esc(_rawMsg.slice(8))||'Document'}`;
@@ -4331,7 +4295,7 @@ function joinRequestCardHtml(n){
       ${loc?`<p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>`:''}
       ${handled?'':`<div style="font-size:11px;color:#7b2ff7;font-weight:700;margin-top:7px;">${t('pending')}</div>`}
     </div>
-    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:var(--btnB);flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
 }
 function joinStatusCardHtml(n){
@@ -4351,7 +4315,7 @@ function joinStatusCardHtml(n){
       <p style="font-size:11.5px;color:var(--sub);margin:3px 0;">${line}</p>
       ${action?`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">${action}</div>`:''}
     </div>
-    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:var(--btnB);flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
 }
 function inviteCardHtml(n){
@@ -4394,7 +4358,7 @@ function inviteCardHtml(n){
       ${state==='pending'&&n.customMessage?`<p style="font-size:11.5px;font-style:italic;color:var(--sub);margin:3px 0;">“${esc(n.customMessage)}”</p>`:''}
       ${actions?`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">${actions}</div>`:''}
     </div>
-    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:var(--btnB);flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
 }
 async function openChatFromInvite(inviteId){
