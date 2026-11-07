@@ -183,7 +183,7 @@ body.dark .alertCard:hover{background:rgba(124,184,255,.08);}
 .alertBody b{display:block;font-size:13px;line-height:1.35;}
 .alertHint{display:inline-block;font-size:10.5px;color:#fff;background:var(--btnB);padding:2px 7px;border-radius:10px;margin-top:3px;}
 .alertBody time{display:block;font-size:10px;color:var(--sub);margin-top:4px;}
-.alertDot{width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;}
+.alertDot{width:8px;height:8px;border-radius:50%;background:#1e88e5;flex-shrink:0;margin-top:4px;}
 .find-top-tabs{gap:4px;overflow-x:auto;scrollbar-width:none;}
 .find-top-tabs::-webkit-scrollbar{display:none;}
 .find-top-tabs .stab{min-width:max-content;padding:8px 9px;font-size:11px;white-space:nowrap;}
@@ -699,22 +699,26 @@ body.dark .hdr{background:linear-gradient(120deg,#030f24 0%,#07203f 55%,#0a2f50 
 #feedB,
 #msgB2,
 #notifB {
-  background: #e74c3c !important;
+  background: #1e88e5 !important;
   color: #fff !important;
   font-weight: 800 !important;
   min-width: 18px;
   height: 18px;
   font-size: 10px !important;
   line-height: 18px;
-  box-shadow: 0 1px 4px rgba(231, 76, 60, 0.45);
+  border-radius: 9px;
+  padding: 0 4px;
+  box-shadow: 0 1px 4px rgba(30, 136, 229, 0.45);
 }
 
 .ni .nbadge,
 [data-tab="home"] .nbadge {
-  background: #e74c3c !important;
-  top: 4px;
-  right: 10px;
+  background: #1e88e5 !important;
+  top: 2px;
+  right: auto;
+  left: calc(50% + 3px);
 }
+.ni .nbadge{right:auto;left:calc(50% + 3px);top:2px;}
 
 .hdr {
   padding: 12px 18px;
@@ -834,3 +838,14 @@ body.dark .bbl.o .vmic{background:#243448;color:#fff;}
 .deldlg-actions{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
 .deldlg-actions button{background:none;border:none;color:var(--tick-blue);font-size:15px;font-weight:600;padding:12px 6px;cursor:pointer;}
 .deldlg-card.grp .deldlg-actions button{color:#fff;}
+
+/* --- v232: voice/audio bubble layout --- */
+.vmsg{align-items:flex-start;}
+.vline{display:flex;align-items:center;gap:2px;height:46px;}
+.vline .vpbtn.vplain{height:46px;}
+.vmsg .vline .vprog{flex:1;min-width:0;height:46px;}
+.vmsg .vline .vwave{height:46px;}
+.vmeta{margin-left:36px;}
+.vavph.music{color:inherit;background:rgba(255,255,255,.18);}
+.bbl.o .vavph.music{background:rgba(10,60,109,.12);color:var(--btnB);}
+body.dark .bbl.o .vavph.music{color:#fff;background:rgba(255,255,255,.14);}

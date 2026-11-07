@@ -1149,6 +1149,25 @@ function feedLoadingFallback(message){
   if(!feed||!String(feed.textContent||'').includes('Loading')&&!String(feed.textContent||'').includes('Chargement'))return;
   feed.innerHTML=`<p style="text-align:center;color:#888;padding:20px;">${esc(message||'Feed unavailable. Tap Home to retry.')}</p>`;
 }
+// Counts posts (yours or other people's) that appeared while Home was not on screen.
+let _feedKnownIds=new Set(),_feedBaseline=false,_feedUnseen=new Set();
+function paintFeedBadge(){
+  const b=el('feedB');if(!b)return;
+  const n=_feedUnseen.size;
+  b.textContent=n>9?'9+':String(n);
+  b.style.display=n>0?'inline-flex':'none';
+}
+function trackNewFeedPosts(sn,isHomeVisible){
+  let changed=false;
+  sn.docs.forEach(d=>{
+    if(_feedKnownIds.has(d.id))return;
+    _feedKnownIds.add(d.id);
+    if(_feedBaseline&&!isHomeVisible){_feedUnseen.add(d.id);changed=true;}
+  });
+  // The first answer from the server is the baseline; anything after it is "new".
+  if(!_feedBaseline&&!sn.metadata.fromCache)_feedBaseline=true;
+  if(changed)paintFeedBadge();
+}
 function listenPosts(){
   // Listen to latest 30 posts in real-time; we only render _feedShown of them.
   // On mobile, a stalled Firestore stream used to leave the initial Loading...
@@ -1159,22 +1178,9 @@ function listenPosts(){
     clearTimeout(feedLoadTimer);
     const newPosts=sn.docs.map(d=>({id:d.id,...d.data()}));
     const isHomeVisible=el('Phome')&&el('Phome').style.display!=='none';
-    if(isHomeVisible){
-      // Detect truly new posts (vs initial load)
-      const hadPosts=cachedPosts.length>0;
-      if(hadPosts&&newPosts.length>cachedPosts.length){
-        const newCount=newPosts.length-cachedPosts.length;
-        const b=el('feedB');if(b){b.textContent='+'+newCount+' new';b.style.display='inline-block';}
-      }
-      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
-      renderHome(cachedPosts,_feedShown);
-    }else{
-      if(lastPostCount>0&&newPosts.length>lastPostCount){
-        const newCount=newPosts.length-lastPostCount;
-        const b=el('feedB');if(b){b.textContent='+'+newCount+' new';b.style.display='inline-block';}
-      }
-      cachedPosts=newPosts;lastPostCount=cachedPosts.length;
-    }
+    trackNewFeedPosts(sn,isHomeVisible);
+    cachedPosts=newPosts;lastPostCount=cachedPosts.length;
+    if(isHomeVisible)renderHome(cachedPosts,_feedShown);
   },e=>{
     clearTimeout(feedLoadTimer);
     console.warn('posts listener:',e?.code||e?.message||e);
@@ -2150,7 +2156,7 @@ function receiptState(m,isGrp){
 }
 function inboxTickState(d,other){
   const last=Number(d.lastMessageAt||0);
-  return receiptStateFrom(last,false,(d.readAt||{})[other],(d.deliveredAt||{})[other]);
+  return receiptStateFrom(last,false,(d.readUpTo||{})[other],(d.deliveredAt||{})[other]);
 }
 // The receiver's device confirms arrival as soon as the conversation summary reaches it,
 // even if the chat is not open. deliveredAt reuses the sender's own message timestamp,
@@ -2231,8 +2237,19 @@ async function writePrivateMessageAndSummary(cid,receiverUid,msgRef,msg,lastMsg,
   },'private message delivery');
   firestoreRetry(()=>db.collection('users').doc(CU.uid).set({chatIds:firebase.firestore.FieldValue.arrayUnion(cid),...readState(cid,0,sentAt)},{merge:true}),'sender read state').catch(()=>{});
 }
+function chatIsReallyViewed(){
+  if(document.visibilityState!=='visible')return false;
+  // On a computer, a visible window that is not focused (another window in front) is not "reading".
+  // Phones always have one foreground page, and some WebViews report hasFocus() wrongly, so skip it there.
+  const touch=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
+  if(touch)return true;
+  return typeof document.hasFocus==='function'?document.hasFocus():true;
+}
 async function markChatRead(cid,force=false){
   if(!cid||!CU?.uid)return;
+  // A conversation only counts as read while the page is visible AND focused: a chat left open
+  // in a background tab or window must not mark new messages as read.
+  if(!chatIsReallyViewed())return;
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
@@ -2245,7 +2262,15 @@ async function markChatRead(cid,force=false){
   const userUnread=readState(cid,0,nowMs);
   // The shared chat counter drives the badge, so it must be cleared even if the
   // user document write fails. Both writes are independent.
-  const chatRead=readState(CU.uid,0,nowMs);
+  let incomingMs=0;
+  try{
+    if(curChat&&getCID(CU.uid,curChat.uid)===cid){
+      document.querySelectorAll('#msgB .bw.o').forEach(b=>{incomingMs=Math.max(incomingMs,Number(b.dataset.time)||0);});
+    }
+    const cd=_cachedInboxDocs?.find(d=>d.id===cid)?.data();
+    if(cd&&cd.lastSenderUid&&cd.lastSenderUid!==CU.uid)incomingMs=Math.max(incomingMs,Number(cd.lastMessageAt||0));
+  }catch(e){}
+  const chatRead={...readState(CU.uid,0,nowMs),...(incomingMs>0?{readUpTo:{[CU.uid]:incomingMs}}:{})};
   const results=await Promise.allSettled([
     db.collection('chats').doc(cid).set(chatRead,{merge:true}),
     db.collection('users').doc(CU.uid).set(userUnread,{merge:true})
@@ -2255,6 +2280,12 @@ async function markChatRead(cid,force=false){
   if(window._inboxUnreadMap)window._inboxUnreadMap[cid]=0;
   if(_cachedInboxDocs)renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
 }
+window.addEventListener('focus',()=>{
+  if(curChat&&CU){
+    try{void markChatRead(getCID(CU.uid,curChat.uid),true).catch(()=>{});}catch(e){}
+    try{window._privateMsgRefresh?.();}catch(e){}
+  }
+});
 function setupMsgBL(){
   // Replaced by setupInbox() which handles both badge and real-time inbox updates
   setupInbox();
@@ -2383,7 +2414,7 @@ function openChat(name,uid){
       const visibleSnapshotDocs=new Map();
       [...legacyDocs,...timestampDocs].forEach(d=>visibleSnapshotDocs.set(d.id,d));
       const unseen=[...visibleSnapshotDocs.values()].map(d=>({id:d.id,...d.data(),_doc:d}))
-        .filter(m=>m.senderUid!==CU.uid&&!m.seen&&(m.type||'text')==='text');
+        .filter(m=>chatIsReallyViewed()&&m.senderUid!==CU.uid&&!m.seen);
       if(unseen.length){
         const seenBatch=db.batch();
         unseen.forEach(m=>seenBatch.update(m._doc.ref,{seen:true}));
@@ -2459,7 +2490,7 @@ function openChat(name,uid){
       lastChatSig=chatSig;
       if(latestChat.lastSenderUid&&latestChat.lastSenderUid!==CU.uid)void window._privateMsgRefresh?.();
     }
-    curChatReadAt[uid]=latestChat.readAt?.[uid]||0;
+    curChatReadAt[uid]=latestChat.readUpTo?.[uid]||0;
     curChatDeliveredAt[uid]=latestChat.deliveredAt?.[uid]||0;
     paint();
     refreshPrivateReceipts();
@@ -2814,7 +2845,9 @@ function openDeleteDialog(isGrp){
   const allMine=ids.every(id=>document.querySelector(`.bw[data-id="${id}"]`)?.classList.contains('s'));
   const many=ids.length>1;
   const d=document.createElement('div');d.id='delDlg';
-  d.innerHTML=`<div class="deldlg-card${isGrp?' grp':''}">
+  const bubble=document.querySelector(isGrp?'#grpB .bbl.s':'#msgB .bbl.s');
+  const bubbleBg=bubble?getComputedStyle(bubble).backgroundColor:'';
+  d.innerHTML=`<div class="deldlg-card${isGrp?' grp':''}"${bubbleBg?` style="background:${bubbleBg};"`:''}>
     <p class="deldlg-title">${many?aT('Delete messages?','Supprimer les messages ?'):aT('Delete message?','Supprimer le message ?')}</p>
     <div class="deldlg-actions">
       ${allMine?`<button onclick="execDelMsgs('everyone',${isGrp})">${aT('Delete for everyone','Supprimer pour tous')}</button>`:''}
@@ -2855,7 +2888,7 @@ async function refreshChatSummaryAfterDelete(cid,other){
     const shared=newestShared?summaryFromMsg(newestShared):blank;
     if(String(cur.lastMessageId||'')!==String(shared.lastMessageId||'')||Number(cur.lastMessageAt||0)!==Number(shared.lastMessageAt||0))Object.assign(upd,shared);
     // Messages I sent that the other person had not read yet no longer count as unread for them.
-    const rdOther=Number((cur.readAt||{})[other]||0);
+    const rdOther=Number((cur.readUpTo||{})[other]||0);
     const stillUnread=msgs.filter(m=>m.senderUid===me&&(messageMillis(m.time)||0)>rdOther).length;
     const curUnread=Number((cur.unread||{})[other]||0);
     if(curUnread>stillUnread)upd['unread.'+other]=stillUnread;
@@ -2915,6 +2948,8 @@ function mediaActions(m,self,kind){
   const openBtn=`<button class="mabtn op" onclick="openFile('${id}')">${t('file_open')||'Open'}</button>`;
   // Keep the same behavior as document bubbles: sender can open; receiver downloads first.
   if(self)return `<div class="mar">${openBtn}</div>`;
+  // Video, receiver side: the same visible "Download" button as photos and music.
+  if(kind==='video'&&m.data)return `<div class="mar" style="margin-top:6px;"><button class="mabtn dl" onclick="dlM('${esc(m.data)}','${esc(m.name||'video.mp4')}')">⬇ Download</button></div>`;
   if(_dlDone(id)||_dlBlobs[id])return `<div class="mar" id="dlbox_${id}">${openBtn}</div>`;
   return `<div class="mar" id="dlbox_${id}"><button class="dlring" id="dlbtn_${id}" onclick="downloadDoc('${id}')" aria-label="Download">${DL_ARROW}<svg class="dlring-svg" viewBox="0 0 36 36"><circle class="dlring-bg" cx="18" cy="18" r="16"/><circle class="dlring-fg" id="dlfg_${id}" cx="18" cy="18" r="16"/></svg></button></div>`;
 }
@@ -3118,9 +3153,7 @@ function buildBbl(m,isGrp){
     } else {
       inner = `${nameTag}${rq}
         <img src="${m.data}" onclick="openM('${m.data}','image','${m.id}')" style="max-width:100%;max-height:320px;width:auto;height:auto;object-fit:contain;border-radius:8px;display:block;background:#000;">
-        <div class="mar" style="margin-top:6px;">
-          <button class="mabtn dl" onclick="dlM('${esc(m.data)}','photo.jpg')">⬇ Download</button>
-        </div>
+        ${self?'':`<div class="mar" style="margin-top:6px;"><button class="mabtn dl" onclick="dlM('${esc(m.data)}','photo.jpg')">⬇ Download</button></div>`}
         ${rcHtml}${mediaReceipt}`;
     }
   }
@@ -3130,21 +3163,29 @@ function buildBbl(m,isGrp){
     else if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
     else inner=`${nameTag}${rq}<div data-file-url="${esc(m.data)}" data-file-name="${esc(videoName)}" data-file-kind="video"><video src="${esc(m.data)}" controls preload="none" onplay="markMsgOpened('${m.id}')" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video></div>${mediaActions(m,self,'video')}${rcHtml}${mediaReceipt}`;
   }
-else if(type==='voice'&&m.data&&m.status!=='failed'){
-  // Voice message: inside the normal message bubble (same colour as text), with the sender's
-  // profile photo, a plain play/pause button, a waveform with a seek dot, duration and time.
-  const durLabel=m.dur||'0:00';
+else if((type==='voice'||type==='audio')&&m.data&&m.status!=='failed'){
+  // Voice / audio: inside the normal message bubble. Play button and waveform share one line;
+  // duration, time and ticks sit under the waveform. The round slot shows the sender's photo
+  // (voice, with a small mic) or a music note (audio file).
+  const isVoiceMsg=type==='voice';
+  const leftText=m.dur||(isVoiceMsg?'0:00':t('audio_label'));
   const sp=m.senderPhoto||(self?myPho:(allUsers.find(u=>u.uid===m.senderUid)?.photo||''));
-  const av=sp?`<img src="${esc(sp)}" alt="">`:`<span class="vavph">${ic('user','60%')}</span>`;
+  const av=isVoiceMsg
+    ?(sp?`<img src="${esc(sp)}" alt="">`:`<span class="vavph">${ic('user','60%')}</span>`)
+    :`<span class="vavph music"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>`;
+  const micBadge=isVoiceMsg?`<span class="vmic"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg></span>`:'';
   const bars=voiceBarsFor(m.id).map(h=>`<i style="height:${h}%"></i>`).join('');
+  const dlBtn=(!isVoiceMsg&&!self)?`<div class="mar" style="margin-top:6px;"><button class="mabtn dl" onclick="dlM('${esc(m.data)}','audio.mp3')">⬇ Download</button></div>`:'';
   inner=`${nameTag}<div class="vmsg" id="vp_${m.id}" data-voice-src="${esc(m.data)}">
-    <div class="vav">${av}<span class="vmic"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg></span></div>
-    <button class="vpbtn vplain" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play">${VOICE_PLAY_ICON}</button>
+    <div class="vav">${av}${micBadge}</div>
     <div class="vcol">
-      <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" ontouchstart="seekVP(event,'${m.id}')"><div class="vwave" id="vwave_${m.id}">${bars}</div><span class="vdot" id="vdot_${m.id}"></span></div>
-      <div class="vmeta"><span class="vdur" id="vdur_${m.id}">${durLabel}</span><span class="vright"><span class="vtm">${displayMessageTime(m.time)}</span>${self?`<span data-tick="1">${tickMarkup(rState)}</span>`:''}</span></div>
+      <div class="vline">
+        <button class="vpbtn vplain" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play">${VOICE_PLAY_ICON}</button>
+        <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" ontouchstart="seekVP(event,'${m.id}')"><div class="vwave" id="vwave_${m.id}">${bars}</div><span class="vdot" id="vdot_${m.id}"></span></div>
+      </div>
+      <div class="vmeta"><span class="vdur" id="vdur_${m.id}">${leftText}</span><span class="vright"><span class="vtm">${displayMessageTime(m.time)}</span>${self?`<span data-tick="1">${tickMarkup(rState)}</span>`:''}</span></div>
     </div>
-  </div>${rcHtml}`;
+  </div>${dlBtn}${rcHtml}`;
 }
 else if(type==='audio' || type==='voice'){
   const isVoice = type === 'voice';
@@ -3209,7 +3250,7 @@ else if(type==='audio' || type==='voice'){
           </div>
         </div>
       </div>
-      ${isVoice?'':`<div class="mar" style="margin-top:6px;">
+      ${(isVoice||self)?'':`<div class="mar" style="margin-top:6px;">
         <button class="mabtn dl" onclick="dlM('${esc(m.data)}','audio.mp3')">⬇ Download</button>
       </div>`}
       ${rcHtml}${mediaReceipt}`;
@@ -3221,7 +3262,7 @@ else if(type==='audio' || type==='voice'){
     else inner=`${nameTag}${rq}<div class="dbub" data-file-url="${esc(m.data)}" data-file-name="${esc(m.name||'file')}"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${docActions(m,self)}${rcHtml}${mediaReceipt}`;
   }
   if((type==='voice'||type==='audio')&&voicePlayer&&String(voicePlayerId)===String(m.id))setTimeout(restoreVoiceUI,0);
-  return `<div class="bw ${side}" data-id="${m.id}" data-seen="${(m.seen||m.openedAt)?1:0}" data-status="${m.status||''}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}${type==='voice'&&m.data&&m.status!=='failed'?' voice':''}">${inner}<div class="btime">${displayMessageTime(m.time)}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
+  return `<div class="bw ${side}" data-id="${m.id}" data-seen="${(m.seen||m.openedAt)?1:0}" data-status="${m.status||''}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}${(type==='voice'||type==='audio')&&m.data&&m.status!=='failed'?' voice':''}">${inner}<div class="btime">${displayMessageTime(m.time)}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
 let _lpTimer=null,_lpFired=false;
@@ -4141,6 +4182,7 @@ function renderInbox(q="",sn=null){
       const _presenceText=privatePresenceText('',data,ouid).trim();
       // Render lastMsg with SVG icon for media types
       const _rawMsg=sum.lastMsg||'';
+      const _tkState=(_rawMsg&&sum.lastSenderUid===CU.uid)?inboxTickState({...sum,readUpTo:data.readUpTo,deliveredAt:data.deliveredAt},ouid):'';
       let _msgHtml;
       if(_rawMsg==='__photo__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Photo`;
       else if(_rawMsg==='__video__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>Video`;
@@ -4150,13 +4192,13 @@ function renderInbox(q="",sn=null){
         const _vDur=sum.lastVoiceDur||'';
         const _vSeen=(data.unread||{})[CU.uid]===0||unread===0;
         const _vTick=_vSeen?'<span style="color:#4fc3f7;font-size:11px;margin-left:2px;font-weight:bold;">✓✓</span>':'<span style="font-size:11px;opacity:.6;margin-left:2px;">✓</span>';
-        _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}`;
+        _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;${_tkState==='read'?'color:var(--tick-blue);':''}"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}`;
       }
       else if(_rawMsg==='__gdrive__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>File`;
       else if(_rawMsg.startsWith('__doc__:'))_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>${esc(_rawMsg.slice(8))||'Document'}`;
       else _msgHtml=esc(_rawMsg||'Tap to chat');
       // Ticks appear only before MY OWN last message, never on a message I received.
-      if(_rawMsg&&sum.lastSenderUid===CU.uid)_msgHtml=tickMarkup(inboxTickState({...sum,readAt:data.readAt,deliveredAt:data.deliveredAt},ouid),'inb')+_msgHtml;
+      if(_tkState)_msgHtml=tickMarkup(_tkState,'inb')+_msgHtml;
       const av=o.photo?`<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:'👤';
       f.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--brd);cursor:pointer;${unread>0?'background:rgba(10,60,109,.04);':''}" onclick="openChat('${e2(o.name||'User')}','${ouid||''}')">
         <div style="position:relative;flex-shrink:0;width:50px;height:50px;">
@@ -4331,7 +4373,7 @@ function joinRequestCardHtml(n){
       ${loc?`<p style="font-size:11px;color:var(--sub);margin:2px 0;">${esc(loc)}</p>`:''}
       ${handled?'':`<div style="font-size:11px;color:#7b2ff7;font-weight:700;margin-top:7px;">${t('pending')}</div>`}
     </div>
-    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#1e88e5;flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
 }
 function joinStatusCardHtml(n){
@@ -4351,7 +4393,7 @@ function joinStatusCardHtml(n){
       <p style="font-size:11.5px;color:var(--sub);margin:3px 0;">${line}</p>
       ${action?`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">${action}</div>`:''}
     </div>
-    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#1e88e5;flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
 }
 function inviteCardHtml(n){
@@ -4394,7 +4436,7 @@ function inviteCardHtml(n){
       ${state==='pending'&&n.customMessage?`<p style="font-size:11.5px;font-style:italic;color:var(--sub);margin:3px 0;">“${esc(n.customMessage)}”</p>`:''}
       ${actions?`<div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;">${actions}</div>`:''}
     </div>
-    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#e74c3c;flex-shrink:0;margin-top:4px;"></div>`:''}
+    ${!n.read?`<div style="width:8px;height:8px;border-radius:50%;background:#1e88e5;flex-shrink:0;margin-top:4px;"></div>`:''}
   </div>`;
 }
 async function openChatFromInvite(inviteId){
@@ -5594,7 +5636,7 @@ function tab(id){
   if(id==='home'&&cachedPosts.length>0){
     _feedShown=10;
     renderHome(cachedPosts,_feedShown);
-    const b=el('feedB');if(b){b.style.display='none';b.textContent='';}
+    _feedUnseen.clear();paintFeedBadge();
   }
   if(id==='home')renderStatusBar();
   // If already on home and tapped again - refresh feed from Firestore
