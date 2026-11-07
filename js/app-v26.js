@@ -359,40 +359,45 @@ async function saveFavs(){
 }
 
 // ── AUTO PRESENCE ──
-let _presenceBusy=false,_presenceWanted=null,_presenceOfflineTimer=null;
+let _presencePending=0,_presenceLast='',_presenceOfflineTimer=null;
 async function setPresence(status){
   if(!CU)return;
+  const changed=MP?.status!==status;
   MP={...(MP||{}),status};
   const me=allUsers.find(u=>u.uid===CU.uid);
   if(me)me.status=status;
-  if(el('Phome')?.style.display!=='none'&&cachedPosts.length)renderHome(cachedPosts,_feedShown);
-  if(el('Pmsgs')?.style.display!=='none'&&typeof renderInbox==='function')renderInbox(el('inboxQ')?.value||'');
-  // Writes are serialized and latest-wins: two quick updates (hidden -> Offline,
-  // visible -> Online) could land out of order and leave a connected user stored as Offline.
-  _presenceWanted=status;
-  if(_presenceBusy)return;
-  _presenceBusy=true;
-  try{
-    while(_presenceWanted){
-      const next=_presenceWanted;_presenceWanted=null;
-      const upd={status:next,lastSeen:firebase.firestore.FieldValue.serverTimestamp()};
-      try{await db.collection('users').doc(CU.uid).update(upd);}
-      catch(e){console.warn('presence update:',e?.message||e);}
-    }
-  }finally{_presenceBusy=false;}
+  // Only repaint lists when the status really changed: a heartbeat must not rebuild the feed.
+  if(changed){
+    if(el('Phome')?.style.display!=='none'&&cachedPosts.length)renderHome(cachedPosts,_feedShown);
+    if(el('Pmsgs')?.style.display!=='none'&&typeof renderInbox==='function')renderInbox(el('inboxQ')?.value||'');
+  }
+  // Firestore keeps writes to one document in order, so no manual queue is needed.
+  // The old queue waited for the server to acknowledge every write: on a stalled
+  // connection that wait never ended and presence stopped updating for good.
+  if(_presencePending>=3&&status===_presenceLast)return; // do not pile heartbeats up while offline
+  _presenceLast=status;
+  _presencePending++;
+  const upd={status,lastSeen:firebase.firestore.FieldValue.serverTimestamp()};
+  const write=db.collection('users').doc(CU.uid).update(upd)
+    .catch(e=>console.warn('presence update:',e?.message||e))
+    .finally(()=>{_presencePending=Math.max(0,_presencePending-1);});
+  // Callers (logout, account deletion) may wait, but never longer than 4 s.
+  await Promise.race([write,new Promise(r=>setTimeout(r,4000))]);
 }
 function setupPresence(){
   if(window._presenceReady)return;window._presenceReady=true;
   setPresence('Online');
-  // Heartbeat every 18s so lastSeen stays fresh even on slow mobile networks.
-  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},18000);
+  // Heartbeat refreshes status + lastSeen so other users can tell a live session
+  // from one that closed without a chance to write "Offline".
+  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},25000);
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'){
       clearTimeout(_presenceOfflineTimer);_presenceOfflineTimer=null;
       setPresence('Online');
     }else{
+      // Do not flip to Offline for a short app switch / notification shade.
       clearTimeout(_presenceOfflineTimer);
-      _presenceOfflineTimer=setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},60000);
+      _presenceOfflineTimer=setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},45000);
     }
     if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
   });
@@ -400,8 +405,6 @@ function setupPresence(){
   window.addEventListener('pageshow',()=>{setPresence('Online');});
   window.addEventListener('online',()=>setPresence('Online'));
   window.addEventListener('focus',()=>{clearTimeout(_presenceOfflineTimer);setPresence('Online');});
-  document.addEventListener('resume',()=>setPresence('Online'));
-  window.addEventListener('pageshow',e=>{if(e.persisted)setPresence('Online');});
 }
 
 async function keepVoiceScreenOn(){
@@ -458,20 +461,7 @@ async function getVoiceStream(){
   if(permission==='denied'){
     const err=new Error('Microphone permission denied');err.name='MicPermissionDenied';throw err;
   }
-  const constraints={
-    audio:{
-      echoCancellation:true,
-      noiseSuppression:true,
-      autoGainControl:true,
-      channelCount:1,
-      sampleRate:{ideal:16000}
-    }
-  };
-  try{
-    return await navigator.mediaDevices.getUserMedia(constraints);
-  }catch(e){
-    return navigator.mediaDevices.getUserMedia({audio:true});
-  }
+  return navigator.mediaDevices.getUserMedia({audio:true});
 }
 
 // ── CLOUDINARY ──
@@ -1035,12 +1025,30 @@ async function savePro(){
 }
 
 // ── USERS ──
+let _usersRenderTimer=null,_lastOnlineSig='';
+function onlineSignature(){return allUsers.map(u=>u.uid+':'+getStatusInfo(u.status,u.lastSeen).cls).join('|');}
+function renderUsersDependentViews(){
+  _lastOnlineSig=onlineSignature();
+  if(curGrp)renderGroupPresence();
+  renderStatusBar();
+  if(el('Pfind')&&el('Pfind').style.display!=='none')renderFind(el('findQ')?.value||'');
+  if(el('Phome')&&el('Phome').style.display!=='none'&&cachedPosts.length>0)renderHome(cachedPosts,_feedShown);
+  if(el('Pmsgs')&&el('Pmsgs').style.display!=='none'&&typeof renderInbox==='function')renderInbox(el('inboxQ')?.value||'');
+  if(curChat)updateChatSub();
+}
+function scheduleUsersRender(){
+  if(_usersRenderTimer)return;
+  _usersRenderTimer=setTimeout(()=>{_usersRenderTimer=null;try{renderUsersDependentViews();}catch(e){console.warn('users render:',e);}},600);
+}
 function listenUsers(){
+  // Every online user rewrites lastSeen about twice a minute. Rebuilding the feed, Find and
+  // Messages on each of those writes made phones heavy enough to be closed by Android,
+  // so only real changes (status, name, photo, ...) repaint, and at most once per 600 ms.
   db.collection('users').onSnapshot(sn=>{
+    const prev=new Map(allUsers.map(u=>[u.uid,u]));
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
     // Measure how far this device's clock is from the server's, using our own
-    // heartbeat (lastSeen is written by the server). Without this, a device whose
-    // clock runs a few minutes ahead sees every online user as offline.
+    // heartbeat (lastSeen is written by the server).
     try{
       const mine=sn.docs.find(d=>d.id===CU?.uid);
       if(mine&&!mine.metadata.hasPendingWrites&&!mine.metadata.fromCache){
@@ -1048,31 +1056,22 @@ function listenUsers(){
         if(ms){const sample=Date.now()-ms;window._clockSkewMs=(window._clockSkewMs===undefined)?sample:Math.min(window._clockSkewMs,sample);}
       }
     }catch(e){}
-    if(curGrp)renderGroupPresence();
-    renderStatusBar();
-    // Only re-render Find if it's currently visible
-    if(el('Pfind')&&el('Pfind').style.display!=='none'){
-      renderFind(el('findQ')?.value||'');
-    }
-    // Keep status rings current on Home feed and Messages list too
-    if(el('Phome')&&el('Phome').style.display!=='none'&&cachedPosts.length>0){
-      renderHome(cachedPosts,_feedShown);
-    }
-    if(el('Pmsgs')&&el('Pmsgs').style.display!=='none'&&typeof renderInbox==='function'){
-      renderInbox(el('inboxQ')?.value||'');
-    }
-    // Update online dots on feed without full re-render
-    sn.docChanges().forEach(change=>{
-      if(change.type==='modified'){
-        const u=change.doc.data();
-        // Update status dot in inbox if visible
-        const st=getStatusInfo(u.status,u.lastSeen);
-        document.querySelectorAll(`[data-uid="${u.uid}"] .status-dot`).forEach(dot=>{
-          dot.style.background=st.cls==='online'?'#2ECC71':st.cls==='busy'?'#e74c3c':'#95a5a6';
-        });
-      }
+    let need=prev.size===0;
+    sn.docChanges().forEach(ch=>{
+      if(need)return;
+      if(ch.type!=='modified'){need=true;return;}
+      const o=prev.get(ch.doc.id),n=ch.doc.data({serverTimestamps:'estimate'});
+      if(!o){need=true;return;}
+      const keys=new Set([...Object.keys(o),...Object.keys(n)]);
+      keys.delete('lastSeen');keys.delete('uid');
+      for(const k of keys){if(JSON.stringify(o[k])!==JSON.stringify(n[k])){need=true;break;}}
     });
+    if(need)scheduleUsersRender();
   },e=>console.log('users:',e));
+  // A user whose heartbeat stopped becomes "offline" without any document change.
+  if(!window._onlineSigTimer)window._onlineSigTimer=setInterval(()=>{
+    if(allUsers.length&&onlineSignature()!==_lastOnlineSig)scheduleUsersRender();
+  },20000);
 }
 let statusServerRefreshAt=0,statusServerRefreshPromise=null;
 async function refreshStatusesFromServer(force=false){
@@ -1286,8 +1285,7 @@ function fmtLastSeen(lastSeen){
 function getStatusInfo(status,lastSeen){
   // A pending serverTimestamp is null locally: treat it as fresh.
   const _ls=lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;
-  // 3.5 minutes: allows for slow mobile networks + heartbeat interval + clock skew.
-  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>210000;
+  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>150000;
   // The "Busy" status no longer exists: old stored values count as online.
   if((status==='Online'||status==='Busy')&&!_stale)return{cls:'online',label:t('status_online')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
@@ -2130,32 +2128,60 @@ function displayMessageTime(value){
   const d=new Date(ms);
   return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
 }
+let curChatDeliveredAt={};
+const TICK_ONE='<svg class="tk" viewBox="0 0 18 11" width="16" height="10" aria-hidden="true"><path d="M1.5 6 5 9.4 13.3 1.8"/></svg>';
+const TICK_TWO='<svg class="tk" viewBox="0 0 18 11" width="18" height="10" aria-hidden="true"><path d="M1 6 4.4 9.4 11.7 1.8"/><path d="M5.8 6 9.2 9.4 16.5 1.8"/></svg>';
+// sent = one grey tick, delivered = two grey ticks, read = two blue ticks.
+// Only the sender ever sees them, on their own messages.
+function tickMarkup(state,ctx){
+  return `<span class="tkw ${state}${ctx?' '+ctx:''}">${state==='sent'?TICK_ONE:TICK_TWO}</span>`;
+}
+function receiptStateFrom(ms,seenFlag,otherReadAt,otherDeliveredAt){
+  if(seenFlag||(ms>0&&messageMillis(otherReadAt)>=ms))return 'read';
+  if(ms>0&&messageMillis(otherDeliveredAt)>=ms)return 'delivered';
+  return 'sent';
+}
+function receiptState(m,isGrp){
+  if(m.status==='sending')return 'sent';
+  const seen=!!(m.seen||m.openedAt||m.voicePlayed);
+  if(isGrp)return seen?'read':'sent';
+  const other=curChat?.uid;
+  return receiptStateFrom(messageMillis(m.time),seen,other?curChatReadAt[other]:0,other?curChatDeliveredAt[other]:0);
+}
+function inboxTickState(d,other){
+  const last=Number(d.lastMessageAt||0);
+  return receiptStateFrom(last,false,(d.readAt||{})[other],(d.deliveredAt||{})[other]);
+}
+// The receiver's device confirms arrival as soon as the conversation summary reaches it,
+// even if the chat is not open. deliveredAt reuses the sender's own message timestamp,
+// so the comparison does not depend on both phones having the same clock.
+const _deliveredWritten={};
+function markDeliveredFromSnapshot(docs,me){
+  docs.forEach(d=>{
+    const c=d.data()||{};
+    if(!c.lastSenderUid||c.lastSenderUid===me)return;
+    const last=Number(c.lastMessageAt||0);
+    const done=Math.max(Number((c.deliveredAt||{})[me]||0),Number(_deliveredWritten[d.id]||0));
+    if(!last||last<=done)return;
+    _deliveredWritten[d.id]=last;
+    d.ref.set({deliveredAt:{[me]:last}},{merge:true}).catch(()=>{_deliveredWritten[d.id]=0;});
+  });
+}
 function messageWasReadByOther(m){
   if(!m||m.senderUid!==CU?.uid||!curChat?.uid)return false;
   return messageMillis(curChatReadAt[curChat.uid])>=messageMillis(m.time);
 }
-// Receipt states (sender only):
-//   ✓   gray  = sent
-//   ✓✓  gray  = delivered
-//   ✓✓  blue  = read
-const RECEIPT_BLUE='#53bdeb';
-function receiptHtml(m,type){
-  if(m.senderUid!==CU?.uid)return '';
-  const read=!!m.seen||!!m.voicePlayed||!!m.openedAt||messageWasReadByOther(m);
-  const delivered=read||m.status==='sent'||m.delivered===true||!!m.deliveredAt;
-  if(read)return `<div class="receipt" data-rkind="${type||'text'}" style="color:${RECEIPT_BLUE};">✓✓</div>`;
-  if(delivered)return `<div class="receipt" data-rkind="${type||'text'}" style="color:rgba(255,255,255,.65);">✓✓</div>`;
-  return `<div class="receipt" data-rkind="${type||'text'}" style="color:rgba(255,255,255,.55);">✓</div>`;
-}
 function refreshPrivateReceipts(){
   if(!curChat)return;
   document.querySelectorAll('#msgB .bw.s').forEach(bw=>{
-    const receipt=bw.querySelector('.receipt');
-    if(!receipt)return;
-    const time=bw.dataset.time;
-    const read=messageWasReadByOther({id:bw.dataset.id,senderUid:CU.uid,time});
-    if(read){receipt.innerHTML='✓✓';receipt.style.color=RECEIPT_BLUE;}
-    else if(receipt.textContent.trim()!=='✓'){receipt.innerHTML='✓✓';receipt.style.color='rgba(255,255,255,.65)';}
+    const holders=bw.querySelectorAll('[data-tick]');
+    if(!holders.length)return;
+    const sending=bw.dataset.status==='sending';
+    const state=sending?'sent':receiptStateFrom(Number(bw.dataset.time)||0,bw.dataset.seen==='1',curChatReadAt[curChat.uid],curChatDeliveredAt[curChat.uid]);
+    holders.forEach(h=>{
+      const label=h.dataset.tick==='label'&&state==='read'?` <span class="seenlbl">${t('msg_seen')}</span>`:'';
+      h.innerHTML=tickMarkup(state)+label;
+    });
   });
 }
 // Firestore's set(...,{merge:true}) does NOT parse dotted keys as nested paths: a key like
@@ -2181,7 +2207,7 @@ async function firestoreRetry(work,label){
 async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Date.now();
-  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,unread:{[receiverUid]:firebase.firestore.FieldValue.increment(1),[CU.uid]:0},...extra};
+  const chatUpd={participants:[CU.uid,receiverUid],lastFor:firebase.firestore.FieldValue.delete(),lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,unread:{[receiverUid]:firebase.firestore.FieldValue.increment(1),[CU.uid]:0},...extra};
   // Delivery depends only on the shared chat summary. Never put a write to
   // the receiver's private user document on this critical path: security
   // rules may reject it and must not prevent the conversation update.
@@ -2193,7 +2219,7 @@ async function recordPrivateSend(cid,receiverUid,lastMsg,extra={}){
 async function writePrivateMessageAndSummary(cid,receiverUid,msgRef,msg,lastMsg,extra={}){
   if(!cid||!receiverUid||!CU?.uid)return;
   const sentAt=Number(msg.time)||Date.now();
-  const chatUpd={participants:[CU.uid,receiverUid],lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,unread:{[receiverUid]:firebase.firestore.FieldValue.increment(1),[CU.uid]:0},...extra};
+  const chatUpd={participants:[CU.uid,receiverUid],lastFor:firebase.firestore.FieldValue.delete(),lastMsg,lastTime:now(),lastTs:firebase.firestore.FieldValue.serverTimestamp(),lastMessageAt:sentAt,lastSenderUid:CU.uid,unread:{[receiverUid]:firebase.firestore.FieldValue.increment(1),[CU.uid]:0},...extra};
   // The message and the shared chat summary must succeed together. If only the
   // message is written, the receiver's inbox listener has no reliable signal
   // that a new conversation item exists.
@@ -2434,6 +2460,7 @@ function openChat(name,uid){
       if(latestChat.lastSenderUid&&latestChat.lastSenderUid!==CU.uid)void window._privateMsgRefresh?.();
     }
     curChatReadAt[uid]=latestChat.readAt?.[uid]||0;
+    curChatDeliveredAt[uid]=latestChat.deliveredAt?.[uid]||0;
     paint();
     refreshPrivateReceipts();
   });
@@ -2748,69 +2775,7 @@ function toggleSelectMsg(id,isGrp){
       bbl.appendChild(chk);
     }
   }
-  if(selectedMsgs.size>0){
-    updateSelBar(isGrp);
-  }else{clearSelection();}
-}
-function selectedAreAllMine(){
-  for(const id of selectedMsgs){
-    const bw=document.querySelector(`.bw[data-id="${id}"]`);
-    if(!bw||!bw.classList.contains('s'))return false;
-  }
-  return selectedMsgs.size>0;
-}
-function updateSelBar(isGrp){
-  let bar=document.getElementById('selBar');
-  if(!bar){
-    bar=document.createElement('div');
-    bar.id='selBar';
-    bar.style.cssText='position:fixed;top:0;left:0;right:0;height:56px;background:#1f2c34;color:#fff;display:flex;align-items:center;padding:0 8px;z-index:5000;gap:2px;box-shadow:0 2px 8px rgba(0,0,0,.35);';
-    document.body.appendChild(bar);
-  }
-  const count=selectedMsgs.size;
-  bar.innerHTML=`
-    <button onclick="clearSelection()" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" aria-label="Back">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-    </button>
-    <span style="font-size:18px;font-weight:600;min-width:28px;margin:0 6px 0 2px;">${count}</span>
-    <div style="flex:1;"></div>
-    <button onclick="showMsgSearchFromSel()" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Search" aria-label="Search">
-      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-    </button>
-    <button onclick="showDeleteOptions(${isGrp})" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Delete" aria-label="Delete">
-      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-    </button>
-    <button onclick="showSelMoreMenu(${isGrp})" style="background:none;border:none;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="More" aria-label="More">
-      <svg viewBox="0 0 24 24" width="21" height="21" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-    </button>`;
-}
-function showMsgSearchFromSel(){
-  const q=el('chatSearch')||el('msgSearch');
-  if(q){q.focus();return;}
-  showToast(appLang==='fr'?'Recherche bientôt disponible':'Search coming soon');
-}
-function showSelMoreMenu(isGrp){
-  showToast(appLang==='fr'?'Plus d’options bientôt':'More options coming soon');
-}
-function showDeleteOptions(isGrp){
-  const count=selectedMsgs.size;
-  if(!count)return;
-  const canEveryone=selectedAreAllMine();
-  el('delSheet')?.remove();
-  const sheet=document.createElement('div');sheet.id='delSheet';
-  sheet.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;';
-  const everyoneBtn=canEveryone
-    ?`<button onclick="execDelMsgs('everyone',${isGrp})" style="width:100%;padding:14px;margin-bottom:8px;border:none;background:transparent;color:#e74c3c;font-size:16px;font-weight:600;cursor:pointer;border-radius:12px;">${appLang==='fr'?'Supprimer pour tout le monde':'Delete for everyone'}</button>`
-    :'';
-  sheet.innerHTML=`<div style="background:var(--card);width:100%;max-width:500px;border-radius:16px 16px 0 0;padding:10px 12px 18px;box-shadow:0 -4px 24px rgba(0,0,0,.25);">
-    <div style="width:36px;height:4px;background:var(--brd);border-radius:4px;margin:4px auto 14px;"></div>
-    <p style="font-weight:700;font-size:15px;text-align:center;margin-bottom:12px;color:var(--txt);">${appLang==='fr'?`Supprimer ${count} message${count>1?'s':''} ?`:`Delete ${count} message${count>1?'s':''}?`}</p>
-    ${everyoneBtn}
-    <button onclick="execDelMsgs('me',${isGrp})" style="width:100%;padding:14px;margin-bottom:8px;border:none;background:transparent;color:#e74c3c;font-size:16px;font-weight:600;cursor:pointer;border-radius:12px;">${appLang==='fr'?'Supprimer pour moi':'Delete for me'}</button>
-    <button onclick="el('delSheet').remove()" style="width:100%;padding:14px;border:none;background:var(--btnB);color:#fff;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;">${appLang==='fr'?'Annuler':'Cancel'}</button>
-  </div>`;
-  sheet.addEventListener('click',e=>{if(e.target===sheet)sheet.remove();});
-  document.body.appendChild(sheet);
+  if(selectedMsgs.size>0)renderSelTop(isGrp);else clearSelection();
 }
 function clearSelection(){
   selectedMsgs.clear();selMode=false;
@@ -2818,84 +2783,121 @@ function clearSelection(){
   document.querySelectorAll('.sel-chk').forEach(c=>c.remove());
   document.querySelectorAll('.selbtn').forEach(b=>{b.textContent='☐';b.classList.remove('checked');});
   document.getElementById('selBar')?.remove();
-  el('delSheet')?.remove();
+  document.getElementById('selTop')?.remove();
+  closeDeleteDialog();
+}
+const SEL_ICONS={
+  back:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
+  search:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+  dots:'<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>'
+};
+// Selection mode replaces the top bar: back, number selected, search, delete, more.
+function renderSelTop(isGrp){
+  const win=el(isGrp?'groupW':'chatW'),hdr=win?.querySelector('.chdr');
+  if(!hdr)return;
+  let bar=document.getElementById('selTop');
+  if(!bar){bar=document.createElement('div');bar.id='selTop';hdr.style.position='relative';hdr.appendChild(bar);}
+  bar.innerHTML=`<button class="sel-ic" onclick="clearSelection()" aria-label="Back">${SEL_ICONS.back}</button>
+    <span class="sel-count">${selectedMsgs.size}</span><span style="flex:1"></span>
+    ${isGrp?'':`<button class="sel-ic" onclick="toggleCS()" aria-label="Search">${SEL_ICONS.search}</button>`}
+    <button class="sel-ic" onclick="openDeleteDialog(${isGrp})" aria-label="Delete">${SEL_ICONS.trash}</button>
+    <button class="sel-ic" onclick="selMoreMenu()" aria-label="More">${SEL_ICONS.dots}</button>`;
+}
+function selMoreMenu(){/* options for the three dots will be added later */}
+function closeDeleteDialog(){document.getElementById('delDlg')?.remove();}
+// WhatsApp-style dialog, in the message bubble colour. "Delete for everyone" is offered only
+// when every selected message was sent by this user; recipients only get "Delete for me".
+function openDeleteDialog(isGrp){
+  closeDeleteDialog();
+  const ids=[...selectedMsgs];if(!ids.length)return;
+  const allMine=ids.every(id=>document.querySelector(`.bw[data-id="${id}"]`)?.classList.contains('s'));
+  const many=ids.length>1;
+  const d=document.createElement('div');d.id='delDlg';
+  d.innerHTML=`<div class="deldlg-card${isGrp?' grp':''}">
+    <p class="deldlg-title">${many?aT('Delete messages?','Supprimer les messages ?'):aT('Delete message?','Supprimer le message ?')}</p>
+    <div class="deldlg-actions">
+      ${allMine?`<button onclick="execDelMsgs('everyone',${isGrp})">${aT('Delete for everyone','Supprimer pour tous')}</button>`:''}
+      <button onclick="execDelMsgs('me',${isGrp})">${aT('Delete for me','Supprimer pour moi')}</button>
+      <button onclick="closeDeleteDialog()">${aT('Cancel','Annuler')}</button>
+    </div></div>`;
+  d.addEventListener('click',e=>{if(e.target===d)closeDeleteDialog();});
+  document.body.appendChild(d);
 }
 async function deleteSelectedMsgs(isGrp,scope){
-  if(!scope){showDeleteOptions(isGrp);return;}
+  if(!scope){openDeleteDialog(isGrp);return;}
   await execDelMsgs(scope,isGrp);
 }
+function summaryFromMsg(m){
+  const type=m.type||'text';
+  let lastMsg=m.text||'';
+  if(type==='image')lastMsg='__photo__';
+  else if(type==='video')lastMsg='__video__';
+  else if(type==='audio')lastMsg='__audio__';
+  else if(type==='voice')lastMsg='__voice__';
+  else if(type==='doc')lastMsg='__doc__:'+(m.name||'');
+  else if(type==='gdrive')lastMsg='__gdrive__';
+  const ms=messageMillis(m.time)||messageMillis(m.createdAt)||0;
+  return {lastMsg,lastTime:displayMessageTime(ms)||'',lastMessageAt:ms,lastSenderUid:m.senderUid||'',lastVoiceDur:type==='voice'?(m.dur||''):'',lastMessageId:m.id||''};
+}
+// After a deletion the conversation list must show the newest message that is still there.
+// Deleted for everyone -> the shared summary changes. Deleted for me -> only my own list changes.
+async function refreshChatSummaryAfterDelete(cid,other){
+  try{
+    const me=CU.uid,chatRef=db.collection('chats').doc(cid);
+    const snap=await chatRef.collection('messages').orderBy('createdAt','desc').limit(30).get();
+    const msgs=snap.docs.map(d=>({id:d.id,...d.data()})).filter(m=>!m.deletedForAll);
+    const newestShared=msgs[0]||null;
+    const newestMine=msgs.find(m=>!(m.deletedFor&&m.deletedFor[me]))||null;
+    const blank={lastMsg:'',lastTime:'',lastMessageAt:0,lastSenderUid:'',lastVoiceDur:'',lastMessageId:''};
+    const cur=(await chatRef.get()).data()||{};
+    const upd={};
+    const shared=newestShared?summaryFromMsg(newestShared):blank;
+    if(String(cur.lastMessageId||'')!==String(shared.lastMessageId||'')||Number(cur.lastMessageAt||0)!==Number(shared.lastMessageAt||0))Object.assign(upd,shared);
+    // Messages I sent that the other person had not read yet no longer count as unread for them.
+    const rdOther=Number((cur.readAt||{})[other]||0);
+    const stillUnread=msgs.filter(m=>m.senderUid===me&&(messageMillis(m.time)||0)>rdOther).length;
+    const curUnread=Number((cur.unread||{})[other]||0);
+    if(curUnread>stillUnread)upd['unread.'+other]=stillUnread;
+    const myView=newestMine?summaryFromMsg(newestMine):blank;
+    if((newestMine&&newestShared&&newestMine.id!==newestShared.id)||(!newestMine&&newestShared))upd['lastFor.'+me]=myView;
+    else upd['lastFor.'+me]=firebase.firestore.FieldValue.delete();
+    if(Object.keys(upd).length)await chatRef.update(upd);
+  }catch(e){console.warn('summary refresh after delete:',e?.code||e?.message||e);}
+}
 async function execDelMsgs(scope,isGrp){
-  el('delSheet')?.remove();
+  closeDeleteDialog();
   const ids=[...selectedMsgs];
-  if(scope==='everyone'&&!selectedAreAllMine()){
-    showToast(appLang==='fr'?'Vous ne pouvez supprimer pour tout le monde que vos propres messages':'You can only delete your own messages for everyone');
-    return;
+  if(!ids.length)return;
+  if(scope==='everyone'){
+    const notMine=ids.some(id=>!document.querySelector(`.bw[data-id="${id}"]`)?.classList.contains('s'));
+    if(notMine){showToast(aT('You can only delete your own messages for everyone.','Vous ne pouvez supprimer pour tous que vos propres messages.'));return;}
   }
-  if(scope==='me'){
-    ids.forEach(id=>{
-      const bw=document.querySelector(`.bw[data-id="${id}"]`);
-      if(bw)bw.remove();
-    });
-  }
+  // "Delete for me" hides the bubbles at once so the interface feels instant.
+  if(scope==='me')ids.forEach(id=>document.querySelector(`.bw[data-id="${id}"]`)?.remove());
   const failed=[];
-  let needLastMsgRefresh=false;
+  const cid=(!isGrp&&curChat)?getCID(CU.uid,curChat.uid):null,other=(!isGrp&&curChat)?curChat.uid:null;
   for(const id of ids){
     try{
-      let ref;
-      if(!isGrp&&curChat)ref=db.collection('chats').doc(getCID(CU.uid,curChat.uid)).collection('messages').doc(id);
+      let ref=null;
+      if(!isGrp&&curChat)ref=db.collection('chats').doc(cid).collection('messages').doc(id);
       else if(isGrp&&curGrp)ref=db.collection('groups').doc(curGrp.id).collection('messages').doc(id);
-      if(ref){
-        if(scope==='everyone'){
-          await ref.delete();
-          document.querySelector(`.bw[data-id="${id}"]`)?.remove();
-          if(!isGrp)window._privateMsgForget?.(id);
-          needLastMsgRefresh=true;
-        }else{
-          await ref.update({['deletedFor.'+CU.uid]:true});
-          needLastMsgRefresh=true;
+      if(!ref)continue;
+      if(scope==='everyone'){
+        try{await ref.delete();}
+        catch(e1){
+          // If the document cannot be removed, blank it and flag it: every client hides flagged messages.
+          await ref.update({deletedForAll:true,text:'',data:'',name:''});
         }
-      }
+        document.querySelector(`.bw[data-id="${id}"]`)?.remove();
+        if(!isGrp){pendingPrivateMessages[cid]?.delete(id);window._privateMsgForget?.(id);}
+      }else await ref.update({['deletedFor.'+CU.uid]:true});
     }catch(e){console.log(e);failed.push(e?.code||e?.message||'error');}
   }
   clearSelection();
-  if(needLastMsgRefresh&&!isGrp&&curChat){
-    try{await refreshChatLastMessage(getCID(CU.uid,curChat.uid));}catch(e){console.warn('lastMsg refresh',e);}
-  }
+  if(cid&&other)void refreshChatSummaryAfterDelete(cid,other);
   if(failed.length)showToast('❌ Could not delete '+failed.length+' message(s): '+failed[0]);
-  else showToast(scope==='everyone'?(appLang==='fr'?'Supprimé pour tout le monde':'Deleted for everyone'):(appLang==='fr'?'Supprimé pour vous':'Deleted for you'));
-}
-async function refreshChatLastMessage(cid){
-  if(!cid||!CU)return;
-  const col=db.collection('chats').doc(cid).collection('messages');
-  const sn=await col.orderBy('createdAt','desc').limit(12).get();
-  let last=null;
-  for(const d of sn.docs){
-    const m=d.data();
-    if(m.deletedFor&&m.deletedFor[CU.uid])continue;
-    last={id:d.id,...m};
-    break;
-  }
-  const chatRef=db.collection('chats').doc(cid);
-  if(!last){
-    await chatRef.set({lastMsg:'',lastTime:'',lastMessageAt:0,lastMessageId:'',lastSenderUid:''},{merge:true});
-    return;
-  }
-  let preview='';
-  if(last.type==='text')preview=last.text||'';
-  else if(last.type==='voice')preview='🎤 '+(appLang==='fr'?'Message vocal':'Voice message');
-  else if(last.type==='image')preview='📷 Photo';
-  else if(last.type==='video')preview='🎥 Video';
-  else if(last.type==='audio')preview='🎵 Audio';
-  else if(last.type==='doc')preview='📄 '+(last.name||'Document');
-  else preview=last.text||'';
-  const ts=last.createdAt||last.time||Date.now();
-  await chatRef.set({
-    lastMsg:preview,
-    lastTime:typeof last.time==='string'?last.time:displayMessageTime(ts),
-    lastMessageAt:messageMillis(ts)||Date.now(),
-    lastMessageId:last.id,
-    lastSenderUid:last.senderUid||''
-  },{merge:true});
+  else showToast(scope==='everyone'?'Deleted for everyone':'Deleted for you');
 }
 // ── FILE DOWNLOAD / OPEN ──
 const _dlBlobs=Object.create(null);
@@ -3070,6 +3072,7 @@ function refreshPendingBubble(m,isGrp,attempt=0){
   const next=tmp.firstElementChild;if(next)old.replaceWith(next);
 }
 function buildBbl(m,isGrp){
+  if(m.deletedForAll)return '';
   if(m.deletedFor&&m.deletedFor[CU?.uid])return '';
   const self=m.senderUid===CU?.uid,side=self?'s':'o';
   const type=m.type||'text';
@@ -3077,10 +3080,11 @@ function buildBbl(m,isGrp){
   const nameTag=isGrp&&!self?`<div class="bname" onclick="openProfile('${e2(m.senderUid||'')}')" style="cursor:pointer;display:flex;align-items:center;gap:5px;">${m.senderPhoto?`<img src="${esc(m.senderPhoto)}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0;">`:'<span style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.15);display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;">👤</span>'}<span>${esc(m.senderName||'')}</span></div>`:'';
   const repBtn='';
   const rq=m.replyTo?`<div class="rq">↩ <b>${esc(m.replyTo.senderName)}</b>: ${esc(m.replyTo.text)}</div>`:'';
-  const wasRead=!!m.seen||messageWasReadByOther(m);
-  // Receipts only appear on the sender side (never on received messages).
-  const receipt=self&&type==='text'?receiptHtml(m,'text'):'';
-  const mediaReceipt=self?receiptHtml(m,'media'):'';
+  // Ticks exist only on the sender's own messages: one grey = sent, two grey = delivered, two blue = read.
+  const rState=self?receiptState(m,isGrp):'sent';
+  const tickLbl=rState==='read'?` <span class="seenlbl">${t('msg_seen')}</span>`:'';
+  const receipt=self&&type==='text'?`<div class="receipt" data-rkind="text"><span data-tick="label">${tickMarkup(rState)}${tickLbl}</span></div>`:'';
+  const mediaReceipt=self?`<div class="receipt" data-rkind="media"><span data-tick="label">${tickMarkup(rState)}${tickLbl}</span></div>`:'';
   const rc=m.reactions||{},ec={};
   Object.values(rc).flat().forEach(e=>{ec[e]=(ec[e]||0)+1;});
   const rcHtml=Object.keys(ec).length?`<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px;">${Object.entries(ec).map(([e,c])=>`<button onclick="toggleReact('${m.id}','${e}','${isGrp?'g':'p'}')" style="background:rgba(255,255,255,.2);border:none;border-radius:10px;padding:1px 6px;font-size:12px;cursor:pointer;">${e} ${c}</button>`).join('')}</div>`:'';
@@ -3126,70 +3130,80 @@ function buildBbl(m,isGrp){
     else if(!m.data){inner=pendingSrc?`${nameTag}${rq}<video src="${pendingSrc}" controls muted preload="metadata" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;opacity:.82;"></video>${rcHtml}`:`${nameTag}${rq}<div style="padding:12px;border-radius:8px;background:rgba(0,0,0,0.1);text-align:center;min-width:150px;"><div style="font-size:20px;">🎥</div></div>${rcHtml}`;}
     else inner=`${nameTag}${rq}<div data-file-url="${esc(m.data)}" data-file-name="${esc(videoName)}" data-file-kind="video"><video src="${esc(m.data)}" controls preload="none" onplay="markMsgOpened('${m.id}')" style="max-width:200px;border-radius:8px;display:block;margin-top:3px;"></video></div>${mediaActions(m,self,'video')}${rcHtml}${mediaReceipt}`;
   }
+else if(type==='voice'&&m.data&&m.status!=='failed'){
+  // Voice message: inside the normal message bubble (same colour as text), with the sender's
+  // profile photo, a plain play/pause button, a waveform with a seek dot, duration and time.
+  const durLabel=m.dur||'0:00';
+  const sp=m.senderPhoto||(self?myPho:(allUsers.find(u=>u.uid===m.senderUid)?.photo||''));
+  const av=sp?`<img src="${esc(sp)}" alt="">`:`<span class="vavph">${ic('user','60%')}</span>`;
+  const bars=voiceBarsFor(m.id).map(h=>`<i style="height:${h}%"></i>`).join('');
+  inner=`${nameTag}<div class="vmsg" id="vp_${m.id}" data-voice-src="${esc(m.data)}">
+    <div class="vav">${av}<span class="vmic"><svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg></span></div>
+    <button class="vpbtn vplain" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" aria-label="Play">${VOICE_PLAY_ICON}</button>
+    <div class="vcol">
+      <div class="vprog" id="vbar_${m.id}" onclick="seekVP(event,'${m.id}')" ontouchstart="seekVP(event,'${m.id}')"><div class="vwave" id="vwave_${m.id}">${bars}</div><span class="vdot" id="vdot_${m.id}"></span></div>
+      <div class="vmeta"><span class="vdur" id="vdur_${m.id}">${durLabel}</span><span class="vright"><span class="vtm">${displayMessageTime(m.time)}</span>${self?`<span data-tick="1">${tickMarkup(rState)}</span>`:''}</span></div>
+    </div>
+  </div>${rcHtml}`;
+}
 else if(type==='audio' || type==='voice'){
   const isVoice = type === 'voice';
-  // Voice bubbles use the same solid colors as text bubbles (no special gradients).
+  const vBlue = '#2196f3', vOrange = '#e67e22';
   const vBubbleBg = isGrp
-    ? (self ? '#e67e22' : (document.body.classList.contains('dark') ? '#243448' : '#fff'))
-    : (self ? 'var(--btnB)' : (document.body.classList.contains('dark') ? '#243448' : '#fff'));
-  const vWaveColor = self ? '#ffffff' : (isGrp ? '#e67e22' : '#2196f3');
-  const textMuted = self ? 'rgba(255,255,255,.85)' : 'var(--sub)';
+    ? (self ? 'linear-gradient(135deg,#e67e22,#f39c12)' : 'rgba(230,126,34,.13)')
+    : (self ? 'linear-gradient(135deg,#1565c0,#1e88e5)' : 'rgba(30,136,229,.13)');
+  const vAccent = isGrp ? vOrange : vBlue;
+  const vWaveColor = self ? '#ffffff' : vAccent;   // WHITE when you sent it
+  const vPlayedColor = isGrp ? '#ffd7ad' : '#4fc3f7';
+  const playBtnBg = self ? 'rgba(255,255,255,0.25)' : vAccent;
+  const playShadow = isGrp ? 'rgba(230,126,34,.4)' : 'rgba(33,150,243,.4)';
   const durLabel = m.dur || '0:00';
-  const timeLabel = displayMessageTime(m.time||m.createdAt);
-  const peerPhoto = self
-    ? (myPho || '')
-    : (m.senderPhoto || (curChat && !isGrp ? (allUsers.find(u=>u.uid===curChat.uid)?.photo||'') : '') || '');
-  const avatarHtml = peerPhoto
-    ? `<img src="${esc(peerPhoto)}" alt="" style="width:42px;height:42px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid ${self?'rgba(255,255,255,.35)':'rgba(0,0,0,.08)'};">`
-    : `<div style="width:42px;height:42px;border-radius:50%;background:${self?'rgba(255,255,255,.25)':'rgba(0,0,0,.08)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">👤</div>`;
+  const label = isVoice ? (t('voice_message') || 'Voice') : (t('audio_label') || 'Music');
 
-  const waveSVG = `<svg viewBox="0 0 120 28" width="100" height="26" style="flex:1;min-width:72px;" preserveAspectRatio="none">
-    ${[4,6,10,8,14,18,22,16,24,28,26,22,28,24,20,26,18,14,20,12,16,10,8,12,6,8]
+  const waveSVG = `<svg viewBox="0 0 120 32" width="110" height="28" style="flex:1;min-width:80px;" preserveAspectRatio="none">
+    ${[3,5,9,7,12,16,20,14,22,26,30,24,28,32,26,22,28,24,20,26,18,14,20,12,16,10,8,12,6,8]
       .map((h,i)=>{
-        const x=2+i*4.5, bh=Math.max(4,h*0.85), y=(28-bh)/2;
-        return `<rect x="${x}" y="${y}" width="2.8" height="${bh}" rx="1.4" fill="${vWaveColor}" opacity="${0.55+h/70}"/>`;
+        const x=2+i*4, bh=Math.max(4,h), y=(32-bh)/2;
+        return `<rect x="${x}" y="${y}" width="2.6" height="${bh}" rx="1.3" fill="${vWaveColor}" opacity="${0.55+h/70}"/>`;
       }).join('')}
   </svg>`;
 
   let voiceReceipt = '';
-  if(self){
-    const read = !!m.voicePlayed || !!m.seen || messageWasReadByOther(m);
-    if(read) voiceReceipt = `<span data-vreceipt="1" style="font-size:12px;color:${RECEIPT_BLUE};margin-left:3px;font-weight:700;">✓✓</span>`;
-    else voiceReceipt = `<span data-vreceipt="1" style="font-size:12px;color:rgba(255,255,255,.7);margin-left:3px;">✓✓</span>`;
+  if(self && isVoice){
+    if(m.voicePlayed) voiceReceipt = `<span style="font-size:11px;color:${vPlayedColor};margin-left:4px;font-weight:bold;" data-vreceipt="1">✓✓</span>`;
+    else voiceReceipt = `<span data-vreceipt="1" style="font-size:11px;color:rgba(255,255,255,.7);margin-left:4px;">✓</span>`;
   }
 
   if(m.status==='failed'){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:210px;gap:8px;align-items:center;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:14px;padding:8px 10px;">
-      <div style="width:36px;height:36px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">!</div>
+    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);border-radius:16px;padding:10px 14px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:#e74c3c;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">!</div>
       <div style="flex:1;"><div style="font-size:11px;color:#e74c3c;font-weight:600;">${t('voice_failed_title')||'Failed'}</div></div>
     </div>${rcHtml}`;
   }
   else if(!m.data){
-    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:210px;gap:8px;align-items:center;background:${vBubbleBg};border-radius:14px;padding:8px 10px;${self?'':'box-shadow:0 1px 4px rgba(0,0,0,.1);'}">
-      ${avatarHtml}
-      <div style="flex:1;display:flex;align-items:center;gap:8px;"><span class="vload"></span><span class="vdur" style="color:${textMuted};">${durLabel}</span></div>
+    inner=`${nameTag}<div class="vbub" id="vp_${m.id}" style="min-width:220px;gap:10px;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
+      <div style="flex:1;display:flex;align-items:center;gap:10px;"><span class="vload"></span><span class="vdur">${durLabel}</span></div>
     </div>${rcHtml}`;
   }
   else{
-    const playIcon = `<svg viewBox="0 0 24 24" width="22" height="22" style="display:block;fill:${self?'#fff':vWaveColor};"><path d="M8 5v14l11-7z"/></svg>`;
     inner=`${nameTag}
-      <div class="vbub" id="vp_${m.id}" style="min-width:220px;max-width:280px;gap:8px;align-items:center;background:${vBubbleBg};border-radius:14px;padding:8px 10px;${self?'':'box-shadow:0 1px 4px rgba(0,0,0,.1);'}">
-        ${avatarHtml}
-        <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:28px;height:28px;border:none;background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;">
-          ${playIcon}
+      <div class="vbub" id="vp_${m.id}" style="min-width:230px;gap:10px;align-items:center;background:${vBubbleBg};border-radius:16px;padding:10px 14px;">
+        <button class="vpbtn" data-voice-src="${esc(m.data)}" onclick="toggleVP('${m.id}')" style="width:38px;height:38px;border-radius:50%;border:none;background:${playBtnBg};color:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px ${playShadow};">
+          <svg viewBox="0 0 24 24" width="19" height="19" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
         </button>
+        ${isVoice?'':`<div style="font-size:26px;line-height:1;color:${self?'rgba(255,255,255,.82)':vAccent};flex-shrink:0;">♫</div>`}
         <div style="flex:1;min-width:0;">
           <div class="vprog" id="vbar_${m.id}"
                onclick="seekVP(event,'${m.id}')"
                ontouchstart="seekVP(event,'${m.id}')"
-               style="height:28px;display:flex;align-items:center;cursor:pointer;position:relative;touch-action:none;">
+               style="height:30px;display:flex;align-items:center;cursor:pointer;position:relative;touch-action:none;">
             ${waveSVG}
-            <div id="vfill_${m.id}" style="position:absolute;left:0;top:0;width:0%;height:100%;background:${self?'rgba(255,255,255,.22)':'rgba(33,150,243,.18)'};border-radius:4px;pointer-events:none;"></div>
+            <div id="vfill_${m.id}" style="position:absolute;left:0;top:0;width:0%;height:100%;background:${self?'rgba(255,255,255,.25)':(isGrp?'rgba(230,126,34,.25)':'rgba(33,150,243,.25)')};border-radius:4px;pointer-events:none;"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1px;">
-            <span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${textMuted};font-weight:600;">${durLabel}</span>
-            <div style="display:flex;align-items:center;gap:3px;">
-              <span style="font-size:10px;color:${textMuted};">${timeLabel}</span>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
+            <span style="font-size:10px;color:${self?'rgba(255,255,255,.85)':vAccent};font-weight:600;">${label}</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span class="vdur" id="vdur_${m.id}" style="font-size:11px;color:${self?'rgba(255,255,255,.9)':'var(--txt)'};">${durLabel}</span>
               ${voiceReceipt}
             </div>
           </div>
@@ -3207,7 +3221,7 @@ else if(type==='audio' || type==='voice'){
     else inner=`${nameTag}${rq}<div class="dbub" data-file-url="${esc(m.data)}" data-file-name="${esc(m.name||'file')}"><span style="font-size:22px;">${ic}</span><div style="font-size:11px;word-break:break-all;flex:1;">${esc(m.name||'File')}</div></div>${docActions(m,self)}${rcHtml}${mediaReceipt}`;
   }
   if((type==='voice'||type==='audio')&&voicePlayer&&String(voicePlayerId)===String(m.id))setTimeout(restoreVoiceUI,0);
-  return `<div class="bw ${side}" data-id="${m.id}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}">${inner}<div class="btime">${displayMessageTime(m.time)}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
+  return `<div class="bw ${side}" data-id="${m.id}" data-seen="${(m.seen||m.openedAt)?1:0}" data-status="${m.status||''}" data-sender="${esc(m.senderName||'')}" data-time="${messageMillis(m.time)}" data-isgrp="${isGrp}" onclick="if(selMode){var bw=this;toggleSelectMsg(bw.dataset.id,bw.dataset.isgrp==='true')}"><div class="bbl ${side}${type==='voice'&&m.data&&m.status!=='failed'?' voice':''}">${inner}<div class="btime">${displayMessageTime(m.time)}</div></div><button class="selbtn" data-id="${m.id}" data-isgrp="${isGrp}" onclick="event.stopPropagation();toggleSelectMsg(this.dataset.id,this.dataset.isgrp==='true')" title="Select">☐</button></div>`;
 }
 // Long press (600ms) to enter selection mode
 let _lpTimer=null,_lpFired=false;
@@ -3756,10 +3770,31 @@ function cancelGVoiceReady(){}
 const VOICE_PLAY_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>';
 const VOICE_PAUSE_ICON='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true" style="display:block;fill:currentColor;"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
 function setVoiceButtonIcon(btn,playing){if(btn)btn.innerHTML=playing?VOICE_PAUSE_ICON:VOICE_PLAY_ICON;}
+function voiceBarsFor(id){
+  let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))|0;
+  const out=[];
+  for(let i=0;i<34;i++){
+    h=(Math.imul(h,1103515245)+12345)|0;
+    const r=((h>>>16)&0x7fff)/0x7fff,env=0.4+0.6*Math.abs(Math.sin(i*0.5+(h&7)));
+    out.push(Math.max(14,Math.min(100,Math.round(16+r*52*env+34*env))));
+  }
+  return out;
+}
+// Paints playback progress on the waveform bars and moves the seek dot (old-style bubbles keep their fill bar).
+function setVoicePct(id,pct){
+  pct=Math.max(0,Math.min(100,Number(pct)||0));
+  const f=el('vfill_'+id);if(f)f.style.width=pct+'%';
+  const w=el('vwave_'+id);
+  if(w){
+    const bars=w.children,n=bars.length,k=Math.round(n*pct/100);
+    for(let i=0;i<n;i++)bars[i].classList.toggle('on',i<k);
+    const dot=el('vdot_'+id);if(dot)dot.style.left='calc(5px + (100% - 10px) * '+(pct/100)+')';
+  }
+}
 function restoreVoiceUI(){
   const p=voicePlayer,id=voicePlayerId;if(!p||id==null)return;
   setVoiceButtonIcon(document.querySelector(`#vp_${id} .vpbtn`),!p.paused&&!p.ended);
-  const f=el('vfill_'+id);if(f&&Number.isFinite(p.duration)&&p.duration>0)f.style.width=(p.currentTime/p.duration*100)+'%';
+  if(Number.isFinite(p.duration)&&p.duration>0)setVoicePct(id,p.currentTime/p.duration*100);
 }
 function resetVoicePlayer(){
   const player=voicePlayer,oldId=voicePlayerId;
@@ -3772,7 +3807,7 @@ function resetVoicePlayer(){
   }
   if(oldId){
     setVoiceButtonIcon(document.querySelector(`#vp_${oldId} .vpbtn`),false);
-    const fill=el('vfill_'+oldId);if(fill)fill.style.width='0%';
+    setVoicePct(oldId,0);
   }
 }
 function stopOtherVoicePlayers(exceptId){if(voicePlayer&&String(voicePlayerId)!==String(exceptId))resetVoicePlayer();}
@@ -3791,8 +3826,8 @@ function toggleVP(id,src){
       const fmt=t=>{if(!Number.isFinite(t)||t<0)return'0:00';return Math.floor(t/60)+':'+(('0'+Math.floor(t%60)).slice(-2));};
       const durEl=()=>el('vdur_'+id),fillEl=()=>el('vfill_'+id),currentButton=()=>document.querySelector(`#vp_${id} .vpbtn`);
       a.onloadedmetadata=()=>{if(token!==voicePlayerToken)return;const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(a.duration);};
-      a.ontimeupdate=()=>{if(token!==voicePlayerToken)return;const f=fillEl();if(f&&Number.isFinite(a.duration)&&a.duration>0)f.style.width=(a.currentTime/a.duration*100)+'%';const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
-      a.onended=()=>{if(token!==voicePlayerToken)return;a.currentTime=0;const f=fillEl();if(f)f.style.width='0%';setVoiceButtonIcon(currentButton(),false);};
+      a.ontimeupdate=()=>{if(token!==voicePlayerToken)return;if(Number.isFinite(a.duration)&&a.duration>0)setVoicePct(id,a.currentTime/a.duration*100);const d=durEl();if(d&&Number.isFinite(a.duration))d.textContent=fmt(Math.max(0,a.duration-a.currentTime));};
+      a.onended=()=>{if(token!==voicePlayerToken)return;a.currentTime=0;setVoicePct(id,0);{const dd=durEl();if(dd&&Number.isFinite(a.duration))dd.textContent=fmt(a.duration);}setVoiceButtonIcon(currentButton(),false);};
       a.onpause=()=>{if(token===voicePlayerToken&&!a.ended)setVoiceButtonIcon(currentButton(),false);};
       a.onerror=()=>{if(token!==voicePlayerToken)return;resetVoicePlayer();showToast('⚠️ Impossible de lire cet audio. Le fichier est indisponible ou le réseau a été interrompu.');};
       a.onplay=()=>{if(token!==voicePlayerToken)return;setVoiceButtonIcon(currentButton(),true);if(!curChat)return;const bw=document.querySelector(`.bw[data-id="${id}"]`);if(bw&&!bw.classList.contains('s'))markVoicePlayed(id,null);};
@@ -3813,8 +3848,7 @@ const rect = bar.getBoundingClientRect();
 const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
 try {
 player.currentTime = ratio * player.duration;
-const fill = el('vfill_' + id);
-if (fill) fill.style.width = (ratio * 100) + '%';
+setVoicePct(id, ratio * 100);
 } catch (err) {}
 }
 // ── WAVEFORM BARS ANIMATION (equalizer style like the waveform image) ──
@@ -3901,6 +3935,7 @@ function setupInbox(){
     inboxChatsUnsub=db.collection('chats').where('participants','array-contains',viewerUid).onSnapshot(sn=>{
       if(!CU?.uid||CU.uid!==viewerUid)return;
       _cachedInboxDocs=sn.docs.slice();
+      try{markDeliveredFromSnapshot(sn.docs,viewerUid);}catch(e){}
       if(curChat?.uid){
         const openCid=getCID(viewerUid,curChat.uid);
         window._inboxUnreadMap[openCid]=0;
@@ -4090,6 +4125,7 @@ function renderInbox(q="",sn=null){
     const _overrides=window._unreadOverride||{};
     entries.forEach(d=>{
       const data=d.data(),ouid=(data.participants||[]).find(id=>id!==CU.uid);
+      const sum={...data,...(((data.lastFor||{})[CU.uid])||{})};
       const o=allUsers.find(u=>u.uid===ouid)||{name:'User',status:'Offline',photo:'',country:'',uni:''};
       const cid=d.id;
       const st=getStatusInfo(o.status,o.lastSeen);
@@ -4104,21 +4140,23 @@ function renderInbox(q="",sn=null){
       // chat document, so both surfaces update through the inbox snapshot.
       const _presenceText=privatePresenceText('',data,ouid).trim();
       // Render lastMsg with SVG icon for media types
-      const _rawMsg=data.lastMsg||'';
+      const _rawMsg=sum.lastMsg||'';
       let _msgHtml;
       if(_rawMsg==='__photo__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Photo`;
       else if(_rawMsg==='__video__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>Video`;
       else if(_rawMsg==='__audio__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>Audio`;
       else if(_rawMsg==='__voice__'){
         // Show duration from chat data if stored
-        const _vDur=data.lastVoiceDur||'';
+        const _vDur=sum.lastVoiceDur||'';
         const _vSeen=(data.unread||{})[CU.uid]===0||unread===0;
         const _vTick=_vSeen?'<span style="color:#4fc3f7;font-size:11px;margin-left:2px;font-weight:bold;">✓✓</span>':'<span style="font-size:11px;opacity:.6;margin-left:2px;">✓</span>';
-        _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}${_vTick}`;
+        _msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.97 3.52 9.1 8 9.8V22h4v-4.27c4.48-.7 8-4.83 8-9.8h-2c0 4.08-3.06 7.44-7 7.93V15h-2v.93z"/></svg>Voice message${_vDur?' ('+_vDur+')':''}`;
       }
       else if(_rawMsg==='__gdrive__')_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg>File`;
       else if(_rawMsg.startsWith('__doc__:'))_msgHtml=`<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" style="vertical-align:middle;margin-right:3px;flex-shrink:0;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>${esc(_rawMsg.slice(8))||'Document'}`;
       else _msgHtml=esc(_rawMsg||'Tap to chat');
+      // Ticks appear only before MY OWN last message, never on a message I received.
+      if(_rawMsg&&sum.lastSenderUid===CU.uid)_msgHtml=tickMarkup(inboxTickState({...sum,readAt:data.readAt,deliveredAt:data.deliveredAt},ouid),'inb')+_msgHtml;
       const av=o.photo?`<img src="${o.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:'👤';
       f.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--brd);cursor:pointer;${unread>0?'background:rgba(10,60,109,.04);':''}" onclick="openChat('${e2(o.name||'User')}','${ouid||''}')">
         <div style="position:relative;flex-shrink:0;width:50px;height:50px;">
@@ -4133,7 +4171,7 @@ function renderInbox(q="",sn=null){
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
           ${unread>0
             ?`<div style="background:var(--btnB);color:#fff;border-radius:10px;min-width:20px;height:20px;font-size:11px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;padding:0 5px;">${unread>9?'9+':unread}</div>`
-            :`<span style="font-size:10px;color:var(--sub);">${data.lastTime||''}</span>`}
+            :`<span style="font-size:10px;color:var(--sub);">${sum.lastTime||data.lastTime||''}</span>`}
         </div>
       </div>`;
     });
