@@ -1357,33 +1357,37 @@ function activeStatusOf(u){
   if(Date.now()-createdMs>STATUS_TTL_MS)return null;
   return u.statusPost;
 }
+// Status strip in the WhatsApp style: tall rounded cards, a small round avatar centred at the top,
+// the name (smaller) at the bottom. Only the look changed; every card opens the same screens as before.
+function stCard(onclick,ringCls,avatarHtml,bgPhoto,bgCls,label){
+  const bg=bgPhoto?`<div class="stCardBg" style="background-image:url('${esc(bgPhoto)}')"></div>`:`<div class="stCardBg ${bgCls}"></div>`;
+  return `<div class="stCard" onclick="${onclick}">${bg}<div class="stCardShade"></div>
+    <div class="stRing stCardRing ${ringCls}">${avatarHtml}</div>
+    <div class="stCardLabel">${label}</div>
+  </div>`;
+}
+function stAvatarHtml(photo,name){
+  return photo?`<img src="${esc(photo)}" alt="">`:`<div class="stFallback">${esc((name||'?')[0]||'?').toUpperCase()}</div>`;
+}
 function renderStatusBar(){
   const bar=el('statusScroll');if(!bar||!CU)return;
   const hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
   const mine=allUsers.find(u=>u.uid===CU.uid);
   const myStatus=activeStatusOf(mine);
-  let html=`<div class="stItem" onclick="openStatusCreate()">
-    <div class="stRing ring-add"><div class="stAvatar">+</div></div>
-    <div class="stLabel">${t('st_status')}</div>
+  // First card: add a status.
+  let html=`<div class="stCard stCardAdd" onclick="openStatusCreate()"><div class="stCardBg stBg-add"></div><div class="stCardShade"></div>
+    <div class="stRing stCardRing ring-add"><div class="stAvatar">+</div></div>
+    <div class="stCardLabel">${t('st_add_card')}</div>
   </div>`;
   if(myStatus){
-    const av=myStatus.photo?`<img class="stThumb" src="${myStatus.photo}">`:(myPho?`<img src="${myPho}">`:`<div class="stFallback">${esc((MP?.name||'?')[0]||'?').toUpperCase()}</div>`);
-    const ringCls=myStatus.category?('ring-'+myStatus.category):'ring-photo';
-    html+=`<div class="stItem" onclick="viewStatus('${CU.uid}')">
-      <div class="stRing ${ringCls}">${av}</div>
-      <div class="stLabel">${t('st_you')}</div>
-    </div>`;
+    html+=stCard(`viewStatus('${CU.uid}')`,myStatus.category?('ring-'+myStatus.category):'ring-photo',stAvatarHtml(myPho,MP?.name),myStatus.photo,'stBg-'+(myStatus.category||'photo'),t('st_you'));
   }
   const others=allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u)).sort((a,b)=>(statusMillis(b.statusPost.createdAt)||0)-(statusMillis(a.statusPost.createdAt)||0));
   others.forEach(u=>{
     const sp=u.statusPost;
     const seen=(sp.viewedBy||[]).includes(CU.uid);
-    const av=sp.photo?`<img class="stThumb" src="${sp.photo}">`:(u.photo?`<img src="${u.photo}">`:`<div class="stFallback">${esc((u.name||'?')[0]||'?').toUpperCase()}</div>`);
     const ringCls=seen?'ring-seen':(sp.category?('ring-'+sp.category):'ring-photo');
-    html+=`<div class="stItem" onclick="viewStatus('${u.uid}')">
-      <div class="stRing ${ringCls}">${av}</div>
-      <div class="stLabel">${esc(u.name||'?')}</div>
-    </div>`;
+    html+=stCard(`viewStatus('${u.uid}')`,ringCls,stAvatarHtml(u.photo,u.name),sp.photo,'stBg-'+(sp.category||'photo'),esc(u.name||'?'));
   });
   bar.innerHTML=html;
 }
@@ -1524,8 +1528,9 @@ function viewStatus(uid){
   const sp=activeStatusOf(u);
   if(!sp)return showToast('❌ Statut expiré');
   if(!canViewVisibility(sp,CU,u))return showToast(t('st_not_available'));
-  pushModalState();
+  if(el('statusView').style.display!=='flex')pushModalState();
   curStatusUid=uid;
+  statusPaused=false;statusHideIndicator();
   el('stVMenu').style.display='none';
   el('stVSeenList').style.display='none';
   const c=sp.category?CATS[sp.category]:null;
@@ -1564,7 +1569,7 @@ function viewStatus(uid){
   void fill.offsetWidth; // force reflow
   fill.style.transition=`width ${STATUS_VIEW_MS}ms linear`;
   requestAnimationFrame(()=>{fill.style.width='100%';});
-  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)closeStatusView();},STATUS_VIEW_MS);
+  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)gotoStatus(1);},STATUS_VIEW_MS);
   // mark as seen (only if viewing someone else's) → ring turns gray after this
   if(uid!==CU.uid&&!(sp.viewedBy||[]).includes(CU.uid)){
     const viewedBy=[...(sp.viewedBy||[]),CU.uid];
@@ -1573,7 +1578,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
+function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);clearTimeout(statusPressTimer);statusPaused=false;statusHideIndicator();if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1741,7 +1746,7 @@ function restartStatusReplyTimer(){
   clearTimeout(statusAutoCloseTimer);
   const uid=curStatusUid;
   if(!uid||el('statusView')?.style.display==='none')return;
-  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)closeStatusView();},STATUS_VIEW_MS);
+  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uid)gotoStatus(1);},STATUS_VIEW_MS);
 }
 function onStatusReplyInput(){
   if(stIsRec)return;
@@ -1848,27 +1853,92 @@ function replyToStatus(){
   openChat(u?.name||'',uid);
 }
 
-function statusPressStart(e){
-  if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
+// ── STATUS VIEWER GESTURES ──
+// tap on the right  -> next status          tap on the left -> previous status
+// swipe left/right  -> next / previous
+// press and hold    -> pauses while held (a tap in the middle does nothing)
+let statusPaused=false,statusPressTimer=null,statusPress=null;
+function statusIgnoreTarget(t){return !!t.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList, button, input, textarea, a');}
+function statusFreezeProgress(){
   clearTimeout(statusAutoCloseTimer);
   const fill=document.querySelector('#stVProgress .stVProgFill');
   const track=fill.parentElement;
-  const trackWidth=track.offsetWidth||1;
-  const currentWidthPx=parseFloat(getComputedStyle(fill).width)||0;
-  const fraction=Math.min(1,currentWidthPx/trackWidth);
+  const fraction=Math.min(1,(parseFloat(getComputedStyle(fill).width)||0)/(track.offsetWidth||1));
   statusRemainingMs=Math.max(0,STATUS_VIEW_MS*(1-fraction));
   fill.style.transition='none';
   fill.style.width=(fraction*100)+'%';
 }
-function statusPressEnd(e){
-  if(e.target.closest('.stVBottom, .stVTop, .stVMenu, .stVSeenList'))return;
-  if(statusRemainingMs<=0){closeStatusView();return;}
+function statusResumeProgress(){
+  if(statusRemainingMs<=0){gotoStatus(1);return;}
   const fill=document.querySelector('#stVProgress .stVProgFill');
   void fill.offsetWidth;
   fill.style.transition=`width ${statusRemainingMs}ms linear`;
   requestAnimationFrame(()=>{fill.style.width='100%';});
   const uidAtResume=curStatusUid;
-  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uidAtResume)closeStatusView();},statusRemainingMs);
+  statusAutoCloseTimer=setTimeout(()=>{if(curStatusUid===uidAtResume)gotoStatus(1);},statusRemainingMs);
+}
+function statusShowIndicator(){
+  let ind=document.getElementById('stVPauseInd');
+  if(!ind){
+    ind=document.createElement('div');ind.id='stVPauseInd';
+    ind.innerHTML='<svg viewBox="0 0 24 24" width="34" height="34" fill="#fff"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
+    el('statusView').appendChild(ind);
+  }
+  ind.style.display='flex';
+}
+function statusHideIndicator(){const ind=document.getElementById('stVPauseInd');if(ind)ind.style.display='none';}
+function statusPlaylist(){
+  // same order as the strip: my own status first, then the others, newest first
+  const hidden=JSON.parse(localStorage.getItem('hiddenStatusUids')||'[]');
+  const list=[];
+  const mine=allUsers.find(u=>u.uid===CU.uid);
+  if(activeStatusOf(mine))list.push(CU.uid);
+  allUsers.filter(u=>u.uid!==CU.uid&&!hidden.includes(u.uid)&&activeStatusOf(u)&&canViewVisibility(u.statusPost,CU,u))
+    .sort((x,y)=>(statusMillis(y.statusPost.createdAt)||0)-(statusMillis(x.statusPost.createdAt)||0))
+    .forEach(u=>list.push(u.uid));
+  return list;
+}
+function gotoStatus(delta){
+  if(!curStatusUid)return;
+  const list=statusPlaylist();
+  const i=list.indexOf(curStatusUid);
+  if(i<0){closeStatusView();return;}
+  const j=i+delta;
+  if(j>=list.length){closeStatusView();return;}      // after the last one the viewer closes
+  if(j<0){viewStatus(curStatusUid);return;}          // before the first one: start this one again
+  viewStatus(list[j]);
+}
+function statusPressStart(e){
+  if(statusIgnoreTarget(e.target))return;
+  if(el('stVMenu')?.style.display==='block'||el('stVSeenList')?.style.display==='block')return;
+  statusPress={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,held:false,wasPaused:statusPaused};
+  clearTimeout(statusPressTimer);
+  statusPressTimer=setTimeout(()=>{
+    // long press: pause only while the finger is down
+    if(statusPress&&!statusPaused){statusPress.held=true;statusFreezeProgress();}
+  },260);
+}
+document.addEventListener('pointermove',e=>{if(statusPress){statusPress.lx=e.clientX;statusPress.ly=e.clientY;}},{passive:true});
+function statusPressEnd(e){
+  clearTimeout(statusPressTimer);
+  const p=statusPress;statusPress=null;
+  if(!p)return;
+  const x=(e&&e.type!=='pointercancel'&&e.clientX!==undefined)?e.clientX:p.lx;
+  const dx=x-p.x,dy=(e&&e.clientY!==undefined&&e.type!=='pointercancel'?e.clientY:p.ly)-p.y;
+  if(p.held){                                          // end of a long press: carry on
+    statusHideIndicator();
+    if(!statusPaused)statusResumeProgress();
+    return;
+  }
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.4){  // swipe by hand
+    gotoStatus(dx<0?1:-1);
+    return;
+  }
+  if(Math.abs(dx)>12||Math.abs(dy)>12)return;          // a drag that is not a swipe
+  const w=window.innerWidth||1,ratio=x/w;
+  if(ratio>0.7)gotoStatus(1);
+  else if(ratio<0.3)gotoStatus(-1);
+  // a simple tap in the middle does nothing; only a long press pauses
 }
 function statusRingOutlineClass(uid){
   if(!CU||!uid||uid===CU.uid)return '';
@@ -4528,7 +4598,7 @@ const I18N={
     home_feed_title:'Fil communautaire',loading:'Chargement...',home_no_posts:'Aucune publication pour l’instant. Sois le premier ! 🎓',
     home_join_group:'Rejoindre le groupe',home_message:'Message',home_load_more:'Voir plus',
     badge_needs_help:'Besoin d’aide',badge_can_help:'Peut aider',
-    hdr_online:'En ligne',hdr_offline:'Hors ligne',pres_typ1:'écrit...',pres_typN:'écrivent...',pres_rec1:'enregistre...',pres_recN:'enregistrent...',pres_and:'et',pres_others:'autres',pres_someone:'Quelqu’un',voice_message:'Message vocal',audio_label:'Audio',voice_failed_title:'Échec de l’envoi vocal',voice_failed_hint:'Vérifiez la connexion puis réessayez.',video_failed:'Échec de l’envoi de la vidéo',status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
+    hdr_online:'En ligne',st_add_card:'Ajouter un statut',hdr_offline:'Hors ligne',pres_typ1:'écrit...',pres_typN:'écrivent...',pres_rec1:'enregistre...',pres_recN:'enregistrent...',pres_and:'et',pres_others:'autres',pres_someone:'Quelqu’un',voice_message:'Message vocal',audio_label:'Audio',voice_failed_title:'Échec de l’envoi vocal',voice_failed_hint:'Vérifiez la connexion puis réessayez.',video_failed:'Échec de l’envoi de la vidéo',status_online:'🟢 En ligne',status_busy:'🔴 Occupé',
     find_title:'Recherche & Match',find_search_ph:'Rechercher un nom, une filière, un cours, une université ou un pays',
     find_tab_all:'Tous',find_tab_match:'Match',find_tab_favs:'Favoris',
     find_loading:'Chargement des étudiants...',find_no_results:'Aucun étudiant trouvé.',
@@ -4647,7 +4717,7 @@ const I18N={
     home_feed_title:'Community Feed',loading:'Loading...',home_no_posts:'No posts yet. Be the first to post! 🎓',
     home_join_group:'Join Group',home_message:'Message',home_load_more:'Load more',
     badge_needs_help:'Needs Help',badge_can_help:'Can Help',
-    hdr_online:'Online',hdr_offline:'Offline',pres_typ1:'is typing...',pres_typN:'are typing...',pres_rec1:'is recording...',pres_recN:'are recording...',pres_and:'and',pres_others:'others',pres_someone:'Someone',voice_message:'Voice message',audio_label:'Audio',voice_failed_title:'Voice message failed to send',voice_failed_hint:'Check your connection and try again.',video_failed:'Video upload failed',status_online:'🟢 Online',status_busy:'🔴 Busy',
+    hdr_online:'Online',st_add_card:'Add status',hdr_offline:'Offline',pres_typ1:'is typing...',pres_typN:'are typing...',pres_rec1:'is recording...',pres_recN:'are recording...',pres_and:'and',pres_others:'others',pres_someone:'Someone',voice_message:'Voice message',audio_label:'Audio',voice_failed_title:'Voice message failed to send',voice_failed_hint:'Check your connection and try again.',video_failed:'Video upload failed',status_online:'🟢 Online',status_busy:'🔴 Busy',
     find_title:'Find & Match',find_search_ph:'Search name, major, course, university or country',
     find_tab_all:'All',find_tab_match:'Match',find_tab_favs:'Favs',
     find_loading:'Loading students...',find_no_results:'No students found.',

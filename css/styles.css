@@ -849,3 +849,28 @@ body.dark .bbl.o .vmic{background:#243448;color:#fff;}
 .vavph.music{color:inherit;background:rgba(255,255,255,.18);}
 .bbl.o .vavph.music{background:rgba(10,60,109,.12);color:var(--btnB);}
 body.dark .bbl.o .vavph.music{color:#fff;background:rgba(255,255,255,.14);}
+
+/* --- v236: status strip as WhatsApp-style cards --- */
+.statusScroll{gap:8px;align-items:stretch;}
+.stCard{position:relative;flex-shrink:0;width:88px;height:134px;border-radius:14px;overflow:hidden;cursor:pointer;background:#1f2a3d;}
+.stCardBg{position:absolute;inset:0;background-size:cover;background-position:center;}
+.stCardShade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 38%,rgba(0,0,0,.68) 100%);}
+.stCardRing{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:44px;height:44px;box-shadow:0 1px 5px rgba(0,0,0,.4);}
+.stCardRing.ring-add{background:var(--btnB);border:2px solid #fff;}
+.stCardRing.ring-add .stAvatar{background:transparent;color:#fff;font-size:26px;font-weight:600;line-height:1;}
+.stCardLabel{position:absolute;left:5px;right:5px;bottom:7px;color:#fff;font-size:10.5px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,.65);}
+.stBg-add{background:linear-gradient(160deg,#1e5aa8,#0a3c6d);}
+.stBg-photo{background:linear-gradient(160deg,#6b7db3,#3d4a75);}
+.stBg-dispo{background:linear-gradient(160deg,#2ecc71,#1b7f46);}
+.stBg-revision{background:linear-gradient(160deg,#4a90e2,#1c47b8);}
+.stBg-aide{background:linear-gradient(160deg,#ff9f43,#c8550a);}
+.stBg-session{background:linear-gradient(160deg,#a05cff,#5a1fc4);}
+.stBg-pause{background:linear-gradient(160deg,#b0b8c9,#6c7590);}
+.stBg-objectif{background:linear-gradient(160deg,#ffd452,#c48a00);}
+.stBg-givehelp{background:linear-gradient(160deg,#333,#000);}
+
+.stBg-give_help{background:linear-gradient(160deg,#333,#000);}
+
+/* --- v237: status viewer pause indicator --- */
+#stVPauseInd{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:72px;height:72px;border-radius:50%;background:rgba(0,0,0,.45);align-items:center;justify-content:center;pointer-events:none;z-index:5;}
+.stView{touch-action:pan-y;}
