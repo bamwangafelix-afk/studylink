@@ -13,10 +13,7 @@ const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Argentina
 const STICKERS=["😀","😁","😂","🤣","😃","😄","😅","😆","😍","🥰","😎","🤩","🥳","😭","😤","😡","🤬","😱","😰","🤔","🙄","😏","🥺","🥹","🫡","🤗","😇","🤓","😴","🤤","🙈","🙉","🙊","🐶","🐱","🐼","🦊","🦁","🐯","🐸","🐧","🐦","🦄","🐉","🦋","🌟","⭐","🔥","💯","🎉","🎊","🏆","💪","👏","🙌","🤜","🤛","✌️","🤞","💡","📚","✏️","🖊️","🎓","🏫","💻","📱","🤖","🚀","🛸","🌈","☀️","🌙","⚡","❄️","🌊","🍕","🍔","🍟","🍣","🍜","🧁","🍰","☕","🧋","🎮","🎵","🎸","🎤","🏀","⚽","🏆","🥇","❤️","🧡","💛","💚","💙","💜","🖤","🤍","💔","💝","💖","💫","✨","🌸","🌺","🌻","🌹"];
 const FLAGS=["🇦🇫","🇦🇱","🇩🇿","🇦🇩","🇦🇴","🇦🇷","🇦🇲","🇦🇺","🇦🇹","🇦🇿","🇧🇭","🇧🇩","🇧🇾","🇧🇪","🇧🇿","🇧🇯","🇧🇴","🇧🇦","🇧🇼","🇧🇷","🇧🇳","🇧🇬","🇧🇫","🇧🇮","🇰🇭","🇨🇲","🇨🇦","🇨🇻","🇹🇩","🇨🇱","🇨🇳","🇨🇴","🇨🇬","🇨🇷","🇭🇷","🇨🇺","🇨🇾","🇨🇿","🇩🇰","🇩🇯","🇩🇴","🇨🇩","🇪🇨","🇪🇬","🇸🇻","🇪🇷","🇪🇪","🇪🇹","🇫🇯","🇫🇮","🇫🇷","🇬🇦","🇬🇲","🇬🇪","🇩🇪","🇬🇭","🇬🇷","🇬🇹","🇬🇳","🇭🇹","🇭🇳","🇭🇺","🇮🇸","🇮🇳","🇮🇩","🇮🇷","🇮🇶","🇮🇪","🇮🇱","🇮🇹","🇨🇮","🇯🇲","🇯🇵","🇯🇴","🇰🇿","🇰🇪","🇽🇰","🇰🇼","🇰🇬","🇱🇦","🇱🇻","🇱🇧","🇱🇸","🇱🇷","🇱🇾","🇱🇹","🇱🇺","🇲🇬","🇲🇼","🇲🇾","🇲🇻","🇲🇱","🇲🇹","🇲🇷","🇲🇺","🇲🇽","🇲🇩","🇲🇳","🇲🇪","🇲🇦","🇲🇿","🇲🇲","🇳🇦","🇳🇵","🇳🇱","🇳🇿","🇳🇮","🇳🇪","🇳🇬","🇰🇵","🇲🇰","🇳🇴","🇴🇲","🇵🇰","🇵🇸","🇵🇦","🇵🇾","🇵🇪","🇵🇭","🇵🇱","🇵🇹","🇶🇦","🇷🇴","🇷🇺","🇷🇼","🇸🇦","🇸🇳","🇷🇸","🇸🇱","🇸🇬","🇸🇰","🇸🇮","🇸🇴","🇿🇦","🇰🇷","🇸🇸","🇪🇸","🇱🇰","🇸🇩","🇸🇪","🇨🇭","🇸🇾","🇹🇼","🇹🇿","🇹🇭","🇹🇬","🇹🇳","🇹🇷","🇹🇲","🇺🇬","🇺🇦","🇦🇪","🇬🇧","🇺🇸","🇺🇾","🇺🇿","🇻🇪","🇻🇳","🇾🇪","🇿🇲","🇿🇼"];
 const MIC_SVG_INNER='<rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>';
-function setMicIcon(id){const ic=el(id);if(!ic)return;
-  // The chat send buttons are ONE fixed paper-plane button (hold to record); only the status reply keeps a mic.
-  if(id==='sendIcon'||id==='gSendIcon'){setSendIcon(id);return;}
-ic.setAttribute('viewBox','0 0 48 48');ic.setAttribute('width','26');ic.setAttribute('height','26');ic.innerHTML=MIC_SVG_INNER;}
+function setMicIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 48 48');ic.setAttribute('width','26');ic.setAttribute('height','26');ic.innerHTML=MIC_SVG_INNER;}
 function setSendIcon(id){const ic=el(id);if(!ic)return;ic.setAttribute('viewBox','0 0 24 24');ic.setAttribute('width','24');ic.setAttribute('height','24');ic.innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';}
 
 // ── MOBILE OVERLAY BACK NAVIGATION ──
@@ -3607,12 +3604,8 @@ function pulseHaptic(pattern=55,target){
   return didVibrate;
 }
 function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
-// Breadcrumb for the phone-only crash: the last recording step reached is kept in localStorage.
-// If the app is killed in the middle of a recording, the next launch tells which step it was.
-function voiceTrace(step){try{localStorage.setItem('sl_voice_trace',step);}catch(e){}}
 async function startVoice(fromGesture=false){
   if(vFinalizing||isRec)return;
-  voiceTrace('press');
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
   let pendingPresenceId=null;
   try{
@@ -3622,17 +3615,13 @@ async function startVoice(fromGesture=false){
     recChatId=pendingPresenceId;
     if(recChatId)void setPresenceState('private',recChatId,'recording',true);
     if(!fromGesture)pulseHaptic(55,el('sendB'));
-    voiceTrace('asking-microphone');
     const s=await getVoiceStream();
-    voiceTrace('microphone-granted');
     bindRecorderSafety(s,'private');
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     mr=new MediaRecorder(s,opts);vCh=[];
-    voiceTrace('recorder-created');
     mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);resetRecorderUi('private');showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
-    voiceTrace('recording');
     recChatId=pendingPresenceId;
     void keepVoiceScreenOn();
     el('sendB').classList.remove('voice-pending');
@@ -3642,9 +3631,7 @@ async function startVoice(fromGesture=false){
     el('recordFloatB')?.classList.remove('is-visible');el('recordFloatB')?.style.setProperty('--voice-float-y','0px');
     el('sendIcon').innerHTML='<path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>';
     el('vbar').style.display='flex';
-    voiceTrace('drawing-wave');
     drawBars('vWave',()=>isRec,'#1976d2');
-    voiceTrace('recording');
     const refreshVoiceTimer=()=>{vSec=Math.max(0,Math.floor((Date.now()-vStartAt)/1000));const mm=Math.floor(vSec/60),ss=vSec%60;el('vTimer').textContent=mm+':'+(ss<10?'0':'')+ss;};
     refreshVoiceTimer();
     vInt=setInterval(refreshVoiceTimer,250);
@@ -3652,7 +3639,6 @@ async function startVoice(fromGesture=false){
     // microphone indefinitely if Android loses the pointer-up event.
     setTimeout(()=>{if(isRec&&mr)stopAndSendVoice();},60000);
   }catch(err){
-    voiceTrace('done');
     isRec=false;vStartAt=0;
     if(CU&&(recChatId||pendingPresenceId))void clearPresenceState('private',recChatId||pendingPresenceId);
     recChatId=null;
@@ -3713,7 +3699,6 @@ async function stopAndSendVoice(){
   recorder.ondataavailable=null;
   recorder.onstop=null;
   vCh=[];vSec=0;mr=null;vStartAt=0;vFinalizing=false;
-  voiceTrace('done');
   if(!chunks.length||!chat){vSending=false;showToast('⚠️ Rien n’a été enregistré.');return;}
   const file=voiceFileFromChunks(chunks);
   const mm=Math.floor(dur/60),ss=dur%60;
@@ -3724,7 +3709,6 @@ async function stopAndSendVoice(){
   vSending=false;
 }
 function cancelVoice(){
-  voiceTrace('done');
     if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
   isRec=false;
   if(CU&&recChatId)void setPresenceState('private',recChatId,'recording',false);
@@ -5832,14 +5816,3 @@ else startStudyLink();
 // same blue progress cue visible during that initial refresh instead of only
 // showing the dimmed overlay and spinner.
 setTimeout(()=>setDataRefresh(true),0);
-// If the last recording never reached its end, the app was closed during it: say at which step.
-setTimeout(()=>{
-  try{
-    const step=localStorage.getItem('sl_voice_trace');
-    if(step&&step!=='done'){
-      localStorage.removeItem('sl_voice_trace');
-      console.warn('Previous voice recording stopped at step:',step);
-      showToast('🎙️ La dernière dictée s’est arrêtée à l’étape : '+step);
-    }
-  }catch(e){}
-},3000);
