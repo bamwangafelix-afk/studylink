@@ -9,9 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="StudyLink">
 <meta name="description" content="StudyLink — Connect, Learn, Grow.">
-<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-238">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-238">
-<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-238">
+<link rel="manifest" href="manifest.webmanifest?v=studylink-pwa-239">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/studylink-192.png?v=studylink-pwa-239">
+<link rel="apple-touch-icon" href="icons/studylink-192.png?v=studylink-pwa-239">
 <title>StudyLink Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
@@ -23,7 +23,7 @@
 <div class="ov" id="ov"><div class="spin"></div></div>
 <div id="toast" style="display:none;"></div>
 <div id="installBanner" role="status" aria-live="polite">
-  <img src="icons/studylink-192.png?v=studylink-pwa-238" alt="StudyLink" width="42" height="42">
+  <img src="icons/studylink-192.png?v=studylink-pwa-239" alt="StudyLink" width="42" height="42">
   <div class="install-copy"><strong data-i18n="install_title">Installer l’application StudyLink</strong><span data-i18n="install_hint">Installez-la comme une vraie application, pas comme un simple raccourci.</span></div>
   <button type="button" id="installBtn" data-i18n="install_button">Installer l’app</button>
   <button type="button" id="installDismiss" data-i18n-aria="install_close" aria-label="Fermer">×</button>
@@ -659,7 +659,7 @@
       <!-- One fixed Send button; the vector Record indicator floats upward during the gesture. -->
       <span class="voice-float-indicator" id="recordFloatB" aria-hidden="true"><svg viewBox="0 0 48 48" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></span>
       <button type="button" class="cin-action cin-send-action" id="sendB" onclick="smartSend()" style="display:flex;" title="Send message" aria-label="Send message">
-        <svg id="sendIcon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15-2-15 2z"/></svg>
+        <svg id="sendIcon" viewBox="0 0 48 48" width="26" height="26" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
       </button>
     </div>
   </div>
@@ -761,7 +761,7 @@
       </button>
       <span class="voice-float-indicator voice-float-group" id="gRecordFloatB" aria-hidden="true"><svg viewBox="0 0 48 48" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg></span>
       <button type="button" class="cin-action cin-send-action" id="gSendB" onclick="smartGSend()" style="display:flex;background:#e67e22;" title="Send message" aria-label="Send message">
-        <svg id="gSendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15-2-15 2z"/></svg>
+        <svg id="gSendIcon" viewBox="0 0 48 48" width="26" height="26" fill="currentColor"><rect x="16" y="2" width="16" height="26" rx="8"/><rect x="22" y="8" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="13" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><rect x="22" y="18" width="4" height="2.5" fill="#fff" opacity=".7" rx="1"/><path d="M8 24c0 8.837 7.163 16 16 16s16-7.163 16-16" stroke="currentColor" stroke-width="3.5" fill="none" stroke-linecap="round"/><line x1="24" y1="40" x2="24" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><line x1="14" y1="46" x2="34" y2="46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>
       </button>
     </div>
   </div>

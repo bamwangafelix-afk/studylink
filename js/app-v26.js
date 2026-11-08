@@ -321,7 +321,7 @@ function updateChatSub(){
   const o=window._chatOther||{};
   const s=getStatusInfo(o.status,o.lastSeen);
   const on=s.cls==='online';
-  sub.textContent=on?(t('hdr_online')||'Online'):(t('hdr_offline')||'Offline');
+  sub.textContent=on?(t('hdr_online')||'Online'):(o.lastSeen?fmtLastSeen(o.lastSeen):(t('hdr_offline')||'Offline'));
   sub.className='chat-sub '+(on?'on':'off');
 }
 function renderPrivatePresence(data){
@@ -365,7 +365,7 @@ async function setPresence(status){
   const changed=MP?.status!==status;
   MP={...(MP||{}),status};
   const me=allUsers.find(u=>u.uid===CU.uid);
-  if(me)me.status=status;
+  if(me){me.status=status;me.lastSeen=null;}
   // Only repaint lists when the status really changed: a heartbeat must not rebuild the feed.
   if(changed){
     if(el('Phome')?.style.display!=='none'&&cachedPosts.length)renderHome(cachedPosts,_feedShown);
@@ -389,15 +389,16 @@ function setupPresence(){
   setPresence('Online');
   // Heartbeat refreshes status + lastSeen so other users can tell a live session
   // from one that closed without a chance to write "Offline".
-  setInterval(()=>{if(CU&&document.visibilityState!=='hidden'&&navigator.onLine!==false)setPresence('Online');},25000);
+  setInterval(()=>{if(CU&&navigator.onLine!==false)setPresence('Online');},25000);
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible'){
       clearTimeout(_presenceOfflineTimer);_presenceOfflineTimer=null;
       setPresence('Online');
     }else{
       // Do not flip to Offline for a short app switch / notification shade.
+      // A computer tab in the background is still connected; only phones leave when the app is hidden.
       clearTimeout(_presenceOfflineTimer);
-      _presenceOfflineTimer=setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},45000);
+      if(('ontouchstart' in window)||(navigator.maxTouchPoints>0))_presenceOfflineTimer=setTimeout(()=>{if(document.visibilityState==='hidden')setPresence('Offline');},45000);
     }
     if(document.visibilityState==='visible'&&(isRec||gIsRec||stIsRec))void keepVoiceScreenOn();
   });
@@ -407,6 +408,17 @@ function setupPresence(){
   window.addEventListener('focus',()=>{clearTimeout(_presenceOfflineTimer);setPresence('Online');});
 }
 
+// Breadcrumbs for the "app closes while recording" bug: the last step reached is stored, and the
+// next launch tells where the previous session ended.
+function voiceTrace(step){try{localStorage.setItem('slVoiceTrace',JSON.stringify({step,t:Date.now()}));}catch(e){}}
+function voiceTraceClear(){try{localStorage.removeItem('slVoiceTrace');}catch(e){}}
+window.addEventListener('load',()=>setTimeout(()=>{
+  try{
+    const tr=JSON.parse(localStorage.getItem('slVoiceTrace')||'null');
+    localStorage.removeItem('slVoiceTrace');
+    if(tr&&Date.now()-tr.t<180000)showToast(aT('⚠️ The app closed during recording (step: '+tr.step+')','⚠️ L’app s’est fermée pendant l’enregistrement (étape : '+tr.step+')'));
+  }catch(e){}
+},2500));
 async function keepVoiceScreenOn(){
   // Do not request a screen wake lock on mobile PWAs: some Android WebViews
   // terminate the page or suspend the MediaRecorder when the lock is released.
@@ -1047,6 +1059,9 @@ function listenUsers(){
   db.collection('users').onSnapshot(sn=>{
     const prev=new Map(allUsers.map(u=>[u.uid,u]));
     allUsers=sn.docs.map(d=>({...d.data({serverTimestamps:'estimate'}),uid:d.id}));
+    try{const me=allUsers.find(u=>u.uid===CU?.uid);if(me&&MP?.status&&document.visibilityState!=='hidden'){me.status=MP.status;me.lastSeen=null;}}catch(e){}
+    // Remember when each new heartbeat reached THIS device.
+    try{if(!sn.metadata.fromCache)sn.docChanges().forEach(ch=>{if(ch.type!=='modified')return;const ms=lastSeenMillis(ch.doc.data({serverTimestamps:'estimate'}).lastSeen);if(ms&&!window._lsObservedAt[ms])window._lsObservedAt[ms]=Date.now();});}catch(e){}
     // Measure how far this device's clock is from the server's, using our own
     // heartbeat (lastSeen is written by the server).
     try{
@@ -1070,6 +1085,8 @@ function listenUsers(){
   },e=>console.log('users:',e));
   // A user whose heartbeat stopped becomes "offline" without any document change.
   if(!window._onlineSigTimer)window._onlineSigTimer=setInterval(()=>{
+    const cut=Date.now()-600000,o=window._lsObservedAt;
+    for(const k in o){if(o[k]<cut)delete o[k];}
     if(allUsers.length&&onlineSignature()!==_lastOnlineSig)scheduleUsersRender();
   },20000);
 }
@@ -1274,9 +1291,21 @@ async function delPost(id){
   if(!confirm(aT('Delete this post?','Supprimer cette publication ?')))return;
   try{await db.collection('posts').doc(id).delete();}catch(e){showToast('❌ '+fErr(e&&e.code));}
 }
+// Heartbeats the viewer actually saw arrive, keyed by their server timestamp. They prove a user was alive
+// at that moment on THIS device's clock, so a wrong clock on either phone cannot make an online user look offline.
+window._lsObservedAt=window._lsObservedAt||{};
+function lastSeenMillis(lastSeen){return lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;}
+function lastSeenAgoMs(lastSeen){
+  const ms=lastSeenMillis(lastSeen);
+  if(!ms)return null;
+  const obs=window._lsObservedAt[ms];
+  if(obs)return Math.max(0,Date.now()-obs);
+  return Math.max(0,(Date.now()-(window._clockSkewMs||0))-ms);
+}
 function fmtLastSeen(lastSeen){
-  if(!lastSeen)return t('time_active_while_ago');
-  const sec=Math.floor((Date.now()-(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000))/1000);
+  const agoMs=lastSeenAgoMs(lastSeen);
+  if(agoMs===null)return t('time_active_while_ago');
+  const sec=Math.floor(agoMs/1000);
   if(sec<10)return t('time_active_now');
   if(sec<60)return t('time_active_s').replace('{n}',sec);
   const min=Math.floor(sec/60);
@@ -1290,8 +1319,8 @@ function fmtLastSeen(lastSeen){
 }
 function getStatusInfo(status,lastSeen){
   // A pending serverTimestamp is null locally: treat it as fresh.
-  const _ls=lastSeen?(lastSeen.toDate?lastSeen.toDate().getTime():lastSeen*1000):0;
-  const _stale=_ls>0&&(Date.now()-(window._clockSkewMs||0))-_ls>150000;
+  const _ago=lastSeenAgoMs(lastSeen);
+  const _stale=_ago!==null&&_ago>150000;
   // The "Busy" status no longer exists: old stored values count as online.
   if((status==='Online'||status==='Busy')&&!_stale)return{cls:'online',label:t('status_online')};
   return{cls:'offline',label:'⚫ '+fmtLastSeen(lastSeen)};
@@ -1551,8 +1580,11 @@ function viewStatus(uid){
   else{el('stVJoinGroupBtn').style.display='none';}
   const view=el('statusView');
   applyStatusTheme(view,statusThemeFor(sp.category,sp.photo,sp.message));
-  if(sp.photo){view.style.backgroundImage=`linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35)),url('${sp.photo}')`;view.style.backgroundSize='100% 100%,contain';view.style.backgroundPosition='center';}
+  const zi=statusZoomLayer(),zs=el('stVShade');
+  resetZoom(false,false);zoomFrozen=false;
+  if(sp.photo){view.style.backgroundImage='none';zi.src=sp.photo;zi.style.display='block';zs.style.display='block';initStatusZoom();}
   else{
+    zi.style.display='none';zi.removeAttribute('src');zs.style.display='none';
     const grad={dispo:'#27ae60,#1e8a4c',revision:'#2563eb,#16357a',aide:'#f5730a,#c2570a',givehelp:'#000000,#000000',session:'#7b2ff7,#4b1f99',pause:'#8a93ab,#5c6478',objectif:'#f5b301,#a67c00'}[sp.category]||'#4a5a8f,#16357a';
     view.style.backgroundImage=`linear-gradient(160deg,${grad})`;
     view.style.backgroundSize='';view.style.backgroundPosition='';
@@ -1578,7 +1610,7 @@ function viewStatus(uid){
     renderStatusBar();
   }
 }
-function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);clearTimeout(statusPressTimer);statusPaused=false;statusHideIndicator();if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
+function closeStatusView(preserveHistory=false){clearTimeout(statusAutoCloseTimer);clearTimeout(statusPressTimer);statusPaused=false;statusHideIndicator();resetZoom(false,false);zoomFrozen=false;if(stIsRec)cancelStatusVoice();el('statusView').style.display='none';el('stVMenu').style.display='none';el('stVSeenList').style.display='none';curStatusUid=null;if(!preserveHistory)consumeModalState();}
 function toggleStatusMenu(){
   const menu=el('stVMenu');
   if(menu.style.display==='block'){menu.style.display='none';return;}
@@ -1851,6 +1883,92 @@ function replyToStatus(){
   const u=allUsers.find(x=>x.uid===uid);
   closeStatusView(true);
   openChat(u?.name||'',uid);
+}
+
+// ── STATUS PHOTO ZOOM ──
+// Two fingers zoom the photo (mouse wheel on a computer), one finger moves it while zoomed, a tap zooms back out.
+// The status timer waits while the photo is zoomed. Text statuses are not affected.
+let zoomScale=1,zoomX=0,zoomY=0,zoomFrozen=false,zoomPinch=null,zoomPan=null,zoomMulti=false;
+const zoomPtrs=new Map();
+function statusZoomLayer(){
+  const view=el('statusView');
+  let img=el('stVZoomImg');
+  if(!img){
+    img=document.createElement('img');img.id='stVZoomImg';img.alt='';img.draggable=false;
+    const shade=document.createElement('div');shade.id='stVShade';
+    view.insertBefore(shade,view.firstChild);view.insertBefore(img,view.firstChild);
+  }
+  return img;
+}
+function zoomIsOn(){return el('stVZoomImg')?.style.display==='block';}
+function zoomApply(){const img=el('stVZoomImg');if(img)img.style.transform=`translate(${zoomX}px,${zoomY}px) scale(${zoomScale})`;}
+function zoomClamp(){
+  const mx=(zoomScale-1)*(window.innerWidth||1)/2,my=(zoomScale-1)*(window.innerHeight||1)/2;
+  zoomX=Math.max(-mx,Math.min(mx,zoomX));zoomY=Math.max(-my,Math.min(my,zoomY));
+}
+function resetZoom(animate,resume){
+  const img=el('stVZoomImg');
+  zoomPtrs.clear();zoomPinch=null;zoomPan=null;
+  zoomScale=1;zoomX=0;zoomY=0;
+  if(img){img.style.transition=animate?'transform .2s ease':'none';zoomApply();}
+  if(zoomFrozen){zoomFrozen=false;if(resume)statusResumeProgress();}
+}
+function zoomDist(){const p=[...zoomPtrs.values()];return Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;}
+function zoomMid(){const p=[...zoomPtrs.values()];return {x:(p[0].x+p[1].x)/2,y:(p[0].y+p[1].y)/2};}
+function initStatusZoom(){
+  if(window._statusZoomBound)return;window._statusZoomBound=true;
+  const view=el('statusView');
+  view.addEventListener('pointerdown',e=>{
+    if(!zoomIsOn()||statusIgnoreTarget(e.target))return;
+    zoomPtrs.set(e.pointerId,{x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:Date.now()});
+    if(zoomPtrs.size===2){
+      zoomMulti=true;
+      clearTimeout(statusPressTimer);statusPress=null;      // a second finger means zoom, not tap / hold
+      const m=zoomMid();
+      zoomPinch={d:zoomDist(),s:zoomScale,mx:m.x,my:m.y,x:zoomX,y:zoomY};zoomPan=null;
+      if(!zoomFrozen){statusFreezeProgress();zoomFrozen=true;}
+    }else if(zoomPtrs.size===1&&zoomScale>1.02){
+      clearTimeout(statusPressTimer);statusPress=null;      // moving a zoomed photo must not change status
+      zoomPan={x:e.clientX,y:e.clientY,zx:zoomX,zy:zoomY};
+    }
+  });
+  view.addEventListener('pointermove',e=>{
+    const p=zoomPtrs.get(e.pointerId);if(!p)return;
+    p.x=e.clientX;p.y=e.clientY;
+    const img=el('stVZoomImg');if(!img)return;
+    if(zoomPtrs.size>=2&&zoomPinch){
+      const m=zoomMid();
+      zoomScale=Math.max(1,Math.min(5,zoomPinch.s*zoomDist()/zoomPinch.d));
+      zoomX=zoomPinch.x+(m.x-zoomPinch.mx);zoomY=zoomPinch.y+(m.y-zoomPinch.my);
+      zoomClamp();img.style.transition='none';zoomApply();e.preventDefault();
+    }else if(zoomPan&&zoomScale>1.02){
+      zoomX=zoomPan.zx+(e.clientX-zoomPan.x);zoomY=zoomPan.zy+(e.clientY-zoomPan.y);
+      zoomClamp();img.style.transition='none';zoomApply();
+    }
+  },{passive:false});
+  const endZoomPointer=e=>{
+    const p=zoomPtrs.get(e.pointerId);if(!p)return;
+    zoomPtrs.delete(e.pointerId);
+    const moved=Math.hypot(p.x-p.x0,p.y-p.y0);
+    if(zoomPtrs.size<2)zoomPinch=null;
+    if(zoomPtrs.size===1){const r=[...zoomPtrs.values()][0];zoomPan={x:r.x,y:r.y,zx:zoomX,zy:zoomY};}
+    if(zoomPtrs.size===0){
+      zoomPan=null;
+      if(zoomScale<=1.05)resetZoom(true,true);                                   // pinched back to normal size
+      else if(!zoomMulti&&moved<8&&Date.now()-p.t<300&&e.type==='pointerup')resetZoom(true,true); // a single quick tap zooms out
+      zoomMulti=false;
+    }
+  };
+  view.addEventListener('pointerup',endZoomPointer);
+  view.addEventListener('pointercancel',endZoomPointer);
+  view.addEventListener('wheel',e=>{
+    if(!zoomIsOn()||statusIgnoreTarget(e.target))return;
+    e.preventDefault();
+    zoomScale=Math.max(1,Math.min(5,zoomScale*(e.deltaY<0?1.12:0.89)));
+    if(zoomScale<=1.02){resetZoom(true,true);return;}
+    if(!zoomFrozen){statusFreezeProgress();zoomFrozen=true;}
+    zoomClamp();const img=el('stVZoomImg');img.style.transition='none';zoomApply();
+  },{passive:false});
 }
 
 // ── STATUS VIEWER GESTURES ──
@@ -2377,6 +2495,7 @@ function openChat(name,uid){
   curChat={name,uid};
   pushModalState();
   el('chatT').textContent=name;
+  try{if(!(el('mIn')?.value||'').trim())setMicIcon('sendIcon');}catch(e){}
   const other=allUsers.find(u=>u.uid===uid);
   const st=getStatusInfo(other?.status,other?.lastSeen);
   const chatStEl=el('chatSt');
@@ -2790,7 +2909,7 @@ async function openGroup(postId,name){
     const groupInviteAllowed=canInviteToGroup(groupData,CU?.uid);
     if(el('gcmInviteBtn'))el('gcmInviteBtn').style.display=groupInviteAllowed?'block':'none';
     pushModalState();
-    el('grpT').textContent=curGrp.name;el('groupW').style.display='flex';
+    el('grpT').textContent=curGrp.name;try{if(!(el('gIn')?.value||'').trim())setMicIcon('gSendIcon');}catch(e){}el('groupW').style.display='flex';
     el('grpAv').innerHTML=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:ic('house','1em');
     const owner=allUsers.find(u=>u.uid===curGrp.ownerUid);
     el('grpOwnerLine').innerHTML=owner?`${ic('crown','1em')} ${esc(owner.name||'')}`:'';
@@ -3607,6 +3726,7 @@ function toggleVoice(){isRec?stopAndSendVoice():startVoice();}
 async function startVoice(fromGesture=false){
   if(vFinalizing||isRec)return;
   if(!navigator.mediaDevices||!window.MediaRecorder){showToast('🎙️ Microphone not supported. Use Chrome.');return;}
+  voiceTrace('start');
   let pendingPresenceId=null;
   try{
     // Publish before awaiting the microphone permission prompt so the other
@@ -3615,13 +3735,16 @@ async function startVoice(fromGesture=false){
     recChatId=pendingPresenceId;
     if(recChatId)void setPresenceState('private',recChatId,'recording',true);
     if(!fromGesture)pulseHaptic(55,el('sendB'));
+    voiceTrace('asking-mic');
     const s=await getVoiceStream();
+    voiceTrace('got-mic');
     bindRecorderSafety(s,'private');
     const opts=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:{};
     mr=new MediaRecorder(s,opts);vCh=[];
     mr.onerror=e=>{console.error('Voice recorder error:',e.error||e);resetRecorderUi('private');showToast('🎙️ Erreur du microphone. Réessayez.');};
     mr.ondataavailable=e=>{if(e.data?.size>0)vCh.push(e.data);};
     mr.start(200);isRec=true;vSec=0;vStartAt=Date.now();
+    voiceTrace('recording');
     recChatId=pendingPresenceId;
     void keepVoiceScreenOn();
     el('sendB').classList.remove('voice-pending');
@@ -3639,6 +3762,7 @@ async function startVoice(fromGesture=false){
     // microphone indefinitely if Android loses the pointer-up event.
     setTimeout(()=>{if(isRec&&mr)stopAndSendVoice();},60000);
   }catch(err){
+    voiceTraceClear();
     isRec=false;vStartAt=0;
     if(CU&&(recChatId||pendingPresenceId))void clearPresenceState('private',recChatId||pendingPresenceId);
     recChatId=null;
@@ -3678,6 +3802,7 @@ async function stopAndSendVoice(){
   const recorder=mr;
   const chat=curChat;
   if(!recorder||!isRec||vFinalizing)return;
+  voiceTrace('stopping');
   vFinalizing=true;vSending=true;
   // Flip the UI out of recording mode before awaiting MediaRecorder events. This makes
   // the second tap deterministic on Android and guarantees REC cannot run forever.
@@ -3705,10 +3830,13 @@ async function stopAndSendVoice(){
   const cid=getCID(CU.uid,chat.uid);
   const t=messageTime();
   const durLabel=mm+':'+(ss<10?'0':'')+ss;
+  voiceTrace('uploading');
   await sendMediaDirect({dest:'p',kind:'voice',file,fields:{dur:durLabel},lastLabel:'__voice__',summaryExtra:{lastVoiceDur:durLabel}});
+  voiceTraceClear();
   vSending=false;
 }
 function cancelVoice(){
+  voiceTraceClear();
     if(mr&&isRec){try{mr.ondataavailable=null;mr.onstop=null;mr.stop();}catch(e){}try{mr.stream.getTracks().forEach(t=>t.stop());}catch(e){}}
   isRec=false;
   if(CU&&recChatId)void setPresenceState('private',recChatId,'recording',false);
@@ -4687,7 +4815,7 @@ const I18N={
     media_camera:'Caméra',media_image:'Image',media_video:'Vidéo',media_music:'Musique',media_drive:'Google Drive',
     media_document:'Document',media_poll:'Sondage',media_event:'Événement',media_location:'Position',media_link:'Lien',
     time_active_while_ago:'Actif il y a un moment',time_active_now:'Actif à l’instant',
-    time_active_s:'Actif il y a {n}s',time_active_m:'Actif il y a {n}m',time_active_h:'Actif il y a {n}h',
+    time_active_s:'Actif il y a {n}s',time_active_m:'Actif il y a {n} min',time_active_h:'Actif il y a {n} h',
     time_active_yesterday:'Actif hier',time_active_d:'Actif il y a {n}j',time_active_week_ago:'Actif il y a plus d’une semaine',
     msg_seen:'Vu',
     prompt_poll_question:'Question du sondage :',prompt_event_details:'Détails de l’événement :',
@@ -4806,7 +4934,7 @@ const I18N={
     media_camera:'Camera',media_image:'Image',media_video:'Video',media_music:'Music',media_drive:'Google Drive',
     media_document:'Document',media_poll:'Poll',media_event:'Event',media_location:'Location',media_link:'Link',
     time_active_while_ago:'Active a while ago',time_active_now:'Active just now',
-    time_active_s:'Active {n}s ago',time_active_m:'Active {n}m ago',time_active_h:'Active {n}h ago',
+    time_active_s:'Active {n}s ago',time_active_m:'Active {n} min ago',time_active_h:'Active {n} h ago',
     time_active_yesterday:'Active yesterday',time_active_d:'Active {n}d ago',time_active_week_ago:'Active over a week ago',
     msg_seen:'Seen',
     prompt_poll_question:'Poll question:',prompt_event_details:'Event details:',
