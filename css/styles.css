@@ -879,3 +879,8 @@ body.dark .bbl.o .vavph.music{color:#fff;background:rgba(255,255,255,.14);}
 #stVZoomImg{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:0;pointer-events:none;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-drag:none;}
 #stVShade{display:none;position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,.75),rgba(0,0,0,.15) 45%,rgba(0,0,0,.35));}
 .stVProgress,.stVTop{position:relative;z-index:4;}
+
+/* StudyLink logo refresh: supplied blue/white mark on black background */
+.hdr-brand .hdr-logo-badge{background:#000!important;border-color:#000!important;overflow:hidden!important;}
+.hdr-brand .hdr-logo-badge .hdr-logo{background:#000!important;border:0!important;padding:0!important;object-fit:cover!important;}
+#installBanner img{background:#000!important;border-radius:10px!important;object-fit:cover!important;}
