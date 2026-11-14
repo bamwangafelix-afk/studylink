@@ -682,9 +682,9 @@ auth.onAuthStateChanged(async u=>{
   }
 });
 
-function showLogin(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('loginF').style.display='flex';el('lErr').textContent='';}
-function showReg(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('regF').style.display='flex';el('rErr').textContent='';}
-function showReset(){['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('resetF').style.display='flex';}
+function showLogin(){el('auth')?.classList.remove('auth-compact');['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('loginF').style.display='flex';el('lErr').textContent='';}
+function showReg(){el('auth')?.classList.remove('auth-compact');['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('regF').style.display='flex';el('rErr').textContent='';}
+function showReset(){el('auth')?.classList.remove('auth-compact');['loginF','regF','resetF','step2F'].forEach(id=>el(id).style.display='none');el('resetF').style.display='flex';}
 
 let s2Intent='both',s2SelTags=[];
 let postSubjectCategory='all',statusSubjectCategory='all';
@@ -718,6 +718,7 @@ function setupSubjectPicker(){
 }
 
 function showStep2(){
+  el('auth')?.classList.add('auth-compact');
   ['loginF','regF','resetF'].forEach(id=>el(id).style.display='none');
   el('step2F').style.display='flex';
   el('asub').textContent='Step 2 of 2 — Your Profile';
