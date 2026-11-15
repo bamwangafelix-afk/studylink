@@ -608,6 +608,7 @@ function resetLoggedOutUi(){
   signOutInProgress=false;
   cleanupAuthListeners();
   CU=null;MP=null;
+  try{stopGroupInbox();}catch(e){}
   el('auth').style.display='flex';
   el('ov').style.display='none';
   setDataRefresh(false);
@@ -658,6 +659,7 @@ auth.onAuthStateChanged(async u=>{
     try{listenPosts();}catch(e){}
     try{listenMyGroupMemberships();}catch(e){}
     try{listenUsers();}catch(e){}
+    try{listenMyGroups();}catch(e){}
     try{void refreshStatusesFromServer(true);}catch(e){}
     try{setupNotifL();}catch(e){}
     try{setupStudyInviteState();}catch(e){}
@@ -2520,8 +2522,7 @@ function openChat(name,uid){
   // Override map hard-forces 0 even if Firestore snapshot still has old value
   if(!window._unreadOverride)window._unreadOverride={};
   window._unreadOverride[cid]=0;
-  const navBadge=el('msgB2');
-  if(navBadge){navBadge.textContent='';navBadge.style.display='none';}
+  updateMsgNavBadge();
   void markChatRead(cid,true).catch(e=>console.warn('initial chat read:',e?.code||e?.message||e));
   if(chatReadHeartbeat)clearInterval(chatReadHeartbeat);
   chatReadHeartbeat=setInterval(()=>{
@@ -2910,6 +2911,7 @@ async function openGroup(postId,name){
     const groupInviteAllowed=canInviteToGroup(groupData,CU?.uid);
     if(el('gcmInviteBtn'))el('gcmInviteBtn').style.display=groupInviteAllowed?'block':'none';
     pushModalState();
+    try{markGroupRead(postId);}catch(e){}
     el('grpT').textContent=curGrp.name;try{if(!(el('gIn')?.value||'').trim())setMicIcon('gSendIcon');}catch(e){}el('groupW').style.display='flex';
     el('grpAv').innerHTML=curGrp.photo?`<img src="${curGrp.photo}" style="width:100%;height:100%;object-fit:cover;">`:ic('house','1em');
     const owner=allUsers.find(u=>u.uid===curGrp.ownerUid);
@@ -4215,8 +4217,7 @@ function setupInbox(){
         db.collection('users').doc(viewerUid).set({unread:staleOwnUnread},{merge:true}).catch(()=>{});
       }
       const repairedTotal=Object.values(window._inboxUnreadMap||{}).reduce((a,b)=>a+Number(b||0),0);
-      const repairedBadge=el('msgB2');
-      if(repairedBadge){repairedBadge.textContent=repairedTotal>9?'9+':repairedTotal;repairedBadge.style.display=repairedTotal>0?'inline-flex':'none';}
+      updateMsgNavBadge(repairedTotal);
       renderInbox(el('inboxQ')?.value||'',{docs:_cachedInboxDocs});
     },e=>console.log('inboxChats:',e));
   };
@@ -4259,8 +4260,7 @@ function setupInbox(){
       const openCid=getCID(viewerUid,curChat.uid);
       window._inboxUnreadMap[openCid]=0;
       if(window._unreadOverride)window._unreadOverride[openCid]=0;
-      const openBadge=el('msgB2');
-      if(openBadge){openBadge.textContent='';openBadge.style.display='none';}
+      updateMsgNavBadge();
     }
     if(_cachedInboxDocs){
       const canonicalUnread={};
@@ -4296,8 +4296,7 @@ function setupInbox(){
     // This prevents the user snapshot's stale counters from flashing on both
     // accounts during startup.
     let t=_cachedInboxDocs?Object.values(window._inboxUnreadMap).reduce((a,b)=>a+Number(b||0),0):0;
-    const nb=el('msgB2');
-    if(nb){nb.textContent=t>9?'9+':t;nb.style.display=t>0?'inline-flex':'none';}
+    updateMsgNavBadge(t);
     if(t>lastUnreadTotal&&!curChat){
       showToast('💬 '+t+' unread message'+(t>1?'s':''));
       try{if(navigator.vibrate)navigator.vibrate([120,60,120]);}catch(e){}
@@ -4315,6 +4314,162 @@ function setupInbox(){
     else console.warn('Inbox listener (will retry automatically):',e.code||e.message);
   });
 }
+
+// ── MESSAGES: GROUPS TAB + UNREAD BADGES ──
+// Groups are listed separately from private chats. Unread counts per group come from the
+// group's own messages compared with a per-user "read until" pointer stored in users/{me}.groupReadAt.
+// The pointer holds the SERVER time of the newest message read, so no device clock is involved.
+let msgsSubTab='private';
+let myGroupDocs={},groupInboxState={},groupInboxUnsubs={},groupReadAtMap={};
+let myGroupsUnsub=null,groupReadUnsub=null,groupReadReady=false;
+const GROUP_INBOX_LIMIT=25;
+function groupUnreadTotal(){return Object.values(groupInboxState).reduce((a,g)=>a+(Number(g.unread)||0),0);}
+function groupViewActive(){
+  if(document.visibilityState!=='visible')return false;
+  const touch=window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;
+  return touch||typeof document.hasFocus!=='function'||document.hasFocus();
+}
+// One number for the Msgs icon: private + groups.
+function updateMsgNavBadge(privTotal){
+  const priv=(typeof privTotal==='number')?privTotal:(_cachedInboxDocs?Object.values(window._inboxUnreadMap||{}).reduce((a,b)=>a+Number(b||0),0):0);
+  const total=priv+groupUnreadTotal();
+  const nb=el('msgB2');
+  if(nb){nb.textContent=total>9?'9+':String(total);nb.style.display=total>0?'inline-flex':'none';}
+}
+function paintGroupBadges(){
+  const g=groupUnreadTotal();
+  const tb=el('grpTabB');
+  if(tb){tb.textContent=g>9?'9+':String(g);tb.style.display=g>0?'inline-flex':'none';}
+  updateMsgNavBadge();
+}
+function stopGroupInbox(){
+  Object.values(groupInboxUnsubs).forEach(u=>{try{u();}catch(e){}});
+  groupInboxUnsubs={};groupInboxState={};myGroupDocs={};groupReadAtMap={};groupReadReady=false;
+  if(myGroupsUnsub){myGroupsUnsub();myGroupsUnsub=null;}
+  if(groupReadUnsub){groupReadUnsub();groupReadUnsub=null;}
+  paintGroupBadges();
+}
+function listenMyGroups(){
+  if(!CU?.uid)return;
+  stopGroupInbox();
+  const uid=CU.uid;
+  groupReadUnsub=db.collection('users').doc(uid).onSnapshot(sn=>{
+    const raw=(sn.data()||{}).groupReadAt||{};
+    Object.keys(raw).forEach(gid=>{const ms=messageMillis(raw[gid]);if(ms)groupReadAtMap[gid]=Math.max(groupReadAtMap[gid]||0,ms);});
+    if(!sn.metadata.fromCache)groupReadReady=true;
+    Object.keys(groupInboxState).forEach(recomputeGroupUnread);
+    refreshGroupsInboxUi();
+  },e=>console.warn('group read state:',e?.code||e?.message||e));
+  myGroupsUnsub=db.collection('groups').where('members','array-contains',uid).onSnapshot(sn=>{
+    const seen=new Set();
+    sn.docs.forEach(d=>{
+      seen.add(d.id);myGroupDocs[d.id]={id:d.id,...d.data()};
+      if(!groupInboxUnsubs[d.id])startGroupInboxListener(d.id);
+    });
+    Object.keys(groupInboxUnsubs).forEach(gid=>{
+      if(seen.has(gid))return;
+      try{groupInboxUnsubs[gid]();}catch(e){}
+      delete groupInboxUnsubs[gid];delete groupInboxState[gid];delete myGroupDocs[gid];
+    });
+    refreshGroupsInboxUi();
+  },e=>console.warn('my groups:',e?.code||e?.message||e));
+}
+function startGroupInboxListener(gid){
+  groupInboxState[gid]=groupInboxState[gid]||{docs:[],unread:0,capped:false,lastMs:0,loaded:false};
+  groupInboxUnsubs[gid]=db.collection('groups').doc(gid).collection('messages')
+    .orderBy('createdAt','desc').limit(GROUP_INBOX_LIMIT).onSnapshot(sn=>{
+      const st=groupInboxState[gid];if(!st)return;
+      st.docs=sn.docs.map(d=>{
+        const m=d.data({serverTimestamps:'estimate'});
+        return {s:m.senderUid||'',name:m.senderName||'',type:m.type||'text',text:m.text||'',ms:messageMillis(m.createdAt)||0};
+      });
+      st.loaded=!sn.metadata.fromCache;
+      recomputeGroupUnread(gid);
+      refreshGroupsInboxUi();
+    },e=>console.warn('group inbox '+gid+':',e?.code||e?.message||e));
+}
+function recomputeGroupUnread(gid){
+  const st=groupInboxState[gid];if(!st||!groupReadReady)return;
+  const docs=st.docs||[];
+  st.lastMs=docs[0]?.ms||0;
+  if(groupReadAtMap[gid]===undefined){
+    // First time this account sees the group: what is already there counts as read.
+    if(!st.loaded)return;
+    groupReadAtMap[gid]=st.lastMs||1;
+    db.collection('users').doc(CU.uid).set({groupReadAt:{[gid]:firebase.firestore.Timestamp.fromMillis(groupReadAtMap[gid])}},{merge:true}).catch(()=>{});
+  }
+  const readAt=groupReadAtMap[gid];
+  st.unread=docs.filter(x=>x.s!==CU.uid&&x.ms>readAt).length;
+  st.capped=docs.length>=GROUP_INBOX_LIMIT&&docs[docs.length-1].s!==CU.uid&&docs[docs.length-1].ms>readAt;
+  // A group that is on screen and really being looked at is read immediately.
+  if(st.unread>0&&curGrp?.id===gid&&groupViewActive()){markGroupRead(gid);return;}
+}
+function markGroupRead(gid){
+  if(!CU?.uid||!gid)return;
+  const st=groupInboxState[gid];
+  const ms=st?.lastMs||1;
+  if(groupReadAtMap[gid]!==undefined&&groupReadAtMap[gid]>=ms){
+    if(st){st.unread=0;st.capped=false;}
+    refreshGroupsInboxUi();return;
+  }
+  groupReadAtMap[gid]=ms;
+  db.collection('users').doc(CU.uid).set({groupReadAt:{[gid]:firebase.firestore.Timestamp.fromMillis(ms)}},{merge:true}).catch(()=>{});
+  if(st){st.unread=0;st.capped=false;}
+  refreshGroupsInboxUi();
+}
+function groupPreviewText(st){
+  const m=st?.docs?.[0];if(!m)return appLang==='fr'?'Aucun message':'No messages yet';
+  const fr=appLang==='fr';
+  const labels={image:fr?'Photo':'Photo',video:fr?'Vidéo':'Video',audio:'Audio',voice:fr?'Message vocal':'Voice message',doc:fr?'Fichier':'File',sticker:fr?'Autocollant':'Sticker'};
+  const body=m.type==='text'?m.text:(labels[m.type]||m.text||'');
+  const who=m.s===CU?.uid?(fr?'Vous':'You'):String(m.name||'').split(' ')[0];
+  return (who?who+': ':'')+body;
+}
+function refreshGroupsInboxUi(){
+  paintGroupBadges();
+  if(msgsSubTab==='groups')renderGroupsInbox();
+}
+function renderGroupsInbox(q){
+  const f=el('groupInboxL');if(!f)return;
+  const query=String(q??el('inboxQ')?.value??'').trim().toLowerCase();
+  let items=Object.values(myGroupDocs).map(g=>({g,st:groupInboxState[g.id]||{}}));
+  if(query)items=items.filter(x=>String(x.g.name||'').toLowerCase().includes(query));
+  items.sort((a,b)=>(b.st.lastMs||0)-(a.st.lastMs||0)||String(a.g.name||'').localeCompare(String(b.g.name||'')));
+  if(!items.length){f.innerHTML=`<p style="text-align:center;color:#888;padding:20px;">${t('msgs_no_groups')}</p>`;return;}
+  f.innerHTML=items.map(({g,st})=>{
+    const unread=Number(st.unread)||0;
+    const av=g.photo?`<img src="${esc(g.photo)}" style="width:100%;height:100%;object-fit:cover;">`:ic('house','1.1em');
+    const badge=unread>0?`${st.capped?GROUP_INBOX_LIMIT+'+':(unread>9?'9+':unread)}`:'';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid var(--brd);cursor:pointer;${unread>0?'background:rgba(10,60,109,.04);':''}" onclick="openGroup('${g.id}','${e2(g.name||'Group')}')">
+      <div style="flex-shrink:0;width:50px;height:50px;border-radius:50%;overflow:hidden;background:#e67e22;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;border:2px solid var(--btnB);">${av}</div>
+      <div style="flex:1;min-width:0;">
+        <b style="font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${unread>0?'color:var(--btnB);':''}">${esc(g.name||'Group')}</b>
+        <p style="font-size:11px;color:${unread>0?'var(--txt)':'var(--sub)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px;${unread>0?'font-weight:bold;':''}">${esc(groupPreviewText(st))}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+        ${unread>0
+          ?`<div style="background:var(--btnB);color:#fff;border-radius:10px;min-width:20px;height:20px;font-size:11px;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;padding:0 5px;">${badge}</div>`
+          :`<span style="font-size:10px;color:var(--sub);">${st.lastMs?displayMessageTime(st.lastMs):''}</span>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+function switchMsgsTab(which){
+  msgsSubTab=which==='groups'?'groups':'private';
+  el('mtPrivate')?.classList.toggle('on',msgsSubTab==='private');
+  el('mtGroups')?.classList.toggle('on',msgsSubTab==='groups');
+  if(el('inboxL'))el('inboxL').style.display=msgsSubTab==='private'?'':'none';
+  if(el('groupInboxL'))el('groupInboxL').style.display=msgsSubTab==='groups'?'':'none';
+  if(msgsSubTab==='groups')renderGroupsInbox();
+  else renderInbox(el('inboxQ')?.value||'',_cachedInboxDocs?{docs:_cachedInboxDocs}:null);
+}
+function onMsgsSearch(v){
+  if(msgsSubTab==='groups')renderGroupsInbox(v);
+  else renderInbox(v);
+}
+// Coming back to a visible window while a group is open marks it read.
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&curGrp?.id)markGroupRead(curGrp.id);});
+window.addEventListener('focus',()=>{if(curGrp?.id)markGroupRead(curGrp.id);});
 
 function renderInbox(q="",sn=null){
   if(!CU?.uid)return;
@@ -4801,7 +4956,7 @@ const I18N={
     post_group_name_label:'Nom du groupe :',post_group_name_ph:'ex. Python Coders...',post_group_name_required:'❌ Le nom du groupe est requis',post_group_photo_label:'Photo du groupe (facultatif) :',post_group_desc_label:'Description du groupe :',post_group_desc_ph:'De quoi parle ce groupe ?',
     post_tags_label:'Matières :',group_course_subject_label:'Cours / Matière du groupe (facultatif) :',post_message_label:'Ton message :',post_message_ph:'Écris ta demande d’étude...',subject_search_ph:'Rechercher une matière ou une technologie...',
     post_submit:'Publier sur le fil',
-    msgs_title:'Messages',msgs_search_ph:'Rechercher une conversation...',file_open:'Ouvrir',msgs_no_convos:'Aucune conversation pour l’instant.',
+    msgs_title:'Messages',msgs_tab_private:'Privé',msgs_tab_groups:'Groupes',msgs_no_groups:'Aucun groupe pour le moment.',msgs_search_ph:'Rechercher une conversation...',file_open:'Ouvrir',msgs_no_convos:'Aucune conversation pour l’instant.',
     me_title:'Mon profil',me_account:'Compte',me_disconnect:'Se déconnecter',me_edit_profile:'Modifier le profil',
     me_full_name_ph:'Nom complet',me_bio_ph:'Bio / À propos de toi...',me_select_country:'Choisir un pays',
     me_university_ph:'Université / École',me_course_ph:'Filière / Matière principale',me_year_ph:'Année d’étude',
@@ -4920,7 +5075,7 @@ const I18N={
     post_group_name_label:'Group Name:',post_group_name_ph:'e.g. Python Coders...',post_group_name_required:'❌ Enter a group name',post_group_photo_label:'Group Photo (optional):',post_group_desc_label:'Group Description:',post_group_desc_ph:'What is this group about?',
     post_tags_label:'Subject Tags:',group_course_subject_label:'Group Course / Subject (optional):',post_message_label:'Your Message:',post_message_ph:'Write your study request...',subject_search_ph:'Search subjects or technologies...',
     post_submit:'Post to Feed',
-    msgs_title:'Messages',msgs_search_ph:'Search conversations...',file_open:'Open',msgs_no_convos:'No conversations yet.',
+    msgs_title:'Messages',msgs_tab_private:'Private',msgs_tab_groups:'Groups',msgs_no_groups:'No groups yet.',msgs_search_ph:'Search conversations...',file_open:'Open',msgs_no_convos:'No conversations yet.',
     me_title:'My Profile',me_account:'Account',me_disconnect:'Log out',me_edit_profile:'Edit Profile',
     me_full_name_ph:'Full Name',me_bio_ph:'Bio / About you...',me_select_country:'Select Country',
     me_university_ph:'University / School',me_course_ph:'Course / Major',me_year_ph:'Year of Study',

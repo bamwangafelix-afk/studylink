@@ -217,7 +217,12 @@
 <!-- MESSAGES -->
 <div id="Pmsgs" class="page">
   <h3 class="msgs-title"><span data-i18n="msgs_title">Messages</span> <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></h3>
-  <div class="search-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="inboxQ" placeholder="Search conversations..." data-i18n-ph="msgs_search_ph" oninput="renderInbox(this.value)"></div>
+  <div class="search-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="inboxQ" placeholder="Search conversations..." data-i18n-ph="msgs_search_ph" oninput="onMsgsSearch(this.value)"></div>
+  <div class="msgs-tabs" id="msgsTabs" role="tablist">
+    <button type="button" class="msgs-tab on" id="mtPrivate" role="tab" onclick="switchMsgsTab('private')" data-i18n="msgs_tab_private">Private</button>
+    <button type="button" class="msgs-tab" id="mtGroups" role="tab" onclick="switchMsgsTab('groups')"><span data-i18n="msgs_tab_groups">Groups</span><span class="nbadge msgs-tab-badge" id="grpTabB" style="display:none;"></span></button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;display:none;" id="groupInboxL"></div>
   <div class="card" style="padding:0;overflow:hidden;" id="inboxL">
     <p style="text-align:center;color:#888;padding:20px;" data-i18n="msgs_no_convos">No conversations yet.</p>
   </div>
